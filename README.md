@@ -10,21 +10,19 @@ Host 半边全程走 `ctx.fs` 与 `ctx.subprocess`，不直接碰 `node:fs` 或 
 
 ## 安装
 
-需要 DSH CLI 与一个 Web profile（默认名为 `web`）。
+需要 Node 22.19+（或 24+）与 DSH CLI。
 
 ```sh
-# 1. 构建（产出 lib/index.js 与 lib/client.js）
-cd /Users/lzy/Projects/dsh-git
-npm install
-npm run build
+# 1. 克隆并构建（产出 lib/index.js 与 lib/client.js）
+git clone https://github.com/lengmoXXL/dsh-git
+cd dsh-git && npm install && npm run build
 
 # 2. 装进 profile —— 这会在 profile 目录里执行 pnpm，
 #    并把声明了 dsh.bundle.patch 的依赖自动加进 dsh.profile.bundles
-dsh plugin --profile web add /Users/lzy/Projects/dsh-git
+dsh plugin --profile web add "$PWD"
 
 # 3. 重启 Web 服务，刷新页面
-#    （若用 ~/.dsh/reload-8080.sh 则直接运行它）
-pnpm dsh web --port 8080
+dsh --profile web
 ```
 
 > 已装过一次后，**只改 host 半边代码**需要重启服务；**只改客户端代码**只需 `npm run build`，服务端会轮询到新的 `lib/client.js` 并通过 SSE 让页面热重载。
@@ -40,7 +38,7 @@ pnpm dsh web --port 8080 --patch ./overlay.yml
 ```yaml
 - insert:
     - id: dsh-git
-      name: /Users/lzy/Projects/dsh-git
+      name: /path/to/dsh-git   # 绝对路径，或相对于该 patch 文件的路径
 ```
 
 这种方式不去动 profile 的依赖与 bundles。
