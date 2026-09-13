@@ -2,8 +2,9 @@
  * The list's derived state, as pure functions.
  *
  * Everything here is a decision a tab makes about data it already has: which
- * groups the changed paths belong to, how a failure is described, and how a
- * long unchanged run folds. Keeping them pure is what lets the browser half be
+ * groups the changed paths belong to, the letter a change is marked with, the
+ * chips a commit's refs become, how a failure is described, and how a long
+ * unchanged run folds. Keeping them pure is what lets the browser half be
  * tested without a DOM, a server, or a React root.
  *
  * Which change a click opens is NOT here: that is an address, owned by
@@ -12,7 +13,7 @@
  * @module dsh-git/client/state
  */
 
-import type { ChangeEntry, ChangeStage, DiffRow } from '../shared/wire.ts'
+import type { ChangeEntry, ChangeKind, ChangeStage, DiffRow } from '../shared/wire.ts'
 import { GitRequestError } from './face.ts'
 
 /** A failure, split so the panel can name the code and show the detail. */
@@ -54,6 +55,113 @@ export interface GroupedChanges {
 
 /** Which group a stage belongs to, and in what order the groups are drawn. */
 const STAGE_ORDER: readonly ChangeStage[] = ['conflicted', 'staged', 'unstaged', 'untracked']
+
+/**
+ * The single letter a change is marked with.
+ *
+ * These are git's own letters as the editor's source-control list spells them,
+ * including `!` for a file git could not merge — the one place this vocabulary
+ * departs from `git status`, which reports a conflict twice instead.
+ *
+ * @param kind - the kind a status letter described.
+ * @returns the letter to draw, one character wide.
+ */
+export function statusLetter(kind: ChangeKind): string {
+  switch (kind) {
+    case 'modified': return 'M'
+    case 'added': return 'A'
+    case 'deleted': return 'D'
+    case 'renamed': return 'R'
+    case 'copied': return 'C'
+    case 'typechange': return 'T'
+    case 'untracked': return 'U'
+    case 'conflicted': return '!'
+    case 'unknown': return '?'
+  }
+}
+
+/** What a ref decoration says the ref it points at is. */
+export type RefKind =
+  /** The branch the working tree is on. */
+  | 'head'
+  /** A local branch. */
+  | 'branch'
+  /** A branch on a remote. */
+  | 'remote'
+  /** A tag. */
+  | 'tag'
+
+/** One ref a commit carries, named the way its row draws it. */
+export interface RefChip {
+  /** What kind of ref this is. */
+  readonly kind: RefKind
+  /** The name without its `refs/...` qualifier. */
+  readonly name: string
+}
+
+/** The qualifiers `git log --decorate=full` puts in front of a ref's name. */
+const HEADS = 'refs/heads/'
+const REMOTES = 'refs/remotes/'
+const TAGS = 'refs/tags/'
+/** What `%D` puts in front of a tag, on top of the qualifier. */
+const TAG_MARK = 'tag: '
+/** What `%D` puts between `HEAD` and the branch it is on. */
+const HEAD_MARK = ' -> '
+
+/**
+ * Read a commit's ref decoration into the chips its row draws.
+ *
+ * `%D` is read with `--decorate=full`, so each ref arrives fully qualified and
+ * a local branch called `feature/x` is told from `origin/feature/x` by its
+ * prefix rather than by counting slashes. `origin/HEAD` is dropped: it is a
+ * symbolic alias of the remote's default branch, which is the branch already
+ * named beside it. A ref under no known qualifier — a stash annotation, a note
+ * git was told to decorate — is drawn under its own name rather than hidden.
+ *
+ * @param refs - the decoration field, split the way `%D` writes it.
+ * @returns one chip per ref, in git's own order.
+ */
+export function parseRefs(refs: readonly string[]): RefChip[] {
+  const chips: RefChip[] = []
+  for (const raw of refs) {
+    const ref = raw.trim()
+    if (ref === '') continue
+    const marked = ref.startsWith(TAG_MARK)
+    const name = marked ? ref.slice(TAG_MARK.length) : ref
+    const arrow = name.indexOf(HEAD_MARK)
+    if (arrow >= 0) {
+      // `HEAD -> refs/heads/main`: the branch is the fact, and being on it is
+      // what the chip's solid tone says, so one chip carries both.
+      chips.push({ kind: 'head', name: unqualified(name.slice(arrow + HEAD_MARK.length), HEADS) })
+      continue
+    }
+    if (marked || name.startsWith(TAGS)) {
+      chips.push({ kind: 'tag', name: unqualified(name, TAGS) })
+      continue
+    }
+    if (name === 'HEAD') {
+      chips.push({ kind: 'head', name: 'HEAD' })
+      continue
+    }
+    if (name.startsWith(REMOTES)) {
+      const remote = unqualified(name, REMOTES)
+      if (!remote.endsWith('/HEAD')) chips.push({ kind: 'remote', name: remote })
+      continue
+    }
+    chips.push({ kind: 'branch', name: unqualified(name, HEADS) })
+  }
+  return chips
+}
+
+/**
+ * Drop a ref's qualifier, keeping anything that does not carry it.
+ * @param name - a fully qualified ref name, or anything else git decorated.
+ * @param prefix - the qualifier to drop.
+ * @returns the name a reader recognizes.
+ */
+function unqualified(name: string, prefix: string): string {
+  return name.startsWith(prefix) ? name.slice(prefix.length) : name
+}
 
 /**
  * Split the changed paths into the four groups the panel draws.

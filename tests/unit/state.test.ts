@@ -1,15 +1,22 @@
 /**
- * The list's derived state: how changed paths group, how a long unchanged run
- * folds, and how a rejected request is described.
+ * The list's derived state: how changed paths group, how a change is marked,
+ * what a commit's refs become, how a long unchanged run folds, and how a
+ * rejected request is described.
  *
  * @module dsh-git/tests/unit/state
  */
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import type { ChangeEntry, DiffRow } from '../../src/shared/wire.ts'
+import type { ChangeEntry, ChangeKind, DiffRow } from '../../src/shared/wire.ts'
 import { GitRequestError } from '../../src/client/face.ts'
-import { collapseRows, failureInfoOf, groupChanges } from '../../src/client/state.ts'
+import {
+  collapseRows,
+  failureInfoOf,
+  groupChanges,
+  parseRefs,
+  statusLetter,
+} from '../../src/client/state.ts'
 
 /** One status entry. */
 function entry(stage: ChangeEntry['stage'], path: string, kind: ChangeEntry['kind'] = 'modified'): ChangeEntry {
@@ -75,4 +82,47 @@ test('names a host failure by its code and a transport failure by its marker', (
     message: 'socket closed',
   })
   assert.deepEqual(failureInfoOf('nope'), { code: 'git/transport', message: 'nope' })
+})
+
+test('marks every change kind with one letter, and a conflict with a bang', () => {
+  const letters: Record<ChangeKind, string> = {
+    modified: 'M',
+    added: 'A',
+    deleted: 'D',
+    renamed: 'R',
+    copied: 'C',
+    typechange: 'T',
+    untracked: 'U',
+    conflicted: '!',
+    unknown: '?',
+  }
+  for (const [kind, letter] of Object.entries(letters)) {
+    assert.equal(statusLetter(kind as ChangeKind), letter)
+  }
+})
+
+test('draws the checked-out branch as one chip instead of a HEAD plus a branch', () => {
+  assert.deepEqual(parseRefs(['HEAD -> refs/heads/main', 'refs/remotes/origin/main']), [
+    { kind: 'head', name: 'main' },
+    { kind: 'remote', name: 'origin/main' },
+  ])
+})
+
+test('tells a local branch from a remote one by prefix, not by slashes in the name', () => {
+  assert.deepEqual(parseRefs(['refs/heads/feature/x']), [{ kind: 'branch', name: 'feature/x' }])
+  assert.deepEqual(parseRefs(['refs/remotes/origin/feature/x']), [
+    { kind: 'remote', name: 'origin/feature/x' },
+  ])
+})
+
+test('drops the remote’s symbolic HEAD and keeps the tags beside it', () => {
+  assert.deepEqual(parseRefs(['refs/remotes/origin/HEAD', 'tag: refs/tags/v1.0']), [
+    { kind: 'tag', name: 'v1.0' },
+  ])
+})
+
+test('reads a detached HEAD, skips blanks, and falls back to the raw ref name', () => {
+  assert.deepEqual(parseRefs(['HEAD']), [{ kind: 'head', name: 'HEAD' }])
+  assert.deepEqual(parseRefs(['', '  ']), [])
+  assert.deepEqual(parseRefs(['refs/stash']), [{ kind: 'branch', name: 'refs/stash' }])
 })

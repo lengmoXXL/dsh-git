@@ -1,16 +1,75 @@
 /*
- * The change and history lists: group headings, selectable rows, and the
- * de-emphasized notes under them.
+ * The change and history lists: the sticky section headers that keep the two
+ * halves of the tab apart, the stage headings inside the change list,
+ * selectable rows, and the de-emphasized notes under them.
  */
 
+/* A section header stays at the top of the tab's one scroll region, so the
+ * rows passing underneath always belong to a heading that is still visible. */
+.sectionHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  background: var(--dsw-alias-bg-base);
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+  font: var(--dsw-font-xxs-strong-12);
+}
+
+.sectionToggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  height: 26px;
+  padding: 0 8px 0 6px;
+  border: none;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+  text-align: left;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font: inherit;
+}
+
+.sectionToggle:hover {
+  color: var(--dsw-alias-label-primary);
+}
+
+.sectionToggle:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: -2px;
+}
+
+.sectionChevron {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.sectionTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sectionCount {
+  flex: none;
+}
+
+/* A stage inside the change list: one step quieter than the section above it,
+ * and not sticky — the section header is the only thing that sticks. */
 .group {
   display: flex;
   align-items: baseline;
   gap: 6px;
   margin: 0;
-  padding: 10px 12px 4px;
+  padding: 8px 12px 2px;
   color: var(--dsw-alias-label-tertiary);
-  font: var(--dsw-font-xxs-strong-12);
+  font: var(--dsw-font-xxxs-11);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -22,16 +81,20 @@
 
 .row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
   width: 100%;
-  padding: 3px 12px;
+  height: 22px;
+  padding: 0 6px 0 8px;
   border: none;
   background: transparent;
   color: inherit;
   cursor: pointer;
   text-align: left;
   font: var(--dsw-font-xs-13);
+  /* A pane too narrow for a row's fields cuts the last one at the edge; the
+     row's tooltip carries what a cut field would have said. */
+  overflow: hidden;
 }
 
 .row:hover {
@@ -43,65 +106,132 @@
   outline-offset: -2px;
 }
 
-.rowActive,
-.rowActive:hover {
-  background: var(--dsw-alias-interactive-bg-active);
+.rowIcon {
+  flex: none;
 }
 
-.rowPath {
-  flex: 1;
+/* The name keeps its width until the row runs out, then the directory gives
+   way first: what a row is called matters more than where it lives. */
+.rowName {
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* A path git no longer has. */
+.rowGone {
+  text-decoration: line-through;
 }
 
 .rowDir {
+  flex: 0 4 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--dsw-alias-label-tertiary);
 }
 
-.rowKind {
+.rowSpacer {
+  flex: 1 1 0;
+  min-width: 8px;
+}
+
+/* The status letter, sized and colored the way a source-control list marks a
+ * path: one letter, quiet enough to read past and colored enough to scan. */
+.rowLetter {
   flex: none;
-  color: var(--dsw-alias-label-tertiary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 16px;
+  height: 16px;
   font: var(--dsw-font-xxxs-11);
+  font-weight: 600;
 }
 
-.commitSubject {
-  flex: 1;
+.rowLetter[data-kind='modified'],
+.rowLetter[data-kind='typechange'] {
+  color: var(--dsw-alias-state-warn-label);
+}
+
+.rowLetter[data-kind='added'],
+.rowLetter[data-kind='untracked'] {
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.rowLetter[data-kind='renamed'],
+.rowLetter[data-kind='copied'] {
+  color: var(--dsw-alias-state-success-secondary);
+}
+
+.rowLetter[data-kind='deleted'] {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.rowLetter[data-kind='conflicted'] {
+  color: var(--dsw-alias-state-error-secondary);
+}
+
+.rowLetter[data-kind='unknown'] {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+/* A commit's one line: subject, then author and age, then the refs it holds.
+ * Room runs out in that order of importance: the author goes first, then the
+ * subject ellipsizes, and the age and the chips hold their width so a narrow
+ * pane still says what a commit is, and when. */
+.subject {
+  flex: 1 1 auto;
+  min-width: 6ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The commit the working tree is on, which is what leads the eye into a log. */
+.subjectCurrent {
+  font-weight: 600;
+}
+
+/* The author gives way first and the age never does: a shortened name still
+ * says who, while half of "2d ago" says nothing. Kept free of `overflow` so the
+ * flex floor stays the age's width instead of collapsing to nothing. */
+.subjectMeta {
+  flex: 0 8 auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-font-xxs-12);
+}
+
+.author {
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.commitMeta {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 0 12px 4px 12px;
-  color: var(--dsw-alias-label-tertiary);
-  font: var(--dsw-font-xxxs-11);
-}
-
-.commitMetaText {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.commitSha {
+.age {
   flex: none;
-  font: var(--dsw-font-markdown-code-block-small);
 }
 
 .ref {
   flex: none;
-  color: var(--dsw-alias-brand-primary);
+  gap: 3px;
 }
 
-/* A commit's files, indented under its row. */
-.fileRow {
-  padding-left: 26px;
+.refIcon {
+  flex: none;
+}
+
+.refMore {
+  flex: none;
 }
 
 .note {

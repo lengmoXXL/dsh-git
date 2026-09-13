@@ -14,6 +14,9 @@
   color: var(--dsw-alias-label-primary);
 }
 
+/* The header names the repository and where it stands, and gives way from the
+ * inside out: the branch and the tracking line ellipsize before the refresh
+ * control is allowed to wrap. */
 .header {
   flex: none;
   display: flex;
@@ -25,6 +28,8 @@
 }
 
 .repoName {
+  flex: 0 1 auto;
+  min-width: 0;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -32,13 +37,32 @@
 }
 
 .branch {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   color: var(--dsw-alias-label-secondary);
   font: var(--dsw-font-xs-13);
 }
 
-.tracking {
+.branchIcon {
   flex: none;
+}
+
+.branchName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tracking {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--dsw-alias-label-tertiary);
   font: var(--dsw-font-xxs-12);
 }
@@ -46,6 +70,11 @@
 .spacer {
   flex: 1;
   min-width: 8px;
+}
+
+.refresh {
+  flex: none;
+  white-space: nowrap;
 }
 
 .scroll {

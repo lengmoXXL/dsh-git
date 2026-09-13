@@ -1,6 +1,7 @@
 /**
  * Presentation helpers: the copy that turns wire values into localized text,
- * and the class-name join the components build their rows with.
+ * the badge a change is marked with, the chips a commit's refs become, and the
+ * class-name join the components build their rows with.
  *
  * Relative-time bucketing is the primitive's, so this panel and the workspace
  * list name the same distance the same way; the words are this namespace's.
@@ -65,11 +66,11 @@ export function kindLabel(kind: ChangeKind, t: Translate<GitKey>): string {
 /**
  * Split a path so the directory can be drawn dimmer than the name.
  * @param path - a repository-relative path.
- * @returns the directory (trailing separator kept) and the entry name.
+ * @returns the directory, without its trailing separator, and the entry name.
  */
 export function pathParts(path: string): { dir: string; base: string } {
   const at = path.lastIndexOf('/')
-  return at < 0 ? { dir: '', base: path } : { dir: path.slice(0, at + 1), base: path.slice(at + 1) }
+  return at < 0 ? { dir: '', base: path } : { dir: path.slice(0, at), base: path.slice(at + 1) }
 }
 
 /**

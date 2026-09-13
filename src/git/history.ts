@@ -89,6 +89,9 @@ export async function readHistory(ctx: Context, query: HistoryQuery): Promise<Hi
     argv: [
       'log',
       `--format=${LOG_FORMAT}`,
+      // Fully qualified refs, so the panel tells a local branch from a remote
+      // one by its prefix rather than by counting slashes in its name.
+      '--decorate=full',
       '-n', String(query.limit + 1),
       `--skip=${String(query.skip)}`,
     ],

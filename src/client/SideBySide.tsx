@@ -95,7 +95,7 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
     <div className={root}>
       <header className={css.header}>
         <span className={css.path} title={diff.path}>
-          {parts.dir !== '' && <span className={css.orig}>{parts.dir}</span>}
+          {parts.dir !== '' && <span className={css.orig}>{parts.dir}/</span>}
           {parts.base}
           {diff.origPath !== undefined && <span className={css.orig}> ← {diff.origPath}</span>}
         </span>

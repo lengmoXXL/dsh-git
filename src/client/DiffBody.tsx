@@ -15,7 +15,9 @@ import type { CommitSummary } from '../shared/wire.ts'
 import { FailureBlock, Note } from './Feedback.tsx'
 import { timeLabel } from './format.ts'
 import type { GitKey, GitNamespace } from './locales.ts'
+import { RefChips } from './RefChips.tsx'
 import { SideBySide } from './SideBySide.tsx'
+import { parseRefs } from './state.ts'
 import css from './DiffBody.module.css'
 
 /** One commit's heading: what it was, who wrote it, and when. */
@@ -31,7 +33,7 @@ function CommitHeader({ commit, now, t }: {
         <span className={css.sha}>{commit.shortSha}</span>
         <span>{commit.authorName}</span>
         <span>{timeLabel(commit.authoredAt, now, t)}</span>
-        {commit.refs.length > 0 && <span>{commit.refs.join(' ')}</span>}
+        <RefChips chips={parseRefs(commit.refs)} />
       </span>
     </div>
   )

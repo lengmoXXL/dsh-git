@@ -52,10 +52,15 @@ async function readArtifact(path: string): Promise<string> {
 
 /** A stand-in for the shared component library. */
 function primitivesStub(): Record<string, unknown> {
+  const icon = () => createElement('svg', null)
   return {
     Button: (props: { children?: ReactNode }) => createElement('button', null, props.children),
-    IconBranchOutline16: () => createElement('svg', null),
-    IconRefreshOutline16: () => createElement('svg', null),
+    Tag: (props: { children?: ReactNode }) => createElement('span', null, props.children),
+    IconBranchOutline16: icon,
+    IconChevronDownOutline14: icon,
+    IconChevronRightOutline14: icon,
+    IconRefreshOutline16: icon,
+    FileTypeIcon: icon,
     relativeTime: (at: number, now: number) => ({ unit: 'minutes', n: Math.floor((now - at) / 60_000) }),
   }
 }
@@ -398,7 +403,7 @@ test('the bundle carries its stylesheets inlined under hashed local names', asyn
   // A dynamic bundle has no stylesheet channel, so the build compiles each CSS
   // Module into the artifact and attaches one tagged <style> at factory time.
   assert.match(source, /data-plugin-css/)
-  for (const local of ['panel', 'grid', 'row']) {
+  for (const local of ['panel', 'grid', 'row', 'sectionHeader', 'rowLetter', 'ref']) {
     const mapped = new RegExp(`"${local}":\\s*"([^"]+)"`).exec(source)
     assert.notEqual(mapped, null, `the class map carries "${local}"`)
     const name = String(mapped?.[1])
@@ -408,6 +413,9 @@ test('the bundle carries its stylesheets inlined under hashed local names', asyn
       `a stylesheet rule uses ${name}`,
     )
   }
+  // The section header is what keeps the two halves of the tab apart while the
+  // list scrolls, so the built stylesheet has to carry the rule that holds it.
+  assert.ok(source.replace(/\s+/g, '').includes('position:sticky'), 'the section header sticks')
 })
 
 test('the bundle requests only modules the shell already holds', async () => {

@@ -13,7 +13,11 @@
  */
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { Button, IconRefreshOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import {
+  Button,
+  IconBranchOutline16,
+  IconRefreshOutline16,
+} from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale, PropsRuntime, Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type {
   BranchStatus,
@@ -136,10 +140,21 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
     <div className={css.panel}>
       <header className={css.header}>
         <span className={css.repoName} title={repo?.root ?? ''}>{repo?.name ?? ''}</span>
-        {repo !== null && <span className={css.branch}>{branchLabel(repo.branch, t)}</span>}
+        {repo !== null && (
+          <span className={css.branch}>
+            <IconBranchOutline16 size={12} className={css.branchIcon} />
+            <span className={css.branchName}>{branchLabel(repo.branch, t)}</span>
+          </span>
+        )}
         {tracking !== undefined && <span className={css.tracking}>{tracking}</span>}
         <span className={css.spacer} />
-        <Button variant="ghost" size="sm" icon={<IconRefreshOutline16 />} onClick={refresh}>
+        <Button
+          className={css.refresh}
+          variant="ghost"
+          size="sm"
+          icon={<IconRefreshOutline16 />}
+          onClick={refresh}
+        >
           {t('panel.refresh')}
         </Button>
       </header>

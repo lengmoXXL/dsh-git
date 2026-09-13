@@ -30,6 +30,9 @@ export const zh = {
   'changes.empty': '工作区没有改动',
   'changes.truncated': '仅显示前 {n} 项改动',
 
+  'section.collapse': '收起',
+  'section.expand': '展开',
+
   'group.conflicted': '冲突',
   'group.staged': '已暂存',
   'group.unstaged': '未暂存',
@@ -90,6 +93,9 @@ export const en = {
   'changes.title': 'Changes',
   'changes.empty': 'No changes in the working tree',
   'changes.truncated': 'Showing the first {n} changes only',
+
+  'section.collapse': 'Collapse',
+  'section.expand': 'Expand',
 
   'group.conflicted': 'Conflicts',
   'group.staged': 'Staged',

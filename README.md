@@ -58,6 +58,16 @@ pnpm dsh web --port 8080 --patch ./overlay.yml
 - 连续未改动行超过 6 行会折叠成一条可展开的 `⋯ N 行未改动`——点击标签页里则会展开/收起（后端返回的省略行见下）。
 - 日志页刷新时机：标签页挂载、切换会话、点刷新按钮。
 
+### 列表照的是 VS Code 的源代码管理视图
+
+一个 pane 里，「改动」与「历史」是两个**分区**：标题吸顶、可折叠、右端带计数胶囊。滚动时后来的标题会把前一个顶掉，所以标题永远属于它下面那些行——这正是两半不再糊在一起的原因。行高 22px，是编辑器里那种密度。
+
+- **改动行**：文件类型图标 + 文件名，路径跟在名字后面以更浅的颜色（空间不够时先让路径）；最右是状态字母：`M` 改动、`A` 新增、`R` 重命名、`C` 复制、`T` 类型变更、`U` 未跟踪、`D` 删除、`!` 冲突。字母颜色取自客户端那套语义 token（改动用琥珀、新增用绿、删除用红），删除的文件名带删除线；重命名的旧路径在 tooltip 里（`旧 → 新`）。
+- **历史行**：一行一条提交——subject、`作者 · 多久以前`、ref 胶囊。工作区所在的那条 subject 加粗，它的分支胶囊是整屏唯一实心的（`solid`）；本地分支蓝、远程分支灰、标签描边；超过两枚折叠成 `+N`，名字进 tooltip。
+- **让位顺序**：先让作者（`lengmo…`），再让 subject（省略号），`多久以前` 和胶囊不缩——所以窄 pane 里也总能看清「是哪条提交、多久以前、在哪个分支上」。整行 tooltip 里有完整的 subject、作者、时间、sha 和全部 ref 名，连被切掉的胶囊也在这里。
+
+ref 是用 `--decorate=full` 读的，所以本地分支 `feature/x` 与 `origin/feature/x` 靠前缀区分而不是数斜杠；`origin/HEAD` 这种符号别名不画（它旁边的分支就是它）。
+
 ### 对齐用的是 VS Code 的 diff 引擎
 
 行对齐不是自己写的 LCS，而是 [`vscode-diff`](https://www.npmjs.com/package/vscode-diff)——VS Code 编辑器自带的那套 diff computer 的独立打包（MIT，19 KB gzip，作为普通依赖由 host bundle 外部引用）。选它的理由：同样的 Myers + 动态规划核心、同样的行裁剪，diff 读起来就是编辑器里那个味道；而且它比手写对齐多给了字符级 `innerChanges`，将来做行内高亮不用再换引擎。
@@ -153,8 +163,10 @@ src/
     provider.ts       git 资源 provider：地址 → 内容
     LogBody.tsx       日志页：改动 + 历史，点击开新标签页
     DiffBody.tsx      diff 标签页：单条改动或整个提交
-    ChangeList.tsx / HistoryList.tsx / SideBySide.tsx / Feedback.tsx
-    state.ts / format.ts / face.ts / locales.ts / glyphs.tsx
+    Section.tsx       吸顶可折叠的分区头（改动 / 历史共用一个）
+    ChangeList.tsx / HistoryList.tsx / RefChips.tsx / SideBySide.tsx / Feedback.tsx
+    state.ts          列表派生状态：分组、状态字母、ref 胶囊、折叠、失败描述
+    format.ts / face.ts / locales.ts / glyphs.tsx
 cordis.patch.yml      bundle 补丁：只 insert 一行 dsh-git
 tsdown.config.ts      host ESM + client CJS(window.__ModuleLoader__) + CSS Modules 内联
 ```

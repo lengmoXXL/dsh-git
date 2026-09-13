@@ -2,16 +2,22 @@
  * The working-tree half of the log tab: the changed paths, grouped the way a
  * reader looks for them, each row opening that change in its own tab.
  *
+ * A row is the shape a source-control list uses: the file's type glyph, its
+ * name with the directory trailing it in a dimmer tone, and the status letter
+ * at the far right, where the eye lands after reading the name.
+ *
  * @module dsh-git/client/ChangeList
  */
 
-import { Fragment, type ReactNode } from 'react'
+import { Fragment, useState, type ReactNode } from 'react'
+import { FileTypeIcon } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ChangeEntry, ChangeStage } from '../shared/wire.ts'
 import { cx, kindLabel, pathParts } from './format.ts'
 import type { GitKey } from './locales.ts'
+import { Section } from './Section.tsx'
 import type { GroupedChanges } from './state.ts'
-import { nonEmptyGroups } from './state.ts'
+import { nonEmptyGroups, statusLetter } from './state.ts'
 import css from './List.module.css'
 
 /** The group heading each stage is drawn under. */
@@ -29,18 +35,23 @@ function ChangeRow({ entry, t, onSelect }: {
   readonly onSelect: (entry: ChangeEntry) => void
 }): ReactNode {
   const parts = pathParts(entry.path)
+  // A rename's two paths are the tooltip's business: the row names the file
+  // where it is now, which is the path a click opens.
+  const title = entry.origPath === undefined ? entry.path : `${entry.origPath} → ${entry.path}`
   return (
     <button
       type="button"
       className={css.row}
-      title={entry.path}
+      title={title}
       onClick={() => { onSelect(entry) }}
     >
-      <span className={css.rowPath}>
-        {parts.dir !== '' && <span className={css.rowDir}>{parts.dir}</span>}
-        {parts.base}
+      <FileTypeIcon path={entry.path} size={16} className={css.rowIcon} />
+      <span className={cx(css.rowName, entry.kind === 'deleted' && css.rowGone)}>{parts.base}</span>
+      {parts.dir !== '' && <span className={css.rowDir}>{parts.dir}</span>}
+      <span className={css.rowSpacer} />
+      <span className={css.rowLetter} data-kind={entry.kind} title={kindLabel(entry.kind, t)}>
+        {statusLetter(entry.kind)}
       </span>
-      <span className={css.rowKind}>{kindLabel(entry.kind, t)}</span>
     </button>
   )
 }
@@ -63,14 +74,17 @@ export interface ChangeListProps {
  * @returns the changes section.
  */
 export function ChangeList({ grouped, truncated, t, onSelect }: ChangeListProps): ReactNode {
+  const [open, setOpen] = useState(true)
   const groups = nonEmptyGroups(grouped)
   const total = groups.reduce((sum, group) => sum + group.entries.length, 0)
   return (
-    <section>
-      <h3 className={css.group}>
-        {t('changes.title')}
-        <span className={css.groupCount}>{total}</span>
-      </h3>
+    <Section
+      title={t('changes.title')}
+      count={total}
+      open={open}
+      onToggle={() => { setOpen(value => !value) }}
+      t={t}
+    >
       {total === 0 && <p className={css.note}>{t('changes.empty')}</p>}
       {groups.map(({ stage, entries }) => (
         <Fragment key={stage}>
@@ -89,6 +103,6 @@ export function ChangeList({ grouped, truncated, t, onSelect }: ChangeListProps)
         </Fragment>
       ))}
       {truncated && <p className={cx(css.note, css.noteMore)}>{t('changes.truncated', { n: total })}</p>}
-    </section>
+    </Section>
   )
 }

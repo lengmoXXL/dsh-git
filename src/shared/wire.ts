@@ -94,7 +94,7 @@ export interface CommitSummary {
   readonly authorEmail: string
   /** Author timestamp in whole seconds since the epoch. */
   readonly authoredAt: number
-  /** Ref names pointing at this commit, as `%D` renders them. */
+  /** Ref names pointing at this commit, fully qualified as `%D` renders them. */
   readonly refs: readonly string[]
   /** First line of the commit message. */
   readonly subject: string
