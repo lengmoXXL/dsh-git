@@ -359,12 +359,28 @@ test('masks the line that scrolls under a pinned number', async () => {
     /background:var\(--dsh-git-diff-band\)/,
     'the number paints a band rather than inheriting whatever its row has',
   )
+
+  // The band is the tone's colour when the row has one, and the card's surface
+  // otherwise. That fallback is a value for the BAND, not another value for the
+  // tone: the two rules land on the same element, so a second declaration of the
+  // tone's own property would be settled by stylesheet order — which is how a
+  // default on the row once turned every changed row colourless.
   const row = new RegExp(`\\.${prefix}_laneRow\\{([^{}]*)\\}`).exec(sheet)
   assert.match(
     String(row?.[1]),
-    /--dsh-git-diff-band:var\(--dsw-alias-markdown-code-block\)/,
-    'a row with no band of its own still names one',
+    /--dsh-git-diff-band:var\(--dsh-git-diff-tone,var\(--dsw-alias-markdown-code-block\)\)/,
+    'a row with no tone still names a band, without restating the tone',
   )
+  for (const tone of ['del', 'add', 'blank']) {
+    const rule = new RegExp(`\\.${prefix}_${tone}\\{([^{}]*)\\}`).exec(sheet)
+    assert.notEqual(rule, null, `the ${tone} tone has a rule`)
+    assert.match(String(rule?.[1]), /--dsh-git-diff-tone:/, `the ${tone} tone names its colour`)
+    assert.doesNotMatch(
+      String(rule?.[1]),
+      /--dsh-git-diff-band:/,
+      `the ${tone} tone does not restate the band it stands on`,
+    )
+  }
 })
 
 test('replaces a stylesheet the document already carries, rather than skipping it', async () => {

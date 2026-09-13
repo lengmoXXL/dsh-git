@@ -206,26 +206,26 @@
    reading tone: the band says what changed, and a line of red or green text is
    harder to read than the code it marks. */
 /* Mixed against the card's own surface rather than left translucent, and named
-   as a variable as well: an unwrapped lane's pinned line number paints this
-   band, and a see-through band would let the line scroll across the number. */
+   under its own property: an unwrapped lane's pinned line number paints the
+   band, and it must not be able to shadow the colour it is standing on. */
 .del {
-  --dsh-git-diff-band: color-mix(in srgb, var(--dsw-alias-state-error-primary) 13%, var(--dsw-alias-markdown-code-block));
+  --dsh-git-diff-tone: color-mix(in srgb, var(--dsw-alias-state-error-primary) 13%, var(--dsw-alias-markdown-code-block));
 
-  background: var(--dsh-git-diff-band);
+  background: var(--dsh-git-diff-tone);
 }
 
 .add {
-  --dsh-git-diff-band: color-mix(in srgb, var(--dsw-alias-state-success-primary) 13%, var(--dsw-alias-markdown-code-block));
+  --dsh-git-diff-tone: color-mix(in srgb, var(--dsw-alias-state-success-primary) 13%, var(--dsw-alias-markdown-code-block));
 
-  background: var(--dsh-git-diff-band);
+  background: var(--dsh-git-diff-tone);
 }
 
 /* A side with no line on this row: the page showing through the card, so the
    gap reads as absence rather than as content. */
 .blank {
-  --dsh-git-diff-band: color-mix(in srgb, var(--dsw-alias-bg-base) 45%, var(--dsw-alias-markdown-code-block));
+  --dsh-git-diff-tone: color-mix(in srgb, var(--dsw-alias-bg-base) 45%, var(--dsw-alias-markdown-code-block));
 
-  background: var(--dsh-git-diff-band);
+  background: var(--dsh-git-diff-tone);
 }
 
 /* An unwrapped body: one lane per half, each scrolling its own long lines. Both
@@ -265,10 +265,13 @@
 }
 
 .laneRow {
-  /* A row with no band of its own still paints the card's surface, because the
-     pinned number below draws this: a context row's number would otherwise be
-     transparent, and the line would scroll straight through it. */
-  --dsh-git-diff-band: var(--dsw-alias-markdown-code-block);
+  /* The band the pinned number paints: the row's change colour when it has one,
+     and the card's surface when it does not — a context row's number would
+     otherwise be transparent, and the line would scroll straight through it.
+     The fallback is written here rather than as another value for the tone's own
+     property, so that neither can shadow the other: the two rules land on the
+     same element and stylesheet order would decide it. */
+  --dsh-git-diff-band: var(--dsh-git-diff-tone, var(--dsw-alias-markdown-code-block));
 
   display: grid;
   grid-template-columns: var(--dsh-git-diff-gutter) max-content;
