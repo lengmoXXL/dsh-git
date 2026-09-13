@@ -180,6 +180,53 @@
   color: var(--dsw-alias-label-tertiary);
 }
 
+/* The commit node: what a graph puts at the left of a row, without the lanes
+ * between them. A commit is a filled dot; a merge and the commit the working
+ * tree is on are hollow, and the second takes the accent its ref chip wears. */
+.node {
+  flex: none;
+  position: relative;
+  align-self: stretch;
+  width: 16px;
+}
+
+.node::before,
+.node::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  border-radius: 999px;
+}
+
+.node::before {
+  width: 10px;
+  height: 10px;
+  background: var(--dsw-alias-label-tertiary);
+}
+
+.nodeMerge::before,
+.nodeCurrent::before {
+  width: 13px;
+  height: 13px;
+  background: transparent;
+  border: 2px solid var(--dsw-alias-label-tertiary);
+}
+
+.nodeCurrent::before {
+  border-color: var(--dsw-alias-state-business-primary);
+}
+
+/* The dot inside the accent ring, which is what marks the checked-out commit
+ * apart from a merge that has no such dot. */
+.nodeCurrent::after {
+  width: 5px;
+  height: 5px;
+  background: var(--dsw-alias-state-business-primary);
+}
+
 /* A commit's one line: subject, then author and age, then the refs it holds.
  * Room runs out in that order of importance: the author goes first, then the
  * subject ellipsizes, and the age and the chips hold their width so a narrow

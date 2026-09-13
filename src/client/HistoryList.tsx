@@ -58,6 +58,13 @@ function CommitRow({ commit, now, t, onSelect }: {
       title={title}
       onClick={() => { onSelect(commit.sha) }}
     >
+      {/* The node a graph would draw at the left of this row, minus the lanes:
+          a filled dot, hollow for a merge, hollow and accented for the commit
+          the working tree is on. */}
+      <span
+        className={cx(css.node, current && css.nodeCurrent, commit.parents.length > 1 && css.nodeMerge)}
+        aria-hidden="true"
+      />
       <span className={cx(css.subject, current && css.subjectCurrent)}>{commit.subject}</span>
       {/* The author gives way before the age does: a shortened name still says
           who, while half of "2d ago" says nothing. */}

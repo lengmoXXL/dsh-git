@@ -403,19 +403,22 @@ test('the bundle carries its stylesheets inlined under hashed local names', asyn
   // A dynamic bundle has no stylesheet channel, so the build compiles each CSS
   // Module into the artifact and attaches one tagged <style> at factory time.
   assert.match(source, /data-plugin-css/)
-  for (const local of ['panel', 'grid', 'row', 'sectionHeader', 'rowLetter', 'ref']) {
+  const css = source.replace(/\s+/g, '')
+  for (const local of ['panel', 'grid', 'row', 'sectionHeader', 'rowLetter', 'nodeCurrent', 'ref']) {
     const mapped = new RegExp(`"${local}":\\s*"([^"]+)"`).exec(source)
     assert.notEqual(mapped, null, `the class map carries "${local}"`)
     const name = String(mapped?.[1])
     assert.match(name, new RegExp(`_${local}$`), `the local name survives only as a suffix for "${local}"`)
+    // A rule selects the class: any combinator or pseudo-element may follow, but
+    // the class name may not continue into a longer one.
     assert.ok(
-      source.replace(/\s+/g, '').includes(`.${name}{`),
-      `a stylesheet rule uses ${name}`,
+      new RegExp(`\\.${name}(?![\\w-])`).test(css),
+      `a stylesheet rule selects ${name}`,
     )
   }
   // The section header is what keeps the two halves of the tab apart while the
   // list scrolls, so the built stylesheet has to carry the rule that holds it.
-  assert.ok(source.replace(/\s+/g, '').includes('position:sticky'), 'the section header sticks')
+  assert.ok(css.includes('position:sticky'), 'the section header sticks')
 })
 
 test('the bundle requests only modules the shell already holds', async () => {
