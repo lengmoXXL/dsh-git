@@ -45,6 +45,7 @@ const CONFIG: GitApiConfig = {
   historyLimit: 50,
   maxEntries: 2000,
   maxCommitFiles: 100,
+  maxDiffMs: 2000,
 }
 
 /** The repository this suite builds and reads. */

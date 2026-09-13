@@ -99,7 +99,8 @@
     "typescript": "^5.6.3"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "^3.18.2"
+    "@deepseek-ai/schemastery": "^3.18.2",
+    "vscode-diff": "^3.0.1"
   },
   "overrides": {
     "@deepseek-ai/dsh-api-session-controller": "0.1.5-rc.1",

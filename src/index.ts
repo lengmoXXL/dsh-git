@@ -39,6 +39,8 @@ export interface Config {
   maxEntries?: number
   /** Files one commit's assembled diff may contain. Defaults to 100. */
   maxCommitFiles?: number
+  /** Time the diff computer may spend before its answer becomes approximate. Defaults to 2000. */
+  maxDiffMs?: number
 }
 
 /** Validated plugin config. The defaults live in {@link apply}. */
@@ -48,6 +50,7 @@ export const Config: z<Config> = z.object({
   historyLimit: z.number().step(1).min(1).max(500),
   maxEntries: z.number().step(1).min(1).max(20_000),
   maxCommitFiles: z.number().step(1).min(1).max(2000),
+  maxDiffMs: z.number().step(1).min(1).max(60_000),
 })
 
 /**
@@ -62,5 +65,6 @@ export function apply(ctx: Context, config: Config): void {
     historyLimit: config.historyLimit ?? 50,
     maxEntries: config.maxEntries ?? 2000,
     maxCommitFiles: config.maxCommitFiles ?? 100,
+    maxDiffMs: config.maxDiffMs ?? 2000,
   })
 }

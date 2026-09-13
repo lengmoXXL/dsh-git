@@ -82,12 +82,21 @@ test('keeps every line number correct across a mixed change', () => {
   assert.deepEqual(result.rows.map(row => row.kind), ['context', 'delete', 'context', 'insert'])
 })
 
-test('falls back to one coarse block past the alignment budget', () => {
-  const result = buildSideBySide('a\nb\nc\n', 'x\ny\nz\n', 1)
-  assert.equal(result.coarse, true)
+test('reports a moved block as a deletion plus an insertion, losing nothing', () => {
+  // VS Code detects moves as an annotation over changes it already reports; this
+  // view draws a moved block as ordinary changes, so the block must appear once
+  // on each side and no line may be invented or dropped.
+  const before = ['1', '2', 'BLOCK-A', 'BLOCK-B', 'BLOCK-C', '5', '6', '7', '8', '9'].join('\n')
+  const after = ['1', '2', '5', '6', '7', 'BLOCK-A', 'BLOCK-B', 'BLOCK-C', '8', '9'].join('\n')
+
+  const result = buildSideBySide(`${before}\n`, `${after}\n`)
+  assert.equal(result.coarse, false)
   assert.equal(result.added, 3)
   assert.equal(result.removed, 3)
-  assert.equal(result.rows.every(row => row.kind === 'replace'), true)
+  const leftLines = result.rows.flatMap(row => (row.left === null ? [] : [row.left.text]))
+  const rightLines = result.rows.flatMap(row => (row.right === null ? [] : [row.right.text]))
+  assert.equal(leftLines.length, 10)
+  assert.equal(rightLines.length, 10)
 })
 
 test('shows an empty pair as no rows', () => {
@@ -138,12 +147,11 @@ test('aligns a large file whose first and last lines both changed', () => {
   assert.equal(result.rows.filter(row => row.kind === 'context').length, 2498)
 })
 
-test('never paints an unchanged line as changed, even when pairing by position', () => {
-  // Repeated lines leave no usable anchor, so this region is paired by
-  // position. The lines that match at their position must still read as
-  // unchanged; only the genuinely different positions are a change.
-  const result = buildSideBySide('A\nE\nB\nE\nC\n', 'X\nE\nY\nE\nZ\n', 1)
-  assert.equal(result.coarse, true)
+test('never paints an unchanged line as changed', () => {
+  // The invariant the whole adapter exists to hold: a line equal on both sides
+  // is context, never a replacement, whatever the computer reports around it.
+  const result = buildSideBySide('A\nE\nB\nE\nC\n', 'X\nE\nY\nE\nZ\n')
+  assert.equal(result.coarse, false)
   assert.deepEqual(
     result.rows.map(row => row.kind),
     ['replace', 'context', 'replace', 'context', 'replace'],

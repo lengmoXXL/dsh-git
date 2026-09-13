@@ -44,6 +44,8 @@ export interface GitApiConfig {
   readonly maxEntries: number
   /** Files one commit's assembled diff may contain. */
   readonly maxCommitFiles: number
+  /** Time the diff computer may spend before its answer becomes approximate. */
+  readonly maxDiffMs: number
 }
 
 /** One normalized request, already routed to this API's prefix. */
@@ -256,8 +258,8 @@ async function alignChange(
   })
 
   const alignment = texts.binary
-    ? { rows: [], added: 0, removed: 0 }
-    : buildSideBySide(texts.oldText, texts.newText)
+    ? { rows: [], added: 0, removed: 0, coarse: false }
+    : buildSideBySide(texts.oldText, texts.newText, deps.config.maxDiffMs)
   // A long diff is cut to its changes rather than to its beginning, so a large
   // file still shows the whole change instead of its first few thousand lines.
   const rows = hunkRows(alignment.rows, deps.config.maxLines)
@@ -273,6 +275,7 @@ async function alignChange(
     removed: alignment.removed,
     added: alignment.added,
     rows,
+    ...alignment.coarse ? { approximate: true } : {},
   }
 }
 

@@ -49,6 +49,7 @@ export const zh = {
   'diff.truncated': 'diff 不完整（已达到行数或大小上限）',
   'diff.unchanged': '行未改动',
   'diff.omitted': '行未显示',
+  'diff.approximate': '对齐超出时间预算，配对为近似结果',
   'diff.old': '旧',
   'diff.new': '新',
 
@@ -109,6 +110,7 @@ export const en = {
   'diff.truncated': 'The diff is incomplete (line or size cap reached)',
   'diff.unchanged': 'unchanged lines',
   'diff.omitted': 'lines not shown',
+  'diff.approximate': 'the diff computer hit its time budget; the pairing is approximate',
   'diff.old': 'old',
   'diff.new': 'new',
 

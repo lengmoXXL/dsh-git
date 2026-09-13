@@ -7,33 +7,38 @@
  * wants every line of both. So the host reads both sides and aligns them here,
  * and the browser only draws.
  *
- * Alignment is exact where it can afford to be, and anchored where it cannot:
+ * The alignment itself is VS Code's. `vscode-diff` is the diff computer the
+ * editor ships, extracted as a package: the same Myers-plus-dynamic-programming
+ * core with the same line-trimming, which is what makes a diff read the way a
+ * reader expects rather than the way a naive LCS reads. Two properties of this
+ * plugin sit around it:
  *
- * 1. The common head and tail are trimmed first. Almost every real edit leaves
- *    most of a file alone, so this alone reduces a 5000-line file with one
- *    changed function to a handful of lines of work.
- * 2. What remains is aligned by exact longest common subsequence while its
- *    product fits the cell budget.
- * 3. A region too large for that is aligned on its unique common lines
- *    (patience-style anchors) and the gaps between them.
- * 4. A region with no usable anchor is paired by position — and even then a
- *    position whose two lines are equal is reported as unchanged.
+ * 1. The common head and tail are trimmed before the computer is asked. Almost
+ *    every real edit leaves most of a file alone, so this bounds the work for
+ *    the common case and guarantees the unchanged head and tail are context
+ *    even when the computer gives up.
+ * 2. The computer's own `hitTimeout` is surfaced as `coarse`. It means the
+ *    pairing is an approximation, and the tab says so instead of pretending.
  *
- * The last rule is the one that matters most. A coarse alignment may pair lines
- * imprecisely, but it must never claim an unchanged line was replaced, because
- * that turns a one-line edit into a wall of red and green. Anything the
- * alignment could not resolve exactly is reported through `coarse`.
+ * One invariant the adapter must hold, whatever the computer returns: a line
+ * that is equal on both sides is never reported as changed. That is the bug a
+ * positional fallback introduces, and it is what turned a one-line edit in a
+ * 1500-line file into a wall of red and green.
  *
  * @module dsh-git/git/sidediff
  */
 
+import { DefaultLinesDiffComputer } from 'vscode-diff'
 import type { DiffRow, DiffSide } from '../shared/wire.ts'
 
-/** Cell budget for an exact LCS table; 4M cells is a 16 MiB `Uint32Array`. */
-const ALIGNMENT_CELL_BUDGET = 4_000_000
+/** How long the diff computer may spend before its answer becomes approximate. */
+const DEFAULT_MAX_MS = 2000
 
-/** How many anchor levels one alignment may descend before pairing by position. */
-const MAX_ANCHOR_DEPTH = 2
+/** Context lines kept around each change when a diff has to be cut down. */
+const HUNK_CONTEXT = 4
+
+/** VS Code's line-diff computer; stateless, so one instance serves every diff. */
+const COMPUTER = new DefaultLinesDiffComputer()
 
 /** What one alignment produced. */
 export interface SideBySide {
@@ -43,7 +48,7 @@ export interface SideBySide {
   readonly added: number
   /** Old-side lines the change removes. */
   readonly removed: number
-  /** Some region was aligned coarsely, so the pairing is only approximate. */
+  /** The computer hit its time budget, so the pairing is only approximate. */
   readonly coarse: boolean
 }
 
@@ -55,7 +60,7 @@ type Op =
 
 /** What one alignment run accumulates besides its steps. */
 interface Alignment {
-  /** Records that some region was paired by position rather than matched. */
+  /** Records that the computer reported an approximate answer. */
   coarse: boolean
 }
 
@@ -96,75 +101,18 @@ function sideOf(lines: readonly string[] | null, index: number): DiffSide | null
 }
 
 /**
- * Align two regions by exact longest common subsequence.
- * @param oldLines - the old region.
- * @param newLines - the new region.
- * @param oldBase - line offset of the old region in the whole file.
- * @param newBase - line offset of the new region in the whole file.
- * @returns the alignment steps.
- */
-function lcsOps(
-  oldLines: readonly string[],
-  newLines: readonly string[],
-  oldBase: number,
-  newBase: number,
-): Op[] {
-  const width = newLines.length + 1
-  // `table[i][j]` is the LCS length of `oldLines[i..]` and `newLines[j..]`,
-  // filled bottom-up so the forward walk below can always read its successor.
-  const table = new Uint32Array((oldLines.length + 1) * width)
-  for (let i = oldLines.length - 1; i >= 0; i -= 1) {
-    for (let j = newLines.length - 1; j >= 0; j -= 1) {
-      table[i * width + j] = lineAt(oldLines, i) === lineAt(newLines, j)
-        ? (table[(i + 1) * width + (j + 1)] ?? 0) + 1
-        : Math.max(table[(i + 1) * width + j] ?? 0, table[i * width + (j + 1)] ?? 0)
-    }
-  }
-
-  const ops: Op[] = []
-  let i = 0
-  let j = 0
-  while (i < oldLines.length && j < newLines.length) {
-    if (lineAt(oldLines, i) === lineAt(newLines, j)) {
-      ops.push({ kind: 'equal', oldIndex: oldBase + i, newIndex: newBase + j })
-      i += 1
-      j += 1
-      continue
-    }
-    // Prefer the deletion on a tie so a rewritten line reads as a replacement
-    // rather than as an insertion above it.
-    if ((table[(i + 1) * width + j] ?? 0) >= (table[i * width + (j + 1)] ?? 0)) {
-      ops.push({ kind: 'delete', oldIndex: oldBase + i })
-      i += 1
-    } else {
-      ops.push({ kind: 'insert', newIndex: newBase + j })
-      j += 1
-    }
-  }
-  while (i < oldLines.length) {
-    ops.push({ kind: 'delete', oldIndex: oldBase + i })
-    i += 1
-  }
-  while (j < newLines.length) {
-    ops.push({ kind: 'insert', newIndex: newBase + j })
-    j += 1
-  }
-  return ops
-}
-
-/**
- * Pair two regions by position.
+ * Pair one region by position.
  *
- * This is the last resort, and it stays honest: a position whose two lines are
- * equal is reported as unchanged, so a coarse alignment never paints a line
- * that did not change. Only genuinely differing positions become a delete plus
- * an insert, which the row builder pairs into one replacement.
+ * This is the last resort, reached only when the diff computer refuses an input
+ * it considers impossible. It stays honest about the one thing that matters: a
+ * position whose two lines are equal is reported as unchanged, so even a
+ * fallback never paints an unchanged line as changed.
  *
  * @param oldLines - the old region.
  * @param newLines - the new region.
  * @param oldBase - line offset of the old region in the whole file.
  * @param newBase - line offset of the new region in the whole file.
- * @param state - records that a coarse pairing happened.
+ * @param state - records that the pairing is approximate.
  * @returns the alignment steps.
  */
 function positionalOps(
@@ -190,154 +138,114 @@ function positionalOps(
   return ops
 }
 
-/** One matched position on both sides. */
-interface Anchor {
-  readonly old: number
-  readonly next: number
-}
-
 /**
- * Keep the anchors whose new-side positions increase.
+ * Ask VS Code's diff computer to align one region.
  *
- * The candidates arrive in old-side order, so this is the longest increasing
- * subsequence over their new-side positions, in `O(k log k)`.
- * @param pairs - matched positions, ascending on the old side.
- * @returns a longest chain ascending on both sides.
- */
-function increasingChain(pairs: readonly Anchor[]): Anchor[] {
-  const chosen: number[] = []
-  const previous: number[] = new Array<number>(pairs.length).fill(-1)
-  const tailValue: number[] = []
-  for (let index = 0; index < pairs.length; index += 1) {
-    const value = pairs[index]?.next ?? 0
-    let low = 0
-    let high = chosen.length
-    while (low < high) {
-      const mid = (low + high) >> 1
-      if ((tailValue[mid] ?? Number.NEGATIVE_INFINITY) < value) low = mid + 1
-      else high = mid
-    }
-    previous[index] = low > 0 ? (chosen[low - 1] ?? -1) : -1
-    chosen[low] = index
-    tailValue[low] = value
-  }
-  const chain: Anchor[] = []
-  let at = chosen.length === 0 ? -1 : (chosen[chosen.length - 1] ?? -1)
-  while (at >= 0) {
-    const pair = pairs[at]
-    if (pair !== undefined) chain.push(pair)
-    at = previous[at] ?? -1
-  }
-  return chain.reverse()
-}
-
-/**
- * Find the unique-in-both lines two regions have in common, as a chain.
+ * The computer reports changed regions as pairs of 1-based, end-exclusive line
+ * ranges; everything between two regions is unchanged and is paired one-to-one
+ * here. A region contributes its old lines as deletions and its new lines as
+ * insertions, which the row builder then pairs into replacements.
+ *
  * @param oldLines - the old region.
  * @param newLines - the new region.
- * @returns the anchors, ascending on both sides.
- */
-function anchorsOf(oldLines: readonly string[], newLines: readonly string[]): Anchor[] {
-  const oldCounts = new Map<string, number>()
-  const newCounts = new Map<string, number>()
-  for (const line of oldLines) oldCounts.set(line, (oldCounts.get(line) ?? 0) + 1)
-  for (const line of newLines) newCounts.set(line, (newCounts.get(line) ?? 0) + 1)
-  const newPosition = new Map<string, number>()
-  for (let j = 0; j < newLines.length; j += 1) {
-    const line = lineAt(newLines, j)
-    if (oldCounts.get(line) === 1 && newCounts.get(line) === 1) newPosition.set(line, j)
-  }
-  const candidates: Anchor[] = []
-  for (let i = 0; i < oldLines.length; i += 1) {
-    const next = newPosition.get(lineAt(oldLines, i))
-    if (next !== undefined) candidates.push({ old: i, next })
-  }
-  return increasingChain(candidates)
-}
-
-/**
- * Align one region with the cheapest method that fits its size.
- * @param oldLines - the old region, already trimmed.
- * @param newLines - the new region, already trimmed.
  * @param oldBase - line offset of the old region in the whole file.
  * @param newBase - line offset of the new region in the whole file.
- * @param budget - exact-alignment cell budget.
- * @param depth - remaining anchor levels.
- * @param state - records that a coarse pairing happened.
+ * @param maxMs - the computer's time budget.
+ * @param state - records an approximate answer.
  * @returns the alignment steps.
  */
-function alignRegion(
+function computerOps(
   oldLines: readonly string[],
   newLines: readonly string[],
   oldBase: number,
   newBase: number,
-  budget: number,
-  depth: number,
+  maxMs: number,
   state: Alignment,
 ): Op[] {
+  // A region one side of which is empty is a whole-file creation or deletion
+  // after trimming. The computer's own range bookkeeping cannot represent it
+  // (its toRangeMapping2 asserts against exactly this shape), and it needs no
+  // alignment anyway: every line is on one side only.
   if (oldLines.length === 0) {
     return newLines.map((_unused, j) => ({ kind: 'insert', newIndex: newBase + j }) satisfies Op)
   }
   if (newLines.length === 0) {
     return oldLines.map((_unused, i) => ({ kind: 'delete', oldIndex: oldBase + i }) satisfies Op)
   }
-  if (oldLines.length * newLines.length <= budget) {
-    return lcsOps(oldLines, newLines, oldBase, newBase)
-  }
-  if (depth <= 0) return positionalOps(oldLines, newLines, oldBase, newBase, state)
 
-  // A line occurring exactly once on each side can only correspond to itself,
-  // so it is a reliable anchor. Chaining the anchors leaves small gaps, which
-  // the exact aligner handles even when the region as a whole does not fit.
-  const anchors = anchorsOf(oldLines, newLines)
-  if (anchors.length === 0) return positionalOps(oldLines, newLines, oldBase, newBase, state)
+  let diff
+  try {
+    diff = COMPUTER.computeDiff([...oldLines], [...newLines], {
+      ignoreTrimWhitespace: false,
+      maxComputationTimeMs: maxMs,
+      // Moves are an annotation over changes the computer already reports; this
+      // view draws a moved block as a deletion plus an insertion, which is what
+      // a reader of a two-column diff expects, so paying for the detection is
+      // waste.
+      computeMoves: false,
+    })
+  } catch {
+    // The computer's internals assert against shapes it believes impossible.
+    // Rather than fail the whole diff, fall back to the honest pairing.
+    return positionalOps(oldLines, newLines, oldBase, newBase, state)
+  }
+  if (diff.hitTimeout) state.coarse = true
 
   const ops: Op[] = []
   let oldAt = 0
   let newAt = 0
-  for (const anchor of anchors) {
-    ops.push(...alignRegion(
-      oldLines.slice(oldAt, anchor.old),
-      newLines.slice(newAt, anchor.next),
-      oldBase + oldAt,
-      newBase + newAt,
-      budget,
-      depth - 1,
-      state,
-    ))
-    ops.push({ kind: 'equal', oldIndex: oldBase + anchor.old, newIndex: newBase + anchor.next })
-    oldAt = anchor.old + 1
-    newAt = anchor.next + 1
+  for (const change of diff.changes) {
+    const oldStart = change.original.startLineNumber - 1
+    const oldEnd = change.original.endLineNumberExclusive - 1
+    const newStart = change.modified.startLineNumber - 1
+    const newEnd = change.modified.endLineNumberExclusive - 1
+    // Between two changed regions both sides advance by the same count; the min
+    // is a guard against a computer answer this adapter would misread.
+    const context = Math.min(oldStart - oldAt, newStart - newAt)
+    for (let i = 0; i < context; i += 1) {
+      ops.push({ kind: 'equal', oldIndex: oldBase + oldAt + i, newIndex: newBase + newAt + i })
+    }
+    for (let i = oldAt + context; i < oldStart; i += 1) {
+      ops.push({ kind: 'delete', oldIndex: oldBase + i })
+    }
+    for (let i = newAt + context; i < newStart; i += 1) {
+      ops.push({ kind: 'insert', newIndex: newBase + i })
+    }
+    for (let i = oldStart; i < oldEnd; i += 1) ops.push({ kind: 'delete', oldIndex: oldBase + i })
+    for (let i = newStart; i < newEnd; i += 1) ops.push({ kind: 'insert', newIndex: newBase + i })
+    oldAt = oldEnd
+    newAt = newEnd
   }
-  ops.push(...alignRegion(
-    oldLines.slice(oldAt),
-    newLines.slice(newAt),
-    oldBase + oldAt,
-    newBase + newAt,
-    budget,
-    depth - 1,
-    state,
-  ))
+  const tail = Math.min(oldLines.length - oldAt, newLines.length - newAt)
+  for (let i = 0; i < tail; i += 1) {
+    ops.push({ kind: 'equal', oldIndex: oldBase + oldAt + i, newIndex: newBase + newAt + i })
+  }
+  for (let i = oldAt + tail; i < oldLines.length; i += 1) {
+    ops.push({ kind: 'delete', oldIndex: oldBase + i })
+  }
+  for (let i = newAt + tail; i < newLines.length; i += 1) {
+    ops.push({ kind: 'insert', newIndex: newBase + i })
+  }
   return ops
 }
 
 /**
  * Align two whole sides.
  *
- * The common head and tail are emitted as unchanged without consulting any
- * table: that is both the cheapest and the most accurate thing to do, and it is
- * what keeps a one-line edit in a huge file from looking like a rewrite.
+ * The common head and tail are emitted as unchanged without asking the computer
+ * anything: that is both the cheapest and the most accurate thing to do, and it
+ * is what keeps a one-line edit in a huge file from looking like a rewrite.
  *
  * @param oldLines - every line of the old side.
  * @param newLines - every line of the new side.
- * @param budget - exact-alignment cell budget.
- * @param state - records that a coarse pairing happened.
+ * @param maxMs - the computer's time budget.
+ * @param state - records an approximate answer.
  * @returns the alignment steps.
  */
 function alignOps(
   oldLines: readonly string[],
   newLines: readonly string[],
-  budget: number,
+  maxMs: number,
   state: Alignment,
 ): Op[] {
   let prefix = 0
@@ -361,13 +269,12 @@ function alignOps(
   for (let i = 0; i < prefix; i += 1) {
     ops.push({ kind: 'equal', oldIndex: i, newIndex: i })
   }
-  ops.push(...alignRegion(
+  ops.push(...computerOps(
     oldLines.slice(prefix, oldLines.length - suffix),
     newLines.slice(prefix, newLines.length - suffix),
     prefix,
     prefix,
-    budget,
-    MAX_ANCHOR_DEPTH,
+    maxMs,
     state,
   ))
   for (let i = 0; i < suffix; i += 1) {
@@ -449,20 +356,17 @@ function rowsOf(
  * Align two whole files into side-by-side rows.
  * @param oldText - the old side's text.
  * @param newText - the new side's text.
- * @param cellBudget - exact-alignment budget; defaults to the built-in one and exists for tests.
+ * @param maxMs - the diff computer's time budget; defaults to the built-in one.
  * @returns the rows and the two line counts.
  */
-export function buildSideBySide(oldText: string, newText: string, cellBudget?: number): SideBySide {
+export function buildSideBySide(oldText: string, newText: string, maxMs?: number): SideBySide {
   const oldLines = splitLines(oldText)
   const newLines = splitLines(newText)
   const state: Alignment = { coarse: false }
-  const ops = alignOps(oldLines, newLines, cellBudget ?? ALIGNMENT_CELL_BUDGET, state)
+  const ops = alignOps(oldLines, newLines, maxMs ?? DEFAULT_MAX_MS, state)
   const { rows, added, removed } = rowsOf(ops, oldLines, newLines)
   return { rows, added, removed, coarse: state.coarse }
 }
-
-/** Context lines kept around each change when a diff has to be cut down. */
-const HUNK_CONTEXT = 4
 
 /**
  * Count the lines one row range advances on each side.

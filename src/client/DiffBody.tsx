@@ -77,6 +77,7 @@ export function DiffBody({ useTabInfo, useResource, t }: DiffBodyProps): ReactNo
   if (value.kind === 'diff') {
     return (
       <div className={css.panel}>
+        {value.diff.approximate === true && <p className={css.summary}>{t('diff.approximate')}</p>}
         <SideBySide diff={value.diff} t={t} />
       </div>
     )
@@ -89,6 +90,7 @@ export function DiffBody({ useTabInfo, useResource, t }: DiffBodyProps): ReactNo
         {value.files.length === 0 && <p className={css.summary}>{t('commit.empty')}</p>}
         {value.files.map(file => (
           <div key={file.path} className={css.file}>
+            {file.approximate === true && <p className={css.summary}>{t('diff.approximate')}</p>}
             <SideBySide diff={file} t={t} embedded />
           </div>
         ))}

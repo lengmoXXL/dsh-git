@@ -175,6 +175,11 @@ export interface DiffPayload {
   readonly added: number
   /** Aligned rows, in file order. */
   readonly rows: readonly DiffRow[]
+  /**
+   * The diff computer hit its time budget, so the pairing is an approximation.
+   * Absent means the alignment is exact.
+   */
+  readonly approximate?: boolean
 }
 
 /** Every failure body this API answers with. */
