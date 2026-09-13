@@ -281,6 +281,39 @@
   flex: none;
 }
 
+/* A commit's files, indented under its row: the same row, one step in. The
+   extra padding is written against `.row` so it wins over that rule's padding
+   shorthand whatever order the two land in the sheet. */
+.row.rowNested {
+  /* The file's own glyph starts where the commit's subject does, so the list
+     reads as belonging to the row above it. */
+  padding-left: 30px;
+}
+
+/* The commit whose files are open, so the list has a row to belong to. */
+.rowOpen,
+.rowOpen:hover {
+  background: var(--dsw-alias-interactive-bg-active);
+}
+
+/* The files under an open commit: the heading lines up with the file glyphs it
+   labels, so the whole block reads as one step in from the commit above it. */
+.files {
+  padding-bottom: 6px;
+}
+
+.files > .group {
+  padding-left: 30px;
+}
+
+/* A commit's file list that could not be read. */
+.fileFailed {
+  margin: 0;
+  padding: 4px 12px 8px;
+  color: var(--dsw-alias-state-warn-label);
+  font: var(--dsw-font-xs-13);
+}
+
 .note {
   margin: 0;
   padding: 4px 12px 8px;

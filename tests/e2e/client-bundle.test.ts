@@ -16,8 +16,11 @@
  */
 
 import assert from 'node:assert/strict'
+import { readdir, readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
+import { dirname, join } from 'node:path'
 import { test } from 'node:test'
+import { fileURLToPath } from 'node:url'
 import {
   applied,
   bundlePath,
@@ -396,4 +399,40 @@ test('the bundle requests only modules the shell already holds', async () => {
       `"${name}" is not in the shell's module table`,
     )
   }
+})
+
+test('defines every class the components reach for', async () => {
+  const source = await readArtifact(bundlePath)
+  const here = dirname(fileURLToPath(import.meta.url))
+  const clientDir = join(here, '../..', 'src', 'client')
+  const files = await readdir(clientDir)
+
+  // A class the component names but the stylesheet does not define arrives as
+  // `undefined`; `cx` then drops it and the element simply has no rule — a
+  // missing indent or a missing highlight, with nothing failing anywhere. The
+  // class map the build emits is the only place that can be asked.
+  const sheets = new Map<string, string>()
+  for (const name of files.filter(file => file.endsWith('.module.css'))) {
+    const tag = new RegExp(`tagId(?:\\$\\d+)? = "dsh-git/${name.replace('.', '\\.')}"`).exec(source)
+    assert.notEqual(tag, null, `the bundle carries the class map for ${name}`)
+    const map = /var \w+_module_css_default = \{([^}]*)\};/.exec(source.slice(tag?.index ?? 0))
+    assert.notEqual(map, null, `the class map for ${name} is readable`)
+    sheets.set(name, String(map?.[1]))
+  }
+
+  const missing: string[] = []
+  let checked = 0
+  for (const file of files.filter(name => name.endsWith('.tsx') || name.endsWith('.ts'))) {
+    const text = await readFile(join(clientDir, file), 'utf8')
+    const imported = /import css from '\.\/([A-Za-z0-9_.-]+\.module\.css)'/.exec(text)?.[1]
+    if (imported === undefined) continue
+    const map = sheets.get(imported)
+    assert.notEqual(map, undefined, `${file} imports a stylesheet the bundle lacks`)
+    for (const [, local] of text.matchAll(/\bcss\.([A-Za-z_][A-Za-z0-9_]*)/g)) {
+      checked += 1
+      if (!new RegExp(`"${String(local)}":`).test(String(map))) missing.push(`${file}: css.${String(local)} (${imported})`)
+    }
+  }
+  assert.ok(checked > 20, `the scan found class uses to check (${String(checked)})`)
+  assert.deepEqual(missing, [], 'every referenced class is defined')
 })
