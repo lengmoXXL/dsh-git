@@ -1,0 +1,29 @@
+/*
+ * The two states that stand in for content.
+ */
+
+.failure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+}
+
+.failureTitle {
+  color: var(--dsw-alias-state-error-primary);
+  font: var(--dsw-font-s-strong-14);
+}
+
+.failureBody {
+  color: var(--dsw-alias-label-secondary);
+  font: var(--dsw-font-xs-13);
+  word-break: break-word;
+}
+
+.note {
+  margin: 0;
+  padding: 8px 12px;
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-font-xs-13);
+}

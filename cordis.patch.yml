@@ -1,0 +1,9 @@
+# dsh-git bundle patch.
+#
+# One change over the profile root: insert the plugin row that provides the
+# `/dsh-git` host routes and the browser panel. Nothing is disabled — this
+# plugin adds a surface, it does not replace a seam.
+
+- insert:
+    - id: dsh-git
+      name: dsh-git

@@ -1,0 +1,116 @@
+/*
+ * The change and history lists: group headings, selectable rows, and the
+ * de-emphasized notes under them.
+ */
+
+.group {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 12px 4px;
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-font-xxs-strong-12);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.groupCount {
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-font-xxxs-11);
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 12px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  font: var(--dsw-font-xs-13);
+}
+
+.row:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.row:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: -2px;
+}
+
+.rowActive,
+.rowActive:hover {
+  background: var(--dsw-alias-interactive-bg-active);
+}
+
+.rowPath {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowDir {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.rowKind {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-font-xxxs-11);
+}
+
+.commitSubject {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commitMeta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0 12px 4px 12px;
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-font-xxxs-11);
+}
+
+.commitMetaText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commitSha {
+  flex: none;
+  font: var(--dsw-font-markdown-code-block-small);
+}
+
+.ref {
+  flex: none;
+  color: var(--dsw-alias-brand-primary);
+}
+
+/* A commit's files, indented under its row. */
+.fileRow {
+  padding-left: 26px;
+}
+
+.note {
+  margin: 0;
+  padding: 4px 12px 8px;
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-font-xs-13);
+}
+
+.noteMore {
+  padding-bottom: 12px;
+}

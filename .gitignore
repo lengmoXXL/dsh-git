@@ -1,0 +1,11 @@
+# Dependencies
+node_modules/
+
+# Build outputs. A profile links this package directory and loads lib/ from
+# disk, so the build stays on disk; it is rebuilt from src/ by `npm run build`
+# and is not part of the source history.
+lib/
+*.tsbuildinfo
+
+# Local noise
+.DS_Store

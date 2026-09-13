@@ -1,0 +1,160 @@
+/*
+ * The side-by-side diff: one grid whose four columns are shared by every row,
+ * so the two sides stay in step no matter how wide either one is. The grid is
+ * as wide as its widest line and the scroll container owns both axes, which is
+ * what keeps a long source line readable instead of wrapped.
+ */
+
+.diff {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+  font: var(--dsw-font-xs-13);
+}
+
+.path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.orig {
+  color: var(--dsw-alias-label-tertiary);
+  font-weight: 400;
+}
+
+.revs {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-font-xxxs-11);
+}
+
+.stat {
+  flex: none;
+  display: flex;
+  gap: 6px;
+  font: var(--dsw-font-xxxs-11);
+}
+
+.added {
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.removed {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  font: var(--dsw-font-markdown-code-block);
+}
+
+.diffEmbedded {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Stacked inside an outer scroll region, one file's grid still scrolls its own
+   long lines sideways rather than widening the whole column. */
+.gridScroll {
+  overflow-x: auto;
+}
+
+.grid {
+  --dsh-git-line-height: 20px;
+
+  display: grid;
+  grid-template-columns: max-content minmax(44ch, max-content) max-content minmax(44ch, max-content);
+  width: max-content;
+  min-width: 100%;
+}
+
+.num {
+  padding: 0 8px;
+  text-align: right;
+  color: var(--dsw-alias-label-tertiary);
+  background: var(--dsw-alias-bg-layer-1);
+  user-select: none;
+  font: var(--dsw-font-xxxs-11);
+  line-height: var(--dsh-git-line-height);
+}
+
+.text {
+  padding: 0 10px;
+  white-space: pre;
+  line-height: var(--dsh-git-line-height);
+}
+
+/* The diff's own meaning-carrying colors, tinted from the semantic state
+   tokens the rest of the client uses for added and removed text. */
+.del {
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent);
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.add {
+  background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 12%, transparent);
+  color: var(--dsw-alias-state-success-primary);
+}
+
+/* A side with no line on this row: still tinted, so the block reads as a block. */
+.blank {
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 60%, transparent);
+}
+
+/* Where rows were left out: stated, never silently skipped. */
+.gap {
+  grid-column: 1 / -1;
+  padding: 0 12px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-font-xxxs-11);
+  line-height: var(--dsh-git-line-height);
+}
+
+.fold {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border: none;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+  text-align: left;
+  font: var(--dsw-font-xxxs-11);
+  line-height: var(--dsh-git-line-height);
+}
+
+.fold:hover {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.fold:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: -2px;
+}
+
+.notice {
+  flex: none;
+  padding: 8px 12px;
+  color: var(--dsw-alias-state-warn-label);
+  font: var(--dsw-font-xs-13);
+}
