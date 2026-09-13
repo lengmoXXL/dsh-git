@@ -20,6 +20,16 @@
  * map. That keeps the component on the same CSS Modules contract the in-repo
  * client packages use — local names, semantic `--dsw-*` tokens, no global
  * leakage.
+ *
+ * `npm run watch` is usually enough while working on the client half: a running
+ * server polls the artifact and re-evaluates the bundle in the page it is
+ * serving, styles included, so no reload is needed. The host half is a module
+ * the Loader mounted at boot, so a change there is only picked up by restarting
+ * the server.
+ *
+ * The build stamps itself (`__DSH_GIT_BUILD__`), because a page's layout comes
+ * from whichever bundle it loaded while the content it draws is read fresh:
+ * without a stamp, an out-of-date page looks like a layout bug.
  */
 
 import { readFile } from 'node:fs/promises'

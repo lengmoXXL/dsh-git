@@ -17,6 +17,13 @@
  * chunk channel, so every grammar it can offer is inlined), and no viewport
  * gating.
  *
+ * `shiki` and `@shikijs/langs` are pinned to the versions the harness uses, and
+ * are build-time dependencies rather than runtime ones: the bundle inlines them,
+ * so declaring them as runtime dependencies would have the loader look for a
+ * package the shell does not carry. A grammar set that drifts from the file
+ * view's would tokenize the same code two ways, which is the whole reason this
+ * copy exists.
+ *
  * @module dsh-git/client/highlight
  */
 

@@ -9,6 +9,10 @@
  * The workspace is resolved on the host from the Session identity this seat
  * supplies; nothing here sends a path the host did not already report.
  *
+ * The list is a snapshot, not a subscription: a repository that changes
+ * underneath it is re-read by the refresh control, or by mounting the tab again.
+ * Watching the filesystem is the host's to offer, and this plugin does not ask.
+ *
  * @module dsh-git/client/LogBody
  */
 
