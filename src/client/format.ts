@@ -1,10 +1,12 @@
 /**
  * Presentation helpers: the copy that turns wire values into localized text,
- * the badge a change is marked with, the chips a commit's refs become, and the
- * class-name join the components build their rows with.
+ * and the class-name join the components build their rows with.
  *
  * Relative-time bucketing is the primitive's, so this panel and the workspace
  * list name the same distance the same way; the words are this namespace's.
+ * What a row says is decided in `state.ts` — the letter a change is marked
+ * with, the chips a commit's refs become — where it can be tested without the
+ * component library.
  *
  * @module dsh-git/client/format
  */
