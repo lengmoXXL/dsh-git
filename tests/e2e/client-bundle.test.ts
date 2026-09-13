@@ -301,6 +301,29 @@ test('declares the diff geometry for the embedded card as well as the tab', asyn
   assert.match(selector, /_diffEmbedded(?![\w-])/, 'the embedded card carries it too')
 })
 
+test('pins a folded run\'s label, not the band it sits in', async () => {
+  const source = await readArtifact(bundlePath)
+  const laneRow = /"laneRow":\s*"([^"]+)"/.exec(source)?.[1]
+  assert.notEqual(laneRow, undefined, 'the class map carries "laneRow"')
+  const prefix = String(laneRow).slice(0, String(laneRow).indexOf('_laneRow'))
+  const sheets = [...source.matchAll(/const css(?:\$\d+)? = "((?:[^"\\]|\\.)*)";/g)]
+    .map(match => JSON.parse(`"${match[1]}"`))
+  const sheet = String(sheets.find(text => text.includes(`.${prefix}_lane{`)) ?? '')
+
+  // A band is as wide as the widest line in its half, and a sticky box with no
+  // slack between its own width and the scrollport cannot be pinned at all: the
+  // folded run's label then scrolls out of view with the lines it stands for, the
+  // way the pinned numbers once did. What is pinned is the control inside, which
+  // is narrower than the half by construction.
+  const band = new RegExp(`\\.${prefix}_laneRows \\.${prefix}_held\\{([^{}]*)\\}`).exec(sheet)
+  assert.notEqual(band, null, 'the lane band has a rule of its own')
+  assert.doesNotMatch(String(band?.[1]), /position:sticky/, 'the band is not the sticky box')
+  const control = new RegExp(`\\.${prefix}_laneRows \\.${prefix}_held>\\*\\{([^{}]*)\\}`).exec(sheet)
+  assert.notEqual(control, null, 'the control inside the band has a rule')
+  assert.match(String(control?.[1]), /position:sticky/, 'the control is pinned')
+  assert.match(String(control?.[1]), /left:0/, 'to the half\'s left edge')
+})
+
 test('masks the line that scrolls under a pinned number', async () => {
   const source = await readArtifact(bundlePath)
   const laneRow = /"laneRow":\s*"([^"]+)"/.exec(source)?.[1]

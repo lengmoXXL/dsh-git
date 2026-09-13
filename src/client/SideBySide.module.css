@@ -319,21 +319,23 @@
 }
 
 .laneRows .held {
-  position: sticky;
-  left: 0;
-  width: max-content;
-  min-width: 100%;
   line-height: var(--dsh-git-diff-row);
 }
 
-.heldSpacer {
-  display: block;
-  height: var(--dsh-git-diff-row);
+/* What is pinned is the control, not the band: a band is as wide as the widest
+   line in the half, and a sticky box with no slack between its own width and the
+   scrollport cannot be pinned at all — the folded run's label would scroll out of
+   view with the lines it stands for. The control is narrower than the half by
+   construction, so it sticks. */
+.laneRows .held > * {
+  position: sticky;
+  left: 0;
 }
 
 /* Where rows were left out: stated, never silently skipped. */
 .gap {
   grid-column: 1 / -1;
+  display: inline-block;
   padding: 0 16px 0 var(--dsh-git-diff-indent);
   color: var(--dsw-alias-label-tertiary);
   line-height: var(--dsh-git-diff-row);
@@ -343,6 +345,7 @@
 .fold {
   grid-column: 1 / -1;
   display: block;
+  width: fit-content;
   padding: 0 16px 0 var(--dsh-git-diff-indent);
   border: none;
   background: transparent;

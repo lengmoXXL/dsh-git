@@ -267,9 +267,11 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
   const laneSide = (side: Side): ReactNode =>
     rows.map((row, at) => {
       if (row.kind === 'fold' || row.row.kind === 'gap') {
+        // Stated once, in the half a reader starts at; the other half draws its
+        // row empty, which the lane's fixed-height tracks keep in step.
         return (
           <div key={row.key} className={css.held}>
-            {side === 'right' ? <span className={css.heldSpacer} /> : heldControl(row)}
+            {side === 'left' && heldControl(row)}
           </div>
         )
       }

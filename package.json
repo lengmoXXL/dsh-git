@@ -140,6 +140,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json --noEmit",
     "build": "tsdown",
+    "prepare": "npm run build",
     "watch": "tsdown --watch",
     "pretest": "npm run build",
     "test": "node --test --experimental-strip-types tests/unit/*.test.ts tests/e2e/*.test.ts"
