@@ -100,7 +100,7 @@ function diffDefinition(): SidebarRightTabDefinition {
 export const name = 'dsh-git-ui'
 
 /** Client services this plugin needs before it activates. */
-export const inject = ['slots', 'locale', 'sidebarRightTabs', 'resources']
+export const inject = ['slots', 'locale', 'sidebarRightTabs', 'resources', 'sidebarRight']
 
 /**
  * Mount the client half.
@@ -117,8 +117,17 @@ export function apply(ctx: Context): void {
   ctx.effect(() => ctx.resources.register(gitResourceProvider(gitFace)), 'dsh-git: git resources')
 
   // Stage two of each type: the body registers under the definition's id.
+  // The controller, not the per-tab action, opens resources: the per-tab path
+  // silently does nothing for a session whose surface store is not adopted,
+  // while the controller answers with a thrown error a reader can see. And the
+  // kind is named rather than left to the registry's claim ranking: this plugin
+  // knows exactly which type owns its addresses, and naming it turns a silent
+  // mis-claim into a named failure.
+  const openResource = (address: string): void => {
+    ctx.sidebarRight.openResource(address, { kind: GIT_DIFF_KIND })
+  }
   ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register(
-    { name: 'sidebar.right.pane.tab', key: GIT_LOG_ID, locale: NS },
+    { name: 'sidebar.right.pane.tab', key: GIT_LOG_ID, locale: NS, inject: () => ({ openResource }) },
     LogBody,
   )), 'dsh-git: log body')
   ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register(

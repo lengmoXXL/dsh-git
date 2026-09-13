@@ -57,15 +57,18 @@ function trackingLabel(branch: BranchStatus, t: Translate<GitKey>): string | und
 }
 
 /** The log tab's composed props: the tab seat, the Session identity, and its dictionary. */
-export type LogBodyProps = PropsRuntime<'sidebar.right.pane.tab'> & PropsLocale<GitNamespace>
+export type LogBodyProps =
+  & PropsRuntime<'sidebar.right.pane.tab'>
+  & PropsLocale<GitNamespace>
+  & { readonly openResource: (address: string) => void }
 
 /**
  * Draw the log.
  * @param props - see {@link LogBodyProps}.
  * @returns the tab's body.
  */
-export function LogBody({ useTabInfo, sessionId, t }: LogBodyProps): ReactNode {
-  const { tab } = useTabInfo()
+export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps): ReactNode {
+  useTabInfo()
   const [epoch, setEpoch] = useState(0)
   const [now, setNow] = useState(() => Date.now())
   const [status, setStatus] = useState<Load<StatusPayload>>({ phase: 'loading' })
@@ -99,19 +102,30 @@ export function LogBody({ useTabInfo, sessionId, t }: LogBodyProps): ReactNode {
     setNow(Date.now())
     setEpoch(value => value + 1)
   }, [])
+  // A click that fails must say so: a dead click reads as a broken plugin,
+  // while a named failure reads as a repository problem.
+  const [openFailure, setOpenFailure] = useState<string | undefined>(undefined)
+  const open = useCallback((address: string) => {
+    try {
+      openResource(address)
+      setOpenFailure(undefined)
+    } catch (error: unknown) {
+      setOpenFailure(failureInfoOf(error).message)
+    }
+  }, [openResource])
   const openChange = useCallback((entry: ChangeEntry) => {
     // An unstaged change compares the index against the working tree; a staged
     // one compares HEAD against the index.
-    tab.actions.openResource(diffAddress({
+    open(diffAddress({
       sessionId,
       source: entry.stage === 'staged' ? 'index' : 'worktree',
       path: entry.path,
       ...entry.origPath === undefined ? {} : { origPath: entry.origPath },
     }))
-  }, [tab, sessionId])
+  }, [open, sessionId])
   const openCommit = useCallback((sha: string) => {
-    tab.actions.openResource(commitAddress(sessionId, sha))
-  }, [tab, sessionId])
+    open(commitAddress(sessionId, sha))
+  }, [open, sessionId])
 
   const ready = status.phase === 'ready' ? status.value : undefined
   const repo = ready?.repo ?? null
@@ -133,6 +147,7 @@ export function LogBody({ useTabInfo, sessionId, t }: LogBodyProps): ReactNode {
         {status.phase === 'failed' && (
           <FailureBlock code={status.code} message={status.message} t={t} onRetry={refresh} />
         )}
+        {openFailure !== undefined && <FailureBlock code="git/bad-request" message={openFailure} t={t} onRetry={undefined} />}
         {status.phase === 'loading' && <Note>{t('loading')}</Note>}
         {status.phase === 'ready' && repo === null && <Note>{t('panel.noRepo')}</Note>}
         {repo !== null && (

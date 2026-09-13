@@ -199,7 +199,7 @@ test('the loaded module exposes exactly the plugin surface', async () => {
   const { exports } = await loadBundle()
   assert.deepEqual(Object.keys(exports).sort(), ['apply', 'inject', 'name'])
   assert.equal(exports['name'], 'dsh-git-ui')
-  assert.deepEqual(exports['inject'], ['slots', 'locale', 'sidebarRightTabs', 'resources'])
+  assert.deepEqual(exports['inject'], ['slots', 'locale', 'sidebarRightTabs', 'resources', 'sidebarRight'])
 })
 
 test('declares a log page with a guide entry, so the add control can reach it', async () => {
@@ -268,6 +268,7 @@ test('the log body renders its frame while the reads are still in flight', async
   const markup = await render(log?.component, {
     useTabInfo: tabInfo('sidebar://git-log'),
     sessionId: 'session-1',
+    openResource: () => {},
   })
   assert.match(markup, /loading/)
 })
