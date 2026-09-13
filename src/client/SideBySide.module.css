@@ -10,7 +10,12 @@
  * which is the editor's own case, nothing wraps at all.
  */
 
-.diff {
+/* Both roots carry the geometry: an embedded card is a `.diffEmbedded` alone,
+   and a grid whose gutter length is missing computes no columns at all — every
+   cell then becomes its own full-width row, which is what a commit tab looked
+   like before this rule learned to say it twice. */
+.diff,
+.diffEmbedded {
   --dsh-git-diff-radius: 12px;
   --dsh-git-diff-row: 22px;
   /* Fixed-width gutter, so the code edge stays put however wide the numbers grow. */
@@ -18,7 +23,9 @@
   /* Where a run's own text starts: past the gutter, or past both of them when
      the two sides share one column. */
   --dsh-git-diff-indent: var(--dsh-git-diff-gutter);
+}
 
+.diff {
   flex: 1;
   min-height: 0;
   min-width: 0;

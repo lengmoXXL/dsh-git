@@ -444,6 +444,27 @@ test('the bundle carries its stylesheets inlined under hashed local names', asyn
   assert.ok(css.includes('position:sticky'), 'the section header sticks')
 })
 
+test('declares the diff geometry for the embedded card as well as the tab', async () => {
+  const source = await readArtifact(bundlePath)
+  const grid = /"grid":\s*"([^"]+)"/.exec(source)?.[1]
+  assert.notEqual(grid, undefined, 'the class map carries "grid"')
+  const prefix = String(grid).slice(0, String(grid).indexOf('_grid'))
+  const sheets = [...source.matchAll(/const css(?:\$\d+)? = "((?:[^"\\]|\\.)*)";/g)]
+    .map(match => JSON.parse(`"${match[1]}"`))
+  const sheet = sheets.find(text => text.includes(`.${prefix}_grid{`))
+  assert.notEqual(sheet, undefined, 'the diff stylesheet was inlined')
+
+  // A grid whose gutter length is missing computes no columns at all: every cell
+  // becomes its own full-width row, so the numbers land on the right and the two
+  // sides stack. The geometry therefore has to be declared on BOTH roots — a
+  // commit's tab draws `.diffEmbedded` and never `.diff`.
+  const declared = /([^{}]+)\{[^{}]*--dsh-git-diff-gutter:48px/.exec(String(sheet))
+  assert.notEqual(declared, null, 'the gutter length is declared')
+  const selector = String(declared?.[1])
+  assert.match(selector, /_diff(?![\w-])/, 'the tab root carries the geometry')
+  assert.match(selector, /_diffEmbedded(?![\w-])/, 'the embedded card carries it too')
+})
+
 test('the bundle requests only modules the shell already holds', async () => {
   const source = await readArtifact(bundlePath)
   const required = [...source.matchAll(/require\("([^"]+)"\)/g)].map(match => String(match[1]))

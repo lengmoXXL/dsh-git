@@ -22,7 +22,7 @@ import {
 } from './glyphs.tsx'
 import { highlightLines, langFromPath, type HighlightSpan } from './highlight.ts'
 import type { GitKey } from './locales.ts'
-import { collapseRows, diffText, inlineDisplayLines, type InlineLine } from './state.ts'
+import { collapseRows, diffText, inlineDisplayLines, revLabel, type InlineLine } from './state.ts'
 import {
   diffViewSettings,
   setDiffViewMode,
@@ -224,7 +224,7 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
           {diff.origPath !== undefined && <span className={css.orig}> ← {diff.origPath}</span>}
         </span>
         <span className={css.actions}>
-          <span className={css.revs}>{diff.oldLabel} → {diff.newLabel}</span>
+          <span className={css.revs}>{revLabel(diff.oldLabel)} → {revLabel(diff.newLabel)}</span>
           <span className={css.stat}>
             <span className={css.added}>+{diff.added}</span>
             <span className={css.removed}>−{diff.removed}</span>
