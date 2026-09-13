@@ -17,6 +17,10 @@
  * markup can be read without a DOM: a highlighted cell nests spans inside the
  * cell, and this file is about rows, not tokens.
  *
+ * Reading markup with regexes makes every match group `| undefined` to the type
+ * checker, so the defaults below are what a test does with a group that is not
+ * there — not guards against a state this suite can reach.
+ *
  * @module dsh-git/tests/e2e/diff-rows
  */
 
