@@ -16,185 +16,18 @@
  */
 
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
-import { dirname, join } from 'node:path'
 import { test } from 'node:test'
-import { fileURLToPath } from 'node:url'
-import { createElement, type ReactNode } from 'react'
-
-const here = dirname(fileURLToPath(import.meta.url))
-const bundlePath = join(here, '../..', 'lib', 'client.js')
-
-/** The specifiers the shell's frozen module table seeds. */
-const PLATFORM_MODULES = [
-  'react', 'react/jsx-runtime', 'react-dom', 'react-dom/client', '@deepseek-ai/cordis',
-  '@deepseek-ai/dsh-client-store',
-  '@deepseek-ai/dsh-client-ui-slots',
-  '@deepseek-ai/dsh-client-ui-primitives',
-  '@deepseek-ai/dsh-client-ui-dockkit',
-] as const
-
-/**
- * Read a build output, naming the command that produces it.
- * @param path - absolute path of the artifact.
- * @returns the artifact's text.
- * @throws when the artifact is absent, with the command that creates it.
- */
-async function readArtifact(path: string): Promise<string> {
-  try {
-    return await readFile(path, 'utf8')
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-    throw new Error(`${path} is a build output and is absent; run \`npm run build\` first`)
-  }
-}
-
-/** A stand-in for the shared component library. */
-function primitivesStub(): Record<string, unknown> {
-  const icon = () => createElement('svg', null)
-  return {
-    Button: (props: { children?: ReactNode }) => createElement('button', null, props.children),
-    Tag: (props: { children?: ReactNode }) => createElement('span', null, props.children),
-    IconBranchOutline16: icon,
-    IconChevronDownOutline14: icon,
-    IconChevronRightOutline14: icon,
-    IconRefreshOutline16: icon,
-    FileTypeIcon: icon,
-    relativeTime: (at: number, now: number) => ({ unit: 'minutes', n: Math.floor((now - at) / 60_000) }),
-  }
-}
-
-/** One loader entry the shell hands back. */
-interface LoadedEntry {
-  readonly id: string
-  readonly exports: Record<string, unknown>
-}
-
-/**
- * Evaluate the built bundle against a stub loader.
- * @returns the id it registered under and the module it produced.
- */
-async function loadBundle(): Promise<LoadedEntry> {
-  const source = await readArtifact(bundlePath)
-  const nodeRequire = createRequire(import.meta.url)
-  const library = primitivesStub()
-  const require = (name: string): unknown =>
-    name === '@deepseek-ai/dsh-client-ui-primitives' ? library : nodeRequire(name)
-  let loaded: LoadedEntry | undefined
-  const window = {
-    __ModuleLoader__: {
-      load(entry: { id: string; factory: (require: (name: string) => unknown) => Record<string, unknown> }) {
-        loaded = { id: entry.id, exports: entry.factory(require) }
-      },
-    },
-  }
-  // The bundle is not a module: it is a script that registers itself.
-  new Function('window', 'require', source)(window, require)
-  assert.notEqual(loaded, undefined, 'the bundle never called window.__ModuleLoader__.load')
-  return loaded!
-}
-
-/** A registered tab type, as the bundle declared it. */
-interface TabDefinition {
-  readonly id: string
-  readonly kind: string
-  readonly patterns?: readonly string[]
-  readonly priority?: string
-  readonly title: (address: string) => string
-  readonly guide?: readonly {
-    readonly order: number
-    readonly title: () => string
-    readonly description?: () => string
-    readonly icon?: unknown
-  }[]
-}
-
-/** One slot registration the stub context captured. */
-interface Registration {
-  readonly definition: Record<string, unknown>
-  readonly component: unknown
-}
-
-/** The stub context `apply` is driven with, and what it captured. */
-interface Bench {
-  readonly ctx: unknown
-  readonly definitions: TabDefinition[]
-  readonly providers: { readonly protocol: string }[]
-  readonly registrations: Registration[]
-  readonly locales: { ns: string; dictionaries: Record<string, unknown> }[]
-}
-
-/** Build the stub context `apply` is driven with. */
-function stubContext(): Bench {
-  const definitions: TabDefinition[] = []
-  const providers: { readonly protocol: string }[] = []
-  const registrations: Registration[] = []
-  const locales: { ns: string; dictionaries: Record<string, unknown> }[] = []
-  const ctx = {
-    effect: (factory: () => unknown) => factory(),
-    locale: {
-      register: (ns: string, dictionaries: Record<string, unknown>) => {
-        locales.push({ ns, dictionaries })
-        return () => {}
-      },
-      bind: (ns: string) => (key: string) => `${ns}.${key}`,
-    },
-    sidebarRightTabs: {
-      register: (definition: TabDefinition) => {
-        definitions.push(definition)
-        return () => {}
-      },
-    },
-    resources: {
-      register: (provider: { readonly protocol: string }) => {
-        providers.push(provider)
-        return () => {}
-      },
-    },
-    slots: {
-      // The real inject waits for the seat's declaration; the stub runs it now.
-      inject: (_slot: string, callback: () => void) => callback(),
-      register: (definition: Record<string, unknown>, component: unknown) => {
-        registrations.push({ definition, component })
-        return () => {}
-      },
-    },
-  }
-  return { ctx, definitions, providers, registrations, locales }
-}
-
-/** Run the bundle's `apply` against a fresh stub context. */
-async function applied(): Promise<Bench> {
-  const { exports } = await loadBundle()
-  const bench = stubContext()
-  ;(exports['apply'] as (ctx: unknown) => void)(bench.ctx)
-  return bench
-}
-
-/** The `useTabInfo` share one body needs, with the seat values it reads. */
-function tabInfo(contentId: string): () => unknown {
-  return () => ({
-    sidebar: { expanded: true, fullscreen: false },
-    panel: { id: 'pane1' },
-    tab: {
-      id: 'tab1',
-      kind: 'git',
-      contentId,
-      title: 'a.ts',
-      visible: true,
-      navigation: { address: contentId, params: undefined, revision: 1 },
-      signal: new AbortController().signal,
-      actions: { openResource: () => {}, openTab: () => {}, close: () => {} },
-    },
-  })
-}
-
-/** Render one registered body with the shares it asks for. */
-async function render(component: unknown, props: Record<string, unknown>): Promise<string> {
-  const { renderToStaticMarkup } = await import('react-dom/server')
-  return renderToStaticMarkup(createElement(component as never, { t: (key: string) => key, ...props }))
-}
+import {
+  applied,
+  bundlePath,
+  loadBundle,
+  PLATFORM_MODULES,
+  primitivesStub,
+  readArtifact,
+  render,
+  tabInfo,
+} from './harness.ts'
 
 test('the built bundle registers itself under the plugin id', async () => {
   assert.equal((await loadBundle()).id, 'dsh-git')
@@ -469,6 +302,7 @@ test('replaces a stylesheet the document already carries, rather than skipping i
   const source = await readArtifact(bundlePath)
   const nodeRequire = createRequire(import.meta.url)
   const library = primitivesStub()
+  void library
   const require = (name: string): unknown =>
     name === '@deepseek-ai/dsh-client-ui-primitives' ? library : nodeRequire(name)
 
