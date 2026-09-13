@@ -298,6 +298,29 @@ test('declares the diff geometry for the embedded card as well as the tab', asyn
   assert.match(selector, /_diffEmbedded(?![\w-])/, 'the embedded card carries it too')
 })
 
+test('gives an unwrapped lane\'s rows a height of their own', async () => {
+  const source = await readArtifact(bundlePath)
+  const laneRow = /"laneRow":\s*"([^"]+)"/.exec(source)?.[1]
+  assert.notEqual(laneRow, undefined, 'the class map carries "laneRow"')
+  const prefix = String(laneRow).slice(0, String(laneRow).indexOf('_laneRow'))
+  const sheets = [...source.matchAll(/const css(?:\$\d+)? = "((?:[^"\\]|\\.)*)";/g)]
+    .map(match => JSON.parse(`"${match[1]}"`))
+  const sheet = String(sheets.find(text => text.includes(`.${prefix}_lane{`)) ?? '')
+  const lane = new RegExp(`\\.${prefix}_lane\\{([^{}]*)\\}`).exec(sheet)
+  assert.notEqual(lane, null, 'the lane has a rule of its own')
+
+  // A lane is a stack of its own, not a grid row shared with the other half, so
+  // a row whose OWN side has no line — the blank half of an insertion or a
+  // deletion — draws nothing at all. Unless the lane sizes its rows itself, that
+  // row collapses and the halves drift a row apart for every blank row between
+  // them, which reads as the two sides showing different code.
+  assert.match(
+    String(lane?.[1]),
+    /grid-auto-rows:[^;}]*var\(--dsh-git-diff-row\)|min-height:[^;}]*var\(--dsh-git-diff-row\)/,
+    'every lane row is a row high whether or not it has anything in it',
+  )
+})
+
 test('replaces a stylesheet the document already carries, rather than skipping it', async () => {
   const source = await readArtifact(bundlePath)
   const nodeRequire = createRequire(import.meta.url)

@@ -239,6 +239,16 @@
 .lane {
   flex: 1 1 0;
   min-width: 0;
+  /* A grid with a row height of its own, because a lane row whose own side has
+     no line — the blank half of an insertion or a deletion — draws nothing, and
+     a stack of blocks would collapse it to nothing while the other half kept
+     its height. That is how the two halves drift a row apart per blank row.
+     Tracks of a fixed height cannot: a row is a row whether or not it has
+     anything in it. */
+  display: grid;
+  grid-template-columns: max-content;
+  grid-auto-rows: var(--dsh-git-diff-row);
+  align-content: start;
   /* Sideways only: the body keeps one vertical scroller, which is what holds
      the two halves' rows against each other. */
   overflow-x: auto;
@@ -249,6 +259,7 @@
   display: grid;
   grid-template-columns: var(--dsh-git-diff-gutter) max-content;
   line-height: var(--dsh-git-diff-row);
+  min-width: 100%;
 }
 
 .laneRow[data-numbers='2'] {
@@ -275,6 +286,7 @@
 .laneText {
   padding-right: 16px;
   white-space: pre;
+  line-height: var(--dsh-git-diff-row);
 }
 
 /* A fold or a gap, stated once per row: in the lanes its band is pinned so the
@@ -288,6 +300,7 @@
   left: 0;
   width: max-content;
   min-width: 100%;
+  line-height: var(--dsh-git-diff-row);
 }
 
 .heldSpacer {
