@@ -28,7 +28,7 @@ dsh plugin --profile web add https://github.com/lengmoXXL/dsh-git
 dsh --profile web
 ```
 
-安装时包会通过自己的 `prepare` 脚本自行构建。pnpm 默认会拦住来自 git 的插件的构建脚本，直到它被放进白名单：pnpm 会把要加的 key 打出来，把它加到 `~/.dsh/profiles/web/pnpm-workspace.yaml` 的 `allowBuilds` 下，再跑同一条命令即可。之后对同一个 URL 再 `add` 一次就是更新。
+安装时包会通过自己的 `prepare` 脚本自行构建。pnpm 默认会拦住来自 git 的插件的构建脚本，直到它被放进白名单：pnpm 会把要加的 key 打出来，把它加到 `~/.dsh/profiles/web/pnpm-workspace.yaml` 的 `allowBuilds` 下，再跑同一条命令即可。那个 key 里带着 pnpm 解析到的具体 commit，所以更新到更新的 commit 时会再问一次：同一个 URL、同样一行回答。
 
 想直接改这个插件，就克隆下来加本地目录：`npm install && npm run build`，然后 `dsh plugin --profile web add "$PWD"`。只改客户端半边时只需 `npm run build`——服务端会轮询到新的 bundle 并通过 SSE 让页面热重载；改 host 半边需要重启服务。
 

@@ -36,7 +36,8 @@ dsh --profile web
 
 The package builds itself on install, through its `prepare` script. pnpm blocks a git-hosted plugin's build until it is
 allowlisted: it prints the key to add under `allowBuilds` in `~/.dsh/profiles/web/pnpm-workspace.yaml`, and the same
-command works once that is done. Installing the same URL again updates it.
+command works once that is done. That key names the commit pnpm resolved, so updating to a newer one asks again — the
+same URL, the same one-line answer.
 
 To work on the plugin itself, clone it and add the checkout instead: `npm install && npm run build`, then
 `dsh plugin --profile web add "$PWD"`. A change to the client half needs only `npm run build` — the server polls for the
