@@ -190,6 +190,26 @@
   line-height: var(--dsh-git-diff-row);
 }
 
+/* Left to scroll instead: whole lines and a row as wide as its longest, which
+   is how an editor shows a line that does not fit. Both columns keep their
+   width and travel together. */
+.grid[data-wrap='clip'] {
+  grid-template-columns:
+    var(--dsh-git-diff-gutter) minmax(24ch, 1fr)
+    var(--dsh-git-diff-gutter) minmax(24ch, 1fr);
+  min-width: max-content;
+}
+
+.grid[data-wrap='clip'][data-view='inline'] {
+  grid-template-columns:
+    var(--dsh-git-diff-gutter) var(--dsh-git-diff-gutter) minmax(24ch, 1fr);
+}
+
+.grid[data-wrap='clip'] .text {
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
 /* The diff's own meaning-carrying colors, tinted from the same semantic tokens
    the rest of the client uses for added and removed text. The text stays in the
    reading tone: the band says what changed, and a line of red or green text is

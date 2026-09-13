@@ -97,12 +97,14 @@ ref 是用 `--decorate=full` 读的，所以本地分支 `feature/x` 与 `origin
 
 右上角的**复制**走外壳导出的 `writeClipboard`，复制的是统一格式文本（路径、`← 旧路径`、` ` / `-` / `+` 前缀，省略行写成 `⋯ N / M`），所以粘到别处能直接当 diff 用。
 
-**布局开关**在复制钮左边：图标画的是它将要切到的样子（两栏 / 一栏），tooltip 说明动作，照编辑器的做法。
+**高亮**走的是 DSH 文件视图那一套：shiki 的 fine-grained core + JavaScript regex engine + css-variables 主题，颜色全部解析成 `--shiki-*` 自定义属性——也就是 `CodeBlock` / `ReadBlock` 用的同一张色板、同一个语法版本（`shiki` 与 `@shikijs/langs` 精确锁在 harness 用的 `4.3.1`），文件扩展名到语言的映射也照抄 read 工具那张表。所以同一行代码在 diff 里和在文件卡片里是同一组 token、同一组颜色；token 色表一改，两边一起变。整段文本一次分词（跨行的块注释、模板字符串读得到上下文），再按行切开给每一行——行号槽、染色、换行都不影响它。
 
-- **两栏**（默认）：两个对齐的列，旧号与新号各在自己那侧的行号槽里。
-- **内联**：一栏按顺序读——旧号、新号两个行号槽，然后是该行；被替换的行在这里变成「先删后增」两行，因为一栏没法同时显示两侧。
+**布局开关**在复制钮左边，照编辑器的做法：图标画的是它将要切到的样子，tooltip 说明动作。
 
-选择是**读者的偏好，而不是这个标签页的状态**：所有 diff 标签页一起切，并且记在浏览器里（`localStorage` 的 `dsh-git:diff-view-mode`），刷新、重开标签页都还在。存储不可用（隐私模式等）时退回默认的两栏，不报错。
+- **两栏** / **内联**：两个对齐的列，或一栏按顺序读（旧号、新号两个槽；被替换的行变成「先删后增」两行，因为一栏没法同时显示两侧）。
+- **自动折行** / **不折行**：折行时长行在各自半栏里绕行，两栏永远都看得见；不折行时保留整行、两栏一起横向滚动，和编辑器一样。默认折行。
+
+四个选择都是**读者的偏好，而不是这个标签页的状态**：所有 diff 标签页一起切，并且记在浏览器里（`localStorage` 的 `dsh-git:diff-view-mode`、`dsh-git:diff-view-wrap`），刷新、重开标签页都还在。存储不可用（隐私模式等）时退回默认（两栏 + 折行），不报错。
 
 ### 大文件：只给改动，并明说省略
 
@@ -160,6 +162,16 @@ npm run build
 npm run watch       # 客户端 bundle 监听重建
 ```
 
+`shiki` / `@shikijs/langs` 是**构建期依赖**（devDependencies）：客户端 bundle 把它们内联进去，运行时不解析它们，所以放在 dependencies 反而会被 tsdown 外部化，加载时撞上模块表而报错。版本精确锁 `4.3.1`，与 harness 的文件视图一致。实测的 bundle 规模：
+
+| grammar 集合 | raw | gzip |
+| --- | --- | --- |
+| 26 个（默认，与文件视图完全对齐） | 3.1 MB | 0.41 MB |
+| 14 个（ts/js、sh、json、py、go、rs、c、cpp、java、yaml、md、html、css、sql） | 2.0 MB | 0.26 MB |
+| 3 个（ts/js、sh、json） | 0.68 MB | 0.13 MB |
+
+改法是 `src/client/highlight.ts` 里的 import 与 `LANGS` 两处同步删减；`LANG_ALIASES` 留着即可（未知语言走纯文本）。
+
 测试分三层：
 
 - **纯函数单测**：porcelain v2 解析、双栏对齐（含大文件、锚点、诚实回退、hunk 裁剪）、路径围栏、日志与 name-status 解析、资源地址往返、日志页派生状态、face 的请求与失败分类。
@@ -170,7 +182,8 @@ npm run watch       # 客户端 bundle 监听重建
 
 - 合并提交的文件列表取的是「相对第一个父提交」的差异（`-m --first-parent`）。
 - 冲突文件的新侧是带冲突标记的工作区内容，旧侧优先用 stage 2（ours）；没有三方合并视图。
-- 二进制文件只给提示；不做行内（intraline）高亮，也没有语法高亮。原因在外壳那边：带高亮的逐行输出（`highlightLines`）和分栏用的折叠控件（`FoldToggle`）都只在 `ui-primitives` 内部使用、没有从包入口导出，插件能拿到的只有整块的 `CodeBlock` / `ReadBlock` / `DiffBlock`，而它们都不按行对齐（`DiffBlock` 把一次 hunk 的旧文整段当 `-`、新文整段当 `+`），拼不出双栏。要上高亮，只有两条路：给外壳的 `ui-primitives` 入口加一个导出，或者插件自带一份高亮器（client bundle 会大几百 KB，并且和外壳各加载一份）。
+- 二进制文件只给提示；不做行内（intraline）高亮。
+- 语法高亮是**插件自带的一份**，不是复用外壳的那一份：客户端的模块表只按**包名**播种，子路径（`ui-primitives/src/markdown/highlight.ts`）在运行时解析不到，所以插件拿不到外壳内部的 `highlightLines`。为了一致，插件把外壳那套设置照搬过来并**精确锁版本**，颜色仍走同一张 `--shiki-*` 色板。代价是 client bundle 因为内联了 26 个 grammar 而变大（约 3.1 MB raw / 0.4 MB gzip，按 rev 不可变缓存，本地服务因此只付一次）；砍掉不常用的语言是一处编辑（README 的「开发」一节给了三个规模的实测数字）。
 - 日志页不订阅文件系统变更推送，需要手动刷新。
 - 只读：不提供 stage / commit / discard。
 
@@ -191,7 +204,8 @@ src/
     Section.tsx       吸顶可折叠的分区头（改动 / 历史共用一个）
     ChangeList.tsx / HistoryList.tsx / RefChips.tsx / SideBySide.tsx / Feedback.tsx
     state.ts          列表派生状态：分组、状态字母、ref 胶囊、内联行、复制文本、折叠、失败描述
-    view-mode.ts      内联 / 两栏的选择，存在浏览器里，所有 diff 标签页共用
+    highlight.ts      shiki 设置：语法表、扩展名映射、按行分词（与文件视图同一套色板）
+    view-mode.ts      内联/两栏、折行/不折行的选择，存在浏览器里，所有 diff 标签页共用
     format.ts / face.ts / locales.ts / glyphs.tsx
 cordis.patch.yml      bundle 补丁：只 insert 一行 dsh-git
 tsdown.config.ts      host ESM + client CJS(window.__ModuleLoader__) + CSS Modules 内联

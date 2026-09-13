@@ -14,14 +14,47 @@ import { writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { DiffPayload, DiffRow } from '../shared/wire.ts'
 import { cx, pathParts } from './format.ts'
-import { InlineLayoutGlyph, SplitLayoutGlyph } from './glyphs.tsx'
+import {
+  ClipLinesGlyph,
+  InlineLayoutGlyph,
+  SplitLayoutGlyph,
+  WrapLinesGlyph,
+} from './glyphs.tsx'
+import { highlightLines, langFromPath, type HighlightSpan } from './highlight.ts'
 import type { GitKey } from './locales.ts'
 import { collapseRows, diffText, inlineDisplayLines, type InlineLine } from './state.ts'
-import { diffViewMode, setDiffViewMode, subscribeDiffViewMode } from './view-mode.ts'
+import {
+  diffViewSettings,
+  setDiffViewMode,
+  setDiffWrap,
+  subscribeDiffViewSettings,
+} from './view-mode.ts'
 import css from './SideBySide.module.css'
 
+/** One line's highlighted runs, as the view draws them. */
+type HighlightedLine = readonly HighlightSpan[] | undefined
+
+/**
+ * Draw one line's text: its highlighted runs when the grammar had an answer,
+ * the plain text when it did not.
+ * @param props.line - the runs for this line, or undefined for plain text.
+ * @param props.text - the line's own text, drawn when there are no runs.
+ * @returns the line's content.
+ */
+function LineText({ line, text }: {
+  readonly line: HighlightedLine
+  readonly text: string
+}): ReactNode {
+  if (line === undefined || line.length === 0) return text
+  return line.map((span, index) => <span key={index} style={span.style}>{span.text}</span>)
+}
+
 /** The four cells one aligned row occupies. */
-function Cells({ row }: { readonly row: DiffRow }): ReactNode {
+function Cells({ row, left, right }: {
+  readonly row: DiffRow
+  readonly left: HighlightedLine
+  readonly right: HighlightedLine
+}): ReactNode {
   const removed = row.kind === 'delete' || row.kind === 'replace'
   const added = row.kind === 'insert' || row.kind === 'replace'
   const leftTone = row.left === null ? css.blank : removed ? css.del : undefined
@@ -29,9 +62,13 @@ function Cells({ row }: { readonly row: DiffRow }): ReactNode {
   return (
     <>
       <span className={cx(css.num, leftTone)}>{row.left?.no ?? ''}</span>
-      <span className={cx(css.text, leftTone)}>{row.left?.text ?? ''}</span>
+      <span className={cx(css.text, leftTone)}>
+        <LineText line={left} text={row.left?.text ?? ''} />
+      </span>
       <span className={cx(css.num, rightTone)}>{row.right?.no ?? ''}</span>
-      <span className={cx(css.text, rightTone)}>{row.right?.text ?? ''}</span>
+      <span className={cx(css.text, rightTone)}>
+        <LineText line={right} text={row.right?.text ?? ''} />
+      </span>
     </>
   )
 }
@@ -54,13 +91,19 @@ export interface SideBySideProps {
  * the new one, and the text. A blank cell keeps the columns in step, the way a
  * missing side does in the two-column layout.
  */
-function InlineCells({ line }: { readonly line: InlineLine }): ReactNode {
+function InlineCells({ line, highlighted }: {
+  readonly line: InlineLine
+  readonly highlighted: HighlightedLine
+}): ReactNode {
   const tone = line.kind === 'delete' ? css.del : line.kind === 'insert' ? css.add : undefined
+  const text = line.text ?? ''
   return (
     <>
       <span className={cx(css.num, tone)}>{line.oldNo ?? ''}</span>
       <span className={cx(css.num, tone)}>{line.newNo ?? ''}</span>
-      <span className={cx(css.text, tone)}>{line.text ?? ''}</span>
+      <span className={cx(css.text, tone)}>
+        <LineText line={highlighted} text={text} />
+      </span>
     </>
   )
 }
@@ -76,12 +119,36 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
     () => (diff === undefined ? [] : collapseRows(diff.rows, undefined, expanded)),
     [diff, expanded],
   )
-  // Every diff follows the same answer, so the choice is a store rather than
-  // this tab's state: it is how the reader reads diffs, not what this one holds.
-  // The same reader serves both sides of a render, hence the server snapshot.
-  const mode = useSyncExternalStore(subscribeDiffViewMode, diffViewMode, diffViewMode)
-  const inline = mode === 'inline'
+  // Every diff follows the same answers, so the choices are a store rather than
+  // this tab's state: they are how the reader reads diffs, not what this one
+  // holds. The same reader serves both sides of a render, hence the snapshot.
+  const settings = useSyncExternalStore(
+    subscribeDiffViewSettings,
+    diffViewSettings,
+    diffViewSettings,
+  )
+  const inline = settings.mode === 'inline'
   const lines = useMemo(() => (inline ? inlineDisplayLines(rows) : []), [inline, rows])
+
+  // Highlighting runs over the whole side at once, so a construct that spans
+  // lines is read in context, and the runs are then taken one line at a time.
+  // The line arrays line up with the rows because a row that draws no line
+  // contributes an empty one.
+  const lang = langFromPath(diff.path)
+  const column = (pick: (row: DiffRow) => string | undefined): string =>
+    rows.map(row => (row.kind === 'fold' ? '' : pick(row.row) ?? '')).join('\n')
+  const leftText = column(row => row.left?.text)
+  const rightText = column(row => row.right?.text)
+  const inlineText = useMemo(
+    () => lines.map(line => line.text ?? '').join('\n'),
+    [lines],
+  )
+  const left = useMemo(() => highlightLines(leftText, lang), [leftText, lang])
+  const right = useMemo(() => highlightLines(rightText, lang), [rightText, lang])
+  const unified = useMemo(
+    () => (inline ? highlightLines(inlineText, lang) : undefined),
+    [inline, inlineText, lang],
+  )
   // The copy control's label flips for a moment after a copy, the way the
   // transcript's diff card confirms one.
   const [copied, setCopied] = useState(false)
@@ -98,7 +165,7 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
   const notice = diff.binary ? t('diff.binary') : diff.truncated ? t('diff.truncated') : undefined
   // A fold and a host gap are the same control in either layout, so both are
   // drawn from the one description.
-  const drawer = (line: InlineLine): ReactNode => {
+  const drawer = (line: InlineLine, at: number): ReactNode => {
     if (line.kind === 'fold') {
       return (
         <button
@@ -121,15 +188,19 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
       const count = left === right ? String(left) : `${String(left)} / ${String(right)}`
       return <span key={line.key} className={css.gap}>⋯ {count} {t('diff.omitted')}</span>
     }
-    return <InlineCells key={line.key} line={line} />
+    return <InlineCells key={line.key} line={line} highlighted={unified?.[at]} />
   }
   const grid = (
-    <div className={css.grid} data-view={inline ? 'inline' : 'split'}>
+    <div
+      className={css.grid}
+      data-view={inline ? 'inline' : 'split'}
+      data-wrap={settings.wrap ? 'wrap' : 'clip'}
+    >
       {inline
-        ? lines.map(line => drawer(line))
-        : rows.map((row) => {
+        ? lines.map((line, at) => drawer(line, at))
+        : rows.map((row, at) => {
           if (row.kind === 'fold') {
-            return drawer({ kind: 'fold', key: row.key, hidden: row.hidden })
+            return drawer({ kind: 'fold', key: row.key, hidden: row.hidden }, at)
           }
           if (row.row.kind === 'gap') {
             return drawer({
@@ -137,9 +208,9 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
               key: row.key,
               ...row.row.skippedLeft === undefined ? {} : { skippedLeft: row.row.skippedLeft },
               ...row.row.skippedRight === undefined ? {} : { skippedRight: row.row.skippedRight },
-            })
+            }, at)
           }
-          return <Cells key={row.key} row={row.row} />
+          return <Cells key={row.key} row={row.row} left={left?.[at]} right={right?.[at]} />
         })}
     </div>
   )
@@ -166,6 +237,15 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
             onClick={() => { setDiffViewMode(inline ? 'split' : 'inline') }}
           >
             {inline ? <SplitLayoutGlyph /> : <InlineLayoutGlyph />}
+          </button>
+          <button
+            type="button"
+            className={css.view}
+            title={settings.wrap ? t('diff.clipView') : t('diff.wrapView')}
+            aria-label={settings.wrap ? t('diff.clipView') : t('diff.wrapView')}
+            onClick={() => { setDiffWrap(!settings.wrap) }}
+          >
+            {settings.wrap ? <ClipLinesGlyph /> : <WrapLinesGlyph />}
           </button>
           <button type="button" className={css.copy} onClick={copy}>
             {copied ? t('diff.copied') : t('diff.copy')}

@@ -1,11 +1,12 @@
 /**
- * Which way a diff is drawn, and the one place that remembers it.
+ * How diffs are drawn, and the one place that remembers it.
  *
- * The editor this panel borrows its diff from keeps the same choice: two
- * aligned columns, or one column in reading order. It is a property of the
- * reader, not of the change, so every diff tab follows the same answer and the
- * answer outlives the tab — a preference the browser holds, since the host has
- * no business knowing how a viewer likes its diffs.
+ * The editor this panel borrows its diff from keeps the same two choices: two
+ * aligned columns or one column in reading order, and whole lines or wrapped
+ * ones. Both are properties of the reader, not of the change, so every diff tab
+ * follows the same answer and the answer outlives the tab — a preference the
+ * browser holds, since the host has no business knowing how a viewer likes its
+ * diffs.
  *
  * @module dsh-git/client/view-mode
  */
@@ -17,51 +18,85 @@ export type DiffViewMode =
   /** One column in reading order: each change as its removal then its insertion. */
   | 'inline'
 
-/** Where the choice is kept between page loads. */
-const STORAGE_KEY = 'dsh-git:diff-view-mode'
+/** Everything the reader chose about how a diff is drawn. */
+export interface DiffViewSettings {
+  /** Two columns, or one. */
+  readonly mode: DiffViewMode
+  /** Whether a line too long for its column wraps instead of scrolling. */
+  readonly wrap: boolean
+}
 
-/** The mode last resolved, so a render reads a stable value. */
-let current: DiffViewMode | undefined
+/** What a reader who has said nothing gets: the columns, wrapped to fit. */
+const DEFAULTS: DiffViewSettings = { mode: 'split', wrap: true }
 
-/** Who to tell when the mode changes. */
+/** Where each choice is kept between page loads. */
+const MODE_KEY = 'dsh-git:diff-view-mode'
+const WRAP_KEY = 'dsh-git:diff-view-wrap'
+
+/** The settings last resolved, so a render reads a stable value. */
+let current: DiffViewSettings | undefined
+
+/** Who to tell when the settings change. */
 const listeners = new Set<() => void>()
 
 /**
- * The remembered mode, or the default.
- * @returns the mode to draw.
+ * The remembered settings, or the defaults.
+ * @returns the settings to draw with.
  */
-export function diffViewMode(): DiffViewMode {
-  if (current !== undefined) return current
-  current = stored()
+export function diffViewSettings(): DiffViewSettings {
+  current ??= stored()
   return current
 }
 
 /**
- * Read the mode the browser kept.
+ * Read the settings the browser kept.
  *
  * Storage can be denied outright (a hardened browser, a partitioned context) and
- * this runs server-side in the bundle's own tests, so the default is the split
- * view rather than an error.
- * @returns the stored mode, or `split`.
+ * this runs server-side in the bundle's own tests, so the defaults stand in
+ * rather than an error.
+ * @returns the stored settings, defaulted field by field.
  */
-function stored(): DiffViewMode {
-  if (typeof window === 'undefined') return 'split'
+function stored(): DiffViewSettings {
+  if (typeof window === 'undefined') return DEFAULTS
   try {
-    return window.localStorage.getItem(STORAGE_KEY) === 'inline' ? 'inline' : 'split'
+    return {
+      mode: window.localStorage.getItem(MODE_KEY) === 'inline' ? 'inline' : DEFAULTS.mode,
+      // Only an explicit "off" turns wrapping off, so a value this plugin never
+      // wrote cannot silently change how a diff reads.
+      wrap: window.localStorage.getItem(WRAP_KEY) !== 'clip' && DEFAULTS.wrap,
+    }
   } catch {
-    return 'split'
+    return DEFAULTS
   }
 }
 
 /**
- * Choose how diffs are drawn from now on.
- * @param next - the mode to draw.
+ * Choose how the two sides are laid out.
+ * @param mode - the layout to draw.
  */
-export function setDiffViewMode(next: DiffViewMode): void {
-  if (next === diffViewMode()) return
+export function setDiffViewMode(mode: DiffViewMode): void {
+  apply({ ...diffViewSettings(), mode })
+}
+
+/**
+ * Choose whether a long line wraps or scrolls.
+ * @param wrap - whether to wrap.
+ */
+export function setDiffWrap(wrap: boolean): void {
+  apply({ ...diffViewSettings(), wrap })
+}
+
+/**
+ * Remember a choice and tell every diff about it.
+ * @param next - the settings to draw with.
+ */
+function apply(next: DiffViewSettings): void {
+  const previous = diffViewSettings()
+  if (next.mode === previous.mode && next.wrap === previous.wrap) return
   current = next
   try {
-    window.localStorage.setItem(STORAGE_KEY, next)
+    window.localStorage.setItem(MODE_KEY, next.mode)
+    window.localStorage.setItem(WRAP_KEY, next.wrap ? 'wrap' : 'clip')
   } catch {
     // The choice still holds for this page; it just will not be remembered.
   }
@@ -69,11 +104,11 @@ export function setDiffViewMode(next: DiffViewMode): void {
 }
 
 /**
- * Watch the mode, for `useSyncExternalStore`.
+ * Watch the settings, for `useSyncExternalStore`.
  * @param listener - called after every change.
  * @returns the unsubscribe.
  */
-export function subscribeDiffViewMode(listener: () => void): () => void {
+export function subscribeDiffViewSettings(listener: () => void): () => void {
   listeners.add(listener)
   return () => { listeners.delete(listener) }
 }

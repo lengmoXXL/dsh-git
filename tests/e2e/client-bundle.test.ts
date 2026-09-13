@@ -369,6 +369,29 @@ test('the diff body stacks every file of a commit inside one scroll region', asy
   assert.equal(markup.match(/data-dsh-git-diff/g)?.length, 2)
 })
 
+test('the diff body highlights a line through the sheet the file view uses', async () => {
+  const { registrations } = await applied()
+  const diff = registrations.find(entry => entry.definition['key'] === 'dsh-git/diff')
+  const payload = {
+    path: 'src/a.ts',
+    source: 'worktree',
+    oldLabel: 'index',
+    newLabel: 'working tree',
+    binary: false,
+    truncated: false,
+    removed: 0,
+    added: 1,
+    rows: [{ kind: 'insert', left: null, right: { no: 1, text: 'const answer: number = 42' } }],
+  }
+  const markup = await render(diff?.component, {
+    useTabInfo: tabInfo('dsh-resource://git/diff?session=s&source=worktree&path=src/a.ts'),
+    useResource: () => ({ status: 'live', value: { kind: 'diff', diff: payload }, failure: undefined }),
+  })
+  // The path names a grammar, so the runs arrive colored through the shiki
+  // token sheet — the same one the file view's code blocks read.
+  assert.match(markup, /--shiki-token-keyword/)
+})
+
 test('the diff body states the rows the host left out', async () => {
   const { registrations } = await applied()
   const diff = registrations.find(entry => entry.definition['key'] === 'dsh-git/diff')

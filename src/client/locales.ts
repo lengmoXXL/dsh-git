@@ -59,6 +59,8 @@ export const zh = {
   'diff.copied': '已复制',
   'diff.inlineView': '切换到内联视图（单栏）',
   'diff.splitView': '切换到两栏视图',
+  'diff.wrapView': '切换到自动折行',
+  'diff.clipView': '切换到不折行（横向滚动）',
 
   'kind.modified': '修改',
   'kind.added': '新增',
@@ -127,6 +129,8 @@ export const en = {
   'diff.copied': 'Copied',
   'diff.inlineView': 'Switch to inline view (one column)',
   'diff.splitView': 'Switch to side-by-side view',
+  'diff.wrapView': 'Switch to wrapped lines',
+  'diff.clipView': 'Switch to unwrapped lines (scroll sideways)',
 
   'kind.modified': 'modified',
   'kind.added': 'added',
