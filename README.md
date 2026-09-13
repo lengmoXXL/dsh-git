@@ -53,6 +53,8 @@ pnpm dsh web --port 8080 --patch ./overlay.yml
 
 展开时才去读那个提交的文件列表：一页历史是 50 条提交，为了画其中一条去读 50 份改动是 50 次白读。收起再展开就是重读一次，这也正好是读失败后的重试方式。
 
+**往返不丢现场。** 外壳一个 pane 只画当前标签页，所以点开 diff 时日志页是被卸载的。为了"点完再回来"不从头开始，日志页把**读过的那一页、展开的那个提交及其文件列表、以及滚动位置**记在一个按会话分键的模块级缓存里（`log-cache.ts`）：回来时立刻照原样画出来，状态与历史还在后台重读（所以看到的不是陈旧的），而**提交的文件列表不重读**——它是不变的，读过就留着。缓存活在页面生命周期里，刷新页面才清。
+
 ## 面板行为
 
 - **diff 语义**：未暂存 = index ↔ 工作区；已暂存 = HEAD ↔ index；提交内文件 = 该提交 ↔ 第一个父提交。
@@ -210,6 +212,7 @@ src/
     state.ts          列表派生状态：分组、状态字母、ref 胶囊、内联行、复制文本、折叠、失败描述
     highlight.ts      shiki 设置：语法表、扩展名映射、按行分词（与文件视图同一套色板）
     view-mode.ts      内联/两栏、折行/不折行的选择，存在浏览器里，所有 diff 标签页共用
+    log-cache.ts      日志页的往返缓存：读过的一页、展开的提交与文件列表、滚动位置
     format.ts / face.ts / locales.ts / glyphs.tsx
 cordis.patch.yml      bundle 补丁：只 insert 一行 dsh-git
 tsdown.config.ts      host ESM + client CJS(window.__ModuleLoader__) + CSS Modules 内联

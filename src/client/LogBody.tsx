@@ -12,7 +12,7 @@
  * @module dsh-git/client/LogBody
  */
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import {
   Button,
   IconBranchOutline16,
@@ -30,11 +30,21 @@ import type {
 import { ChangeList } from './ChangeList.tsx'
 import { FailureBlock, Note } from './Feedback.tsx'
 import { gitFace } from './face.ts'
+import { logCache } from './log-cache.ts'
 import { diffAddress } from './git-address.ts'
 import { HistoryList } from './HistoryList.tsx'
 import type { GitKey, GitNamespace } from './locales.ts'
 import { failureInfoOf, groupChanges, type Load } from './state.ts'
 import css from './LogBody.module.css'
+
+/**
+ * A cached value as a drawn read: nothing cached is still a read in flight.
+ * @param value - the cached payload, if there was one.
+ * @returns the read to draw.
+ */
+function cached<T>(value: T | undefined): Load<T> {
+  return value === undefined ? { phase: 'loading' } : { phase: 'ready', value }
+}
 
 /** Stable empties, so a not-yet-loaded read does not mint a new array on every render. */
 const NO_ENTRIES: readonly ChangeEntry[] = []
@@ -70,16 +80,30 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   useTabInfo()
   const [epoch, setEpoch] = useState(0)
   const [now, setNow] = useState(() => Date.now())
-  const [status, setStatus] = useState<Load<StatusPayload>>({ phase: 'loading' })
-  const [history, setHistory] = useState<Load<HistoryPayload>>({ phase: 'loading' })
+  // Mount starts from what was read last time, so a tab that was unmounted for
+  // a diff comes back drawn rather than blank.
+  const [status, setStatus] = useState<Load<StatusPayload>>(
+    () => cached(logCache(sessionId).status),
+  )
+  const [history, setHistory] = useState<Load<HistoryPayload>>(
+    () => cached(logCache(sessionId).history),
+  )
+  const scroller = useRef<HTMLDivElement>(null)
 
-  // One page of the repository's state, both halves at once.
+  // One page of the repository's state, both halves at once. A page already in
+  // hand keeps drawing while this runs: only a read with nothing to show asks
+  // for a spinner.
   useEffect(() => {
     const controller = new AbortController()
-    setStatus({ phase: 'loading' })
-    setHistory({ phase: 'loading' })
+    const cache = logCache(sessionId)
+    setStatus(current => (current.phase === 'ready' ? current : { phase: 'loading' }))
+    setHistory(current => (current.phase === 'ready' ? current : { phase: 'loading' }))
     void gitFace.status(sessionId, controller.signal).then(
-      (value) => { if (!controller.signal.aborted) setStatus({ phase: 'ready', value }) },
+      (value) => {
+        if (controller.signal.aborted) return
+        cache.status = value
+        setStatus({ phase: 'ready', value })
+      },
       (error: unknown) => {
         if (controller.signal.aborted) return
         const failure = failureInfoOf(error)
@@ -87,7 +111,11 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
       },
     )
     void gitFace.history(sessionId, controller.signal).then(
-      (value) => { if (!controller.signal.aborted) setHistory({ phase: 'ready', value }) },
+      (value) => {
+        if (controller.signal.aborted) return
+        cache.history = value
+        setHistory({ phase: 'ready', value })
+      },
       (error: unknown) => {
         if (controller.signal.aborted) return
         const failure = failureInfoOf(error)
@@ -96,6 +124,15 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
     )
     return () => { controller.abort() }
   }, [sessionId, epoch])
+
+  // The reader's place in the list, put back after a round trip through a diff.
+  // A layout effect so it lands before the frame is painted, and the height it
+  // needs is already there because the cached page drew on mount.
+  useLayoutEffect(() => {
+    const element = scroller.current
+    if (element === null) return
+    element.scrollTop = logCache(sessionId).scrollTop
+  }, [sessionId])
 
   const refresh = useCallback(() => {
     setNow(Date.now())
@@ -162,7 +199,11 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
           {t('panel.refresh')}
         </Button>
       </header>
-      <div className={css.scroll}>
+      <div
+        className={css.scroll}
+        ref={scroller}
+        onScroll={(event) => { logCache(sessionId).scrollTop = event.currentTarget.scrollTop }}
+      >
         {status.phase === 'failed' && (
           <FailureBlock code={status.code} message={status.message} t={t} onRetry={refresh} />
         )}

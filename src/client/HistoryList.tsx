@@ -22,11 +22,21 @@ import type { CommitFile, CommitSummary } from '../shared/wire.ts'
 import { gitFace } from './face.ts'
 import { FileRow } from './FileRow.tsx'
 import { cx, timeLabel } from './format.ts'
+import { logCache } from './log-cache.ts'
 import type { GitKey } from './locales.ts'
 import { RefChips } from './RefChips.tsx'
 import { Section } from './Section.tsx'
 import { failureInfoOf, parseRefs, type Load } from './state.ts'
 import css from './List.module.css'
+
+/**
+ * A cached list as a drawn read: nothing cached is still a read in flight.
+ * @param value - the cached files, if they were read.
+ * @returns the read to draw.
+ */
+function cached(value: readonly CommitFile[] | undefined): Load<readonly CommitFile[]> {
+  return value === undefined ? { phase: 'loading' } : { phase: 'ready', value }
+}
 
 /** Props of the history list. */
 export interface HistoryListProps {
@@ -54,17 +64,24 @@ function CommitRow({ commit, sessionId, now, t, selected, onToggle, onSelectFile
   readonly onToggle: (sha: string) => void
   readonly onSelectFile: (rev: string, file: CommitFile) => void
 }): ReactNode {
-  const [files, setFiles] = useState<Load<readonly CommitFile[]>>({ phase: 'loading' })
+  // A commit's file list never changes, so a list already read is kept and
+  // shown again as it was: reopening a row after a diff is not a new question.
+  const [files, setFiles] = useState<Load<readonly CommitFile[]>>(
+    () => cached(logCache(sessionId).commitFiles.get(commit.sha)),
+  )
 
   // One read per opening: `selected` is this row's own switch, so a commit that
   // is not open never asks the host for anything.
   useEffect(() => {
     if (!selected) return
+    if (logCache(sessionId).commitFiles.has(commit.sha)) return
     const controller = new AbortController()
     setFiles({ phase: 'loading' })
     void gitFace.commit(sessionId, commit.sha, controller.signal).then(
       (payload) => {
-        if (!controller.signal.aborted) setFiles({ phase: 'ready', value: payload.files })
+        if (controller.signal.aborted) return
+        logCache(sessionId).commitFiles.set(commit.sha, payload.files)
+        setFiles({ phase: 'ready', value: payload.files })
       },
       (error: unknown) => {
         if (controller.signal.aborted) return
@@ -160,11 +177,18 @@ export function HistoryList({
   const [open, setOpen] = useState(true)
   // One commit at a time: the files of the commit being read are what the
   // reader is looking at, and a page of fifty open file lists is a page of
-  // fifty commits nobody can find again.
-  const [opened, setOpened] = useState<string | undefined>(undefined)
+  // fifty commits nobody can find again. Which one that is outlives this mount:
+  // opening a diff and coming back finds the same list open.
+  const [opened, setOpened] = useState<string | undefined>(
+    () => logCache(sessionId).openCommit,
+  )
   const toggle = useCallback((sha: string) => {
-    setOpened(current => (current === sha ? undefined : sha))
-  }, [])
+    setOpened((current) => {
+      const next = current === sha ? undefined : sha
+      logCache(sessionId).openCommit = next
+      return next
+    })
+  }, [sessionId])
   return (
     <Section
       title={t('history.title')}
