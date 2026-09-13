@@ -301,42 +301,6 @@ test('declares the diff geometry for the embedded card as well as the tab', asyn
   assert.match(selector, /_diffEmbedded(?![\w-])/, 'the embedded card carries it too')
 })
 
-test('sizes an unwrapped lane\'s rows and its track itself', async () => {
-  const source = await readArtifact(bundlePath)
-  const laneRow = /"laneRow":\s*"([^"]+)"/.exec(source)?.[1]
-  assert.notEqual(laneRow, undefined, 'the class map carries "laneRow"')
-  const prefix = String(laneRow).slice(0, String(laneRow).indexOf('_laneRow'))
-  const sheets = [...source.matchAll(/const css(?:\$\d+)? = "((?:[^"\\]|\\.)*)";/g)]
-    .map(match => JSON.parse(`"${match[1]}"`))
-  const sheet = String(sheets.find(text => text.includes(`.${prefix}_lane{`)) ?? '')
-  const lane = new RegExp(`\\.${prefix}_lane\\{([^{}]*)\\}`).exec(sheet)
-  assert.notEqual(lane, null, 'the lane has a rule of its own')
-  const body = String(lane?.[1])
-
-  // A lane is a stack of its own, not a grid row shared with the other half, so
-  // its geometry cannot come from the row's contents:
-  //
-  // - A row whose OWN side has no line — the blank half of an insertion or a
-  //   deletion — draws nothing, and a row sized by its content collapses while
-  //   the other half keeps its height. The halves then drift a row apart for
-  //   every blank row between them.
-  // - A row's band is only as wide as the track it sits in. Sized to the
-  //   longest line, the band of a changed block stops short of the half's edge
-  //   and the half reads as if it were narrower than it is.
-  //
-  // Both are why the lane sizes its rows and its track itself.
-  assert.match(
-    body,
-    /grid-auto-rows:[^;}]*var\(--dsh-git-diff-row\)|min-height:[^;}]*var\(--dsh-git-diff-row\)/,
-    'every lane row is a row high whether or not it has anything in it',
-  )
-  assert.match(
-    body,
-    /grid-template-columns:[^;}]*minmax\(100%/,
-    'a lane\'s track is at least the half it draws in',
-  )
-})
-
 test('masks the line that scrolls under a pinned number', async () => {
   const source = await readArtifact(bundlePath)
   const laneRow = /"laneRow":\s*"([^"]+)"/.exec(source)?.[1]
@@ -381,6 +345,30 @@ test('masks the line that scrolls under a pinned number', async () => {
       `the ${tone} tone does not restate the band it stands on`,
     )
   }
+})
+
+test('sizes what scrolls in an unwrapped lane, not the lane\'s tracks', async () => {
+  const source = await readArtifact(bundlePath)
+  const laneRow = /"laneRow":\s*"([^"]+)"/.exec(source)?.[1]
+  assert.notEqual(laneRow, undefined, 'the class map carries "laneRow"')
+  const prefix = String(laneRow).slice(0, String(laneRow).indexOf('_laneRow'))
+  const sheets = [...source.matchAll(/const css(?:\$\d+)? = "((?:[^"\\]|\\.)*)";/g)]
+    .map(match => JSON.parse(`"${match[1]}"`))
+  const sheet = String(sheets.find(text => text.includes(`.${prefix}_lane{`)) ?? '')
+
+  // A lane is a scrollport of a fixed width, so its tracks have no free space to
+  // grow into and a `max-content` track stays at the lane's own width. The lines
+  // then overflow the row, and since a row's band is only as wide as the row,
+  // scrolling walks the band off the half while the line keeps going — the
+  // reader sees the colours shrink, then vanish. The width therefore belongs to
+  // the content that scrolls: as wide as the widest line, and at least the half.
+  const wrapper = new RegExp(`\\.${prefix}_laneRows\\{([^{}]*)\\}`).exec(sheet)
+  assert.notEqual(wrapper, null, 'the lane has a scrolling content box of its own')
+  assert.match(String(wrapper?.[1]), /width:max-content/, 'it is as wide as its widest line')
+  assert.match(String(wrapper?.[1]), /min-width:100%/, 'and at least as wide as the half')
+  assert.match(String(wrapper?.[1]), /grid-auto-rows/, 'its rows keep their own height')
+  const lane = new RegExp(`\\.${prefix}_lane\\{([^{}]*)\\}\\.${prefix}_laneRows`).exec(sheet)
+  assert.notEqual(lane, null, 'the lane itself only scrolls')
 })
 
 test('replaces a stylesheet the document already carries, rather than skipping it', async () => {

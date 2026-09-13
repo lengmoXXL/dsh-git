@@ -181,8 +181,13 @@ test('leaves an unwrapped body one lane per side, with both halves in step', asy
   const lanes = [...markup.matchAll(/<div class="[^"]*_lane"[^>]*>/g)].map(match => match.index ?? 0)
   assert.equal(lanes.length, 2, 'one lane per half')
   const halves = lanes.map((at, index) => markup.slice(at, lanes[index + 1] ?? markup.length))
+  // Every row of a half lives in one scrolling content box, which is what
+  // carries the width: a band is only as wide as its row, so the width has to
+  // exist outside the rows or scrolling takes the band off the half.
+  const wrappers = markup.match(/class="[^"]*_laneRows[^"]*"/g) ?? []
+  assert.equal(wrappers.length, 2, 'each half has one scrolling content box')
   const rows = (fragment: string): number =>
-    (fragment.match(/class="[^"]*_laneRow[^"]*"|class="[^"]*_held(?!Spacer)[^"]*"/g) ?? []).length
+    (fragment.match(/class="[^"]*_laneRow(?!s)[^"]*"|class="[^"]*_held(?!Spacer)[^"]*"/g) ?? []).length
   assert.equal(rows(halves[0] ?? ''), rows(halves[1] ?? ''), 'both halves draw the same number of rows')
   assert.equal(rows(halves[0] ?? ''), drawnRows(markup, false).length)
 

@@ -300,11 +300,11 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
   const lanes = (
     <div className={css.lanes} data-view={inline ? 'inline' : 'split'}>
       {inline
-        ? <div className={css.lane}>{laneInline}</div>
+        ? <div className={css.lane}><div className={css.laneRows}>{laneInline}</div></div>
         : (
           <>
-            <div className={css.lane}>{laneSide('left')}</div>
-            <div className={css.lane}>{laneSide('right')}</div>
+            <div className={css.lane}><div className={css.laneRows}>{laneSide('left')}</div></div>
+            <div className={css.lane}><div className={css.laneRows}>{laneSide('right')}</div></div>
           </>
         )}
     </div>

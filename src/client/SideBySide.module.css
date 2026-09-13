@@ -242,26 +242,32 @@
   --dsh-git-diff-indent: calc(2 * var(--dsh-git-diff-gutter));
 }
 
+/* The scrollport: exactly the half's width, whatever its lines are. */
 .lane {
   flex: 1 1 0;
   min-width: 0;
-  /* A grid with a row height of its own, because a lane row whose own side has
-     no line — the blank half of an insertion or a deletion — draws nothing, and
-     a stack of blocks would collapse it to nothing while the other half kept
-     its height. That is how the two halves drift a row apart per blank row.
-     Tracks of a fixed height cannot: a row is a row whether or not it has
-     anything in it. */
-  display: grid;
-  /* The track is at least the half's own width, so a row's band reaches the
-     half's edge instead of stopping at the longest line in it — and wider than
-     that when a line is, which is what the lane then scrolls. */
-  grid-template-columns: minmax(100%, max-content);
-  grid-auto-rows: var(--dsh-git-diff-row);
-  align-content: start;
   /* Sideways only: the body keeps one vertical scroller, which is what holds
      the two halves' rows against each other. */
   overflow-x: auto;
   overflow-y: hidden;
+}
+
+/* What scrolls inside it: as wide as the widest line in this half, and at least
+   as wide as the half itself. The width has to live here rather than on the
+   lane's tracks: a track's `max-content` is only reached when there is free
+   space to grow into, and a scrollport of a fixed width has none — so the track
+   stayed at the half's width, the lines overflowed it, and a row's band (which
+   is only as wide as its row) shrank away from the half's edge as the reader
+   scrolled. Rows are one fixed height each for the same reason the width is
+   here: a row whose own side has no line draws nothing, and a height that came
+   from its content would collapse it. */
+.laneRows {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-auto-rows: var(--dsh-git-diff-row);
+  align-content: start;
+  width: max-content;
+  min-width: 100%;
 }
 
 .laneRow {
@@ -312,7 +318,7 @@
   grid-column: 1 / -1;
 }
 
-.lane .held {
+.laneRows .held {
   position: sticky;
   left: 0;
   width: max-content;
