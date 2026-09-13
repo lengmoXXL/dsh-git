@@ -152,10 +152,14 @@
   padding: 12px 0;
 }
 
-/* Stacked inside an outer scroll region, which owns the scrolling; this only
-   holds the card's own inset. */
+/* Stacked inside an outer scroll region, which owns the vertical scrolling.
+   A card whose lines are left unwrapped is wider than the column it sits in, so
+   this one has to scroll sideways itself — otherwise the card's own rounded
+   `overflow: hidden` cuts the right column off instead of letting a reader
+   reach it. In the wrapped case nothing overflows and no bar appears. */
 .gridScroll {
   padding: 12px 0;
+  overflow-x: auto;
 }
 
 .grid {

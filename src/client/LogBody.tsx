@@ -22,6 +22,7 @@ import type { PropsLocale, PropsRuntime, Translate } from '@deepseek-ai/dsh-clie
 import type {
   BranchStatus,
   ChangeEntry,
+  CommitFile,
   CommitSummary,
   HistoryPayload,
   StatusPayload,
@@ -29,17 +30,11 @@ import type {
 import { ChangeList } from './ChangeList.tsx'
 import { FailureBlock, Note } from './Feedback.tsx'
 import { gitFace } from './face.ts'
-import { commitAddress, diffAddress } from './git-address.ts'
+import { diffAddress } from './git-address.ts'
 import { HistoryList } from './HistoryList.tsx'
 import type { GitKey, GitNamespace } from './locales.ts'
-import { failureInfoOf, groupChanges } from './state.ts'
+import { failureInfoOf, groupChanges, type Load } from './state.ts'
 import css from './LogBody.module.css'
-
-/** One read, as the tab draws it. */
-type Load<T> =
-  | { readonly phase: 'loading' }
-  | { readonly phase: 'ready'; readonly value: T }
-  | { readonly phase: 'failed'; readonly code: string; readonly message: string }
 
 /** Stable empties, so a not-yet-loaded read does not mint a new array on every render. */
 const NO_ENTRIES: readonly ChangeEntry[] = []
@@ -127,8 +122,17 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
       ...entry.origPath === undefined ? {} : { origPath: entry.origPath },
     }))
   }, [open, sessionId])
-  const openCommit = useCallback((sha: string) => {
-    open(commitAddress(sessionId, sha))
+  // A commit's own tab is no longer offered: the log expands a commit into its
+  // files, and a click opens one of them. The address still resolves, so a tab
+  // restored from an older session keeps drawing.
+  const openCommitFile = useCallback((rev: string, file: CommitFile) => {
+    open(diffAddress({
+      sessionId,
+      source: 'commit',
+      rev,
+      path: file.path,
+      ...file.origPath === undefined ? {} : { origPath: file.origPath },
+    }))
   }, [open, sessionId])
 
   const ready = status.phase === 'ready' ? status.value : undefined
@@ -179,9 +183,10 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
                 <HistoryList
                   commits={history.phase === 'ready' ? history.value.commits : NO_COMMITS}
                   hasMore={history.phase === 'ready' && history.value.hasMore}
+                  sessionId={sessionId}
                   now={now}
                   t={t}
-                  onSelectCommit={openCommit}
+                  onSelectFile={openCommitFile}
                 />
               )}
           </>

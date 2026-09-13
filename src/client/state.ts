@@ -16,6 +16,18 @@
 import type { ChangeEntry, ChangeKind, ChangeStage, DiffPayload, DiffRow } from '../shared/wire.ts'
 import { GitRequestError } from './face.ts'
 
+/**
+ * One read, as a view draws it: still coming, arrived, or the reason it did not.
+ *
+ * The panel reads in three places (the log's two halves, a commit's file list),
+ * and every one of them draws the same three states, so the shape lives here
+ * rather than beside the first component that needed it.
+ */
+export type Load<T> =
+  | { readonly phase: 'loading' }
+  | { readonly phase: 'ready'; readonly value: T }
+  | { readonly phase: 'failed'; readonly code: string; readonly message: string }
+
 /** A failure, split so the panel can name the code and show the detail. */
 export interface FailureInfo {
   /** The host's stable code, or a local marker for a transport failure. */
