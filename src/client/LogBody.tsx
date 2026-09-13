@@ -29,6 +29,7 @@ import type {
 } from '../shared/wire.ts'
 import { ChangeList } from './ChangeList.tsx'
 import { FailureBlock, Note } from './Feedback.tsx'
+import { BUILD_STAMP } from './build.ts'
 import { gitFace } from './face.ts'
 import { logCache } from './log-cache.ts'
 import { diffAddress } from './git-address.ts'
@@ -180,7 +181,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   return (
     <div className={css.panel}>
       <header className={css.header}>
-        <span className={css.repoName} title={repo?.root ?? ''}>{repo?.name ?? ''}</span>
+        <span className={css.repoName} title={`${repo?.root ?? ''}\n${BUILD_STAMP}`}>{repo?.name ?? ''}</span>
         {repo !== null && (
           <span className={css.branch}>
             <IconBranchOutline16 size={12} className={css.branchIcon} />

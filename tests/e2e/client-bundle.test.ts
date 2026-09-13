@@ -435,6 +435,16 @@ test('replaces a stylesheet the document already carries, rather than skipping i
   }
 })
 
+test('carries the build it came from', async () => {
+  const source = await readArtifact(bundlePath)
+  // Substituted at build time, so a page can be asked which build it is
+  // running: the diff's content comes from the host and is always current,
+  // while the layout comes from whatever bundle the page loaded.
+  assert.doesNotMatch(source, /__DSH_GIT_BUILD__/, 'the token was substituted')
+  const stamp = /(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d+Z)/.exec(source)
+  assert.notEqual(stamp, null, 'the bundle names the moment it was built')
+})
+
 test('the bundle requests only modules the shell already holds', async () => {
   const source = await readArtifact(bundlePath)
   const required = [...source.matchAll(/require\("([^"]+)"\)/g)].map(match => String(match[1]))

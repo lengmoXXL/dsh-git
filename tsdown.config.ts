@@ -69,6 +69,27 @@ function styleInjectionModule(
   ].join('\n')
 }
 
+/** The moment this build started, substituted into the client bundle. */
+const BUILD_STAMP = new Date().toISOString()
+
+/**
+ * Substitute the build stamp into the client sources.
+ *
+ * A page can be running an older bundle while the diff's content — which the
+ * host reads fresh — is current, and then new content is drawn by old layout.
+ * The stamp is what lets a reader (and a bug report) say which build a page is
+ * on, so it is baked in rather than guessed at.
+ */
+function buildStamp() {
+  return {
+    name: 'dsh-git-build-stamp',
+    transform(code: string, id: string): { code: string } | null {
+      if (!id.includes('/src/client/') || !code.includes('__DSH_GIT_BUILD__')) return null
+      return { code: code.replaceAll('__DSH_GIT_BUILD__', JSON.stringify(BUILD_STAMP)) }
+    },
+  }
+}
+
 /** Compile every `*.module.css` import into an injecting module. */
 function cssModulesInline() {
   return {
@@ -134,7 +155,7 @@ const client = defineConfig({
   // React and the client stack are the shell's, not ours: a second copy would
   // break hooks and duplicate the renderer.
   external: [/^react($|\/)/, /^@deepseek-ai\//],
-  plugins: [cssModulesInline()],
+  plugins: [cssModulesInline(), buildStamp()],
   outputOptions: {
     banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify(ID)}, factory: (require) => {\nvar module = { exports: {} }; var exports = module.exports;`,
     footer: 'return module.exports; } });',

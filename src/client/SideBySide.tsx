@@ -28,6 +28,7 @@ import {
   SplitLayoutGlyph,
   WrapLinesGlyph,
 } from './glyphs.tsx'
+import { BUILD_STAMP } from './build.ts'
 import { highlightLines, langFromPath, type HighlightSpan } from './highlight.ts'
 import type { GitKey } from './locales.ts'
 import {
@@ -319,7 +320,11 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
           {diff.origPath !== undefined && <span className={css.orig}> ← {diff.origPath}</span>}
         </span>
         <span className={css.actions}>
-          <span className={css.revs}>{revLabel(diff.oldLabel)} → {revLabel(diff.newLabel)}</span>
+          {/* The tooltip names the bundle drawing this: a page can be running
+              an older one while the diff's content is current. */}
+          <span className={css.revs} title={`${diff.oldLabel} → ${diff.newLabel} · ${BUILD_STAMP}`}>
+            {revLabel(diff.oldLabel)} → {revLabel(diff.newLabel)}
+          </span>
           <span className={css.stat}>
             <span className={css.added}>+{diff.added}</span>
             <span className={css.removed}>−{diff.removed}</span>
