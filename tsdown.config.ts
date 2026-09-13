@@ -48,12 +48,22 @@ function styleInjectionModule(
   return [
     `const css = ${JSON.stringify(css)};`,
     `const tagId = ${JSON.stringify(tagId)};`,
-    'if (typeof document !== \'undefined\' && document.querySelector(\'style[data-plugin-css=\' + JSON.stringify(tagId) + \']\') === null) {',
-    '  const tag = document.createElement(\'style\');',
-    `  tag.dataset.plugin = ${JSON.stringify(ID)};`,
-    '  tag.dataset.pluginCss = tagId;',
-    '  tag.textContent = css;',
-    '  document.head.appendChild(tag);',
+    'if (typeof document !== \'undefined\') {',
+    '  const selector = \'style[data-plugin-css=\' + JSON.stringify(tagId) + \']\';',
+    '  const existing = document.querySelector(selector);',
+    '  if (existing === null) {',
+    '    const tag = document.createElement(\'style\');',
+    `    tag.dataset.plugin = ${JSON.stringify(ID)};`,
+    '    tag.dataset.pluginCss = tagId;',
+    '    tag.textContent = css;',
+    '    document.head.appendChild(tag);',
+    '  } else {',
+    // A hot-swapped bundle runs in a document that still holds the tag an
+    // earlier build injected. Keyed by module name alone, that tag would leave
+    // the page styled by the build it was loaded with while running the newest
+    // code — so the stylesheet is replaced in place.
+    '    existing.textContent = css;',
+    '  }',
     '}',
     `export default ${JSON.stringify(classMap)};`,
   ].join('\n')

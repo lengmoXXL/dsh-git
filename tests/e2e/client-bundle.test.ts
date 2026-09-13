@@ -465,6 +465,57 @@ test('declares the diff geometry for the embedded card as well as the tab', asyn
   assert.match(selector, /_diffEmbedded(?![\w-])/, 'the embedded card carries it too')
 })
 
+test('replaces a stylesheet the document already carries, rather than skipping it', async () => {
+  const source = await readArtifact(bundlePath)
+  const nodeRequire = createRequire(import.meta.url)
+  const library = primitivesStub()
+  const require = (name: string): unknown =>
+    name === '@deepseek-ai/dsh-client-ui-primitives' ? library : nodeRequire(name)
+
+  // The document a hot-swapped bundle runs in: the tag an earlier build
+  // injected is still there, under the same module-keyed id.
+  const carried: { textContent: string }[] = []
+  const created = 0
+  const globalDocument = {
+    querySelector: () => (carried.length === 0 ? null : carried[0]),
+    createElement: () => {
+      const tag = { dataset: {} as Record<string, string>, textContent: '' }
+      carried.push(tag)
+      return tag
+    },
+    head: { appendChild: () => {} },
+  }
+  const previous = (globalThis as { document?: unknown }).document
+  ;(globalThis as { document?: unknown }).document = globalDocument
+  try {
+    // First evaluation stands in for the load that put the tag there. The
+    // factory is what injects, so the stub loader has to run it.
+    const run = (): void => {
+      new Function('window', 'require', source)(
+        { __ModuleLoader__: { load: (entry: { factory: (req: unknown) => unknown }) => { entry.factory(require) } } },
+        require,
+      )
+    }
+    run()
+    const injected = carried.length
+    assert.ok(injected > 0, 'the first evaluation injected its stylesheets')
+    const before = carried.map(tag => tag.textContent)
+    for (const tag of carried) tag.textContent = 'stale'
+    // Second evaluation is the hot swap: same document, same tag ids.
+    run()
+    assert.equal(carried.length, injected, 'no second tag for a stylesheet already present')
+    assert.deepEqual(
+      carried.map(tag => tag.textContent),
+      before,
+      'every stylesheet was rewritten with the current build\'s CSS',
+    )
+    assert.equal(created, 0)
+  } finally {
+    if (previous === undefined) delete (globalThis as { document?: unknown }).document
+    else (globalThis as { document?: unknown }).document = previous
+  }
+})
+
 test('the bundle requests only modules the shell already holds', async () => {
   const source = await readArtifact(bundlePath)
   const required = [...source.matchAll(/require\("([^"]+)"\)/g)].map(match => String(match[1]))
