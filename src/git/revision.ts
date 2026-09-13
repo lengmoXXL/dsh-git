@@ -60,7 +60,6 @@ export interface RevisionRequest {
   readonly source: DiffSource
   /** The commit to read, required when `source` is `commit`. */
   readonly rev?: string | undefined
-  /** Caller cancellation. */
   readonly signal?: AbortSignal | undefined
   /** Per-side cap on the text a blob read may collect. */
   readonly maxBytes: number

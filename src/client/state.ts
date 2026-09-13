@@ -28,6 +28,15 @@ export type Load<T> =
   | { readonly phase: 'ready'; readonly value: T }
   | { readonly phase: 'failed'; readonly code: string; readonly message: string }
 
+/**
+ * A cached value as a drawn read: nothing cached is still a read in flight.
+ * @param value - the cached payload, if there was one.
+ * @returns the read to draw.
+ */
+export function cached<T>(value: T | undefined): Load<T> {
+  return value === undefined ? { phase: 'loading' } : { phase: 'ready', value }
+}
+
 /** A failure, split so the panel can name the code and show the detail. */
 export interface FailureInfo {
   /** The host's stable code, or a local marker for a transport failure. */
@@ -348,6 +357,8 @@ export function collapseRows(
   const out: DisplayRow[] = []
   let index = 0
   while (index < rows.length) {
+    // `rows[index]` is `| undefined` to the type checker alone; the loop
+    // condition is what guarantees a row here. Narrowing it is the check.
     const row = rows[index]
     if (row === undefined) break
     if (row.kind !== 'context') {
@@ -361,9 +372,8 @@ export function collapseRows(
     const head = Math.ceil(limit / 2)
     const tail = limit - head
     const push = (from: number, to: number): void => {
-      for (let at = from; at < to; at += 1) {
-        const inner = rows[at]
-        if (inner !== undefined) out.push({ kind: 'diff', key: `r${String(at)}`, row: inner })
+      for (const [offset, row] of rows.slice(from, to).entries()) {
+        out.push({ kind: 'diff', key: `r${String(from + offset)}`, row })
       }
     }
     if (run <= limit) {

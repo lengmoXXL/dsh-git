@@ -26,17 +26,8 @@ import { logCache } from './log-cache.ts'
 import type { GitKey } from './locales.ts'
 import { RefChips } from './RefChips.tsx'
 import { Section } from './Section.tsx'
-import { failureInfoOf, parseRefs, type Load } from './state.ts'
+import { cached, failureInfoOf, parseRefs, type Load } from './state.ts'
 import css from './List.module.css'
-
-/**
- * A cached list as a drawn read: nothing cached is still a read in flight.
- * @param value - the cached files, if they were read.
- * @returns the read to draw.
- */
-function cached(value: readonly CommitFile[] | undefined): Load<readonly CommitFile[]> {
-  return value === undefined ? { phase: 'loading' } : { phase: 'ready', value }
-}
 
 /** Props of the history list. */
 export interface HistoryListProps {

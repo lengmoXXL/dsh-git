@@ -197,11 +197,9 @@ export function parsePorcelainV2(output: string): ParsedStatus {
 
 /** One working-tree read. */
 export interface StatusQuery {
-  /** The repository to read. */
   readonly repo: RepoIdentity
   /** Cap on returned entries; the rest are dropped and the payload says so. */
   readonly limit: number
-  /** Caller cancellation. */
   readonly signal?: AbortSignal | undefined
 }
 

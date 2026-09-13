@@ -47,8 +47,8 @@ async function load(face: GitFace, address: string, signal: AbortSignal): Promis
       sessionId: parsed.sessionId,
       path: parsed.path,
       source: parsed.source,
-      ...parsed.origPath === undefined ? {} : { origPath: parsed.origPath },
-      ...parsed.rev === undefined ? {} : { rev: parsed.rev },
+      origPath: parsed.origPath,
+      rev: parsed.rev,
     }, signal)
     return { kind: 'diff', diff }
   } catch (error: unknown) {

@@ -35,17 +35,8 @@ import { logCache } from './log-cache.ts'
 import { diffAddress } from './git-address.ts'
 import { HistoryList } from './HistoryList.tsx'
 import type { GitKey, GitNamespace } from './locales.ts'
-import { failureInfoOf, groupChanges, type Load } from './state.ts'
+import { cached, failureInfoOf, groupChanges, type FailureInfo, type Load } from './state.ts'
 import css from './LogBody.module.css'
-
-/**
- * A cached value as a drawn read: nothing cached is still a read in flight.
- * @param value - the cached payload, if there was one.
- * @returns the read to draw.
- */
-function cached<T>(value: T | undefined): Load<T> {
-  return value === undefined ? { phase: 'loading' } : { phase: 'ready', value }
-}
 
 /** Stable empties, so a not-yet-loaded read does not mint a new array on every render. */
 const NO_ENTRIES: readonly ChangeEntry[] = []
@@ -141,13 +132,13 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   }, [])
   // A click that fails must say so: a dead click reads as a broken plugin,
   // while a named failure reads as a repository problem.
-  const [openFailure, setOpenFailure] = useState<string | undefined>(undefined)
+  const [openFailure, setOpenFailure] = useState<FailureInfo | undefined>(undefined)
   const open = useCallback((address: string) => {
     try {
       openResource(address)
       setOpenFailure(undefined)
     } catch (error: unknown) {
-      setOpenFailure(failureInfoOf(error).message)
+      setOpenFailure(failureInfoOf(error))
     }
   }, [openResource])
   const openChange = useCallback((entry: ChangeEntry) => {
@@ -157,7 +148,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
       sessionId,
       source: entry.stage === 'staged' ? 'index' : 'worktree',
       path: entry.path,
-      ...entry.origPath === undefined ? {} : { origPath: entry.origPath },
+      origPath: entry.origPath,
     }))
   }, [open, sessionId])
   // A commit's own tab is no longer offered: the log expands a commit into its
@@ -169,7 +160,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
       source: 'commit',
       rev,
       path: file.path,
-      ...file.origPath === undefined ? {} : { origPath: file.origPath },
+      origPath: file.origPath,
     }))
   }, [open, sessionId])
 
@@ -208,7 +199,9 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
         {status.phase === 'failed' && (
           <FailureBlock code={status.code} message={status.message} t={t} onRetry={refresh} />
         )}
-        {openFailure !== undefined && <FailureBlock code="git/bad-request" message={openFailure} t={t} onRetry={undefined} />}
+        {openFailure !== undefined && (
+          <FailureBlock code={openFailure.code} message={openFailure.message} t={t} onRetry={undefined} />
+        )}
         {status.phase === 'loading' && <Note>{t('loading')}</Note>}
         {status.phase === 'ready' && repo === null && <Note>{t('panel.noRepo')}</Note>}
         {repo !== null && (

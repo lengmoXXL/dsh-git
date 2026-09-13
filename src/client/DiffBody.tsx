@@ -10,7 +10,7 @@
  */
 
 import { useState, type ReactNode } from 'react'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { PropsLocale, PropsRuntime, Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { CommitSummary } from '../shared/wire.ts'
 import { FailureBlock, Note } from './Feedback.tsx'
 import { timeLabel } from './format.ts'
@@ -24,7 +24,7 @@ import css from './DiffBody.module.css'
 function CommitHeader({ commit, now, t }: {
   readonly commit: CommitSummary
   readonly now: number
-  readonly t: (key: GitKey, params?: Record<string, unknown>) => string
+  readonly t: Translate<GitKey>
 }): ReactNode {
   return (
     <div className={css.commitHeader}>
@@ -56,6 +56,9 @@ export function DiffBody({ useTabInfo, useResource, t }: DiffBodyProps): ReactNo
   if (resource.status === 'failed') {
     return (
       <div className={css.panel}>
+        {/* The shell types a failure as `RemoteFailure | undefined` and keeps it
+            present only while the status is `failed`, so these fallbacks cover
+            the type rather than a state a reader can reach. */}
         <FailureBlock
           code={resource.failure?.code ?? 'git/command-failed'}
           message={resource.failure?.message ?? ''}

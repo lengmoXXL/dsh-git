@@ -68,12 +68,22 @@ function LineText({ line, text }: {
   return line.map((span, index) => <span key={index} style={span.style}>{span.text}</span>)
 }
 
-/** The band a row carries. Opaque, because an unwrapped lane pins numbers over it. */
-function toneOf(kind: string | undefined): string | undefined {
+/** The wrapped body's cells stay in step because every row is a grid row. */
+function toneOf(kind: InlineLine['kind'] | undefined): string | undefined {
   if (kind === 'delete') return css.del
   if (kind === 'insert') return css.add
-  if (kind === 'blank') return css.blank
   return undefined
+}
+
+/**
+ * One side of the rows as the highlighter reads it: every line that side draws,
+ * in order, with an empty line where it has none.
+ * @param rows - the display rows.
+ * @param pick - the side's text for one diff row.
+ * @returns the side's text, one line per drawn row.
+ */
+function columnText(rows: readonly DisplayRow[], pick: (row: DiffRow) => string | undefined): string {
+  return rows.map(row => (row.kind === 'fold' ? '' : pick(row.row) ?? '')).join('\n')
 }
 
 /** The four cells one aligned row occupies in the wrapped grid. */
@@ -148,15 +158,6 @@ function LaneRow({ numbers, text, highlighted, tone }: {
   )
 }
 
-/**
- * A run the host left out or the reader folded: one band across the body.
- * @param props.children - the control the band holds.
- * @returns the band.
- */
-function Held({ children }: { readonly children: ReactNode }): ReactNode {
-  return <div className={css.held}>{children}</div>
-}
-
 /** Props of the diff view. */
 export interface SideBySideProps {
   /** The diff to draw. Its tab owns loading and failure; this only draws rows. */
@@ -177,10 +178,7 @@ export interface SideBySideProps {
  */
 export function SideBySide({ diff, t, embedded = false }: SideBySideProps): ReactNode {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set())
-  const rows = useMemo(
-    () => (diff === undefined ? [] : collapseRows(diff.rows, undefined, expanded)),
-    [diff, expanded],
-  )
+  const rows = useMemo(() => collapseRows(diff.rows, undefined, expanded), [diff, expanded])
   // Every diff follows the same answers, so the choices are a store rather than
   // this tab's state: they are how the reader reads diffs, not what this one
   // holds. The same reader serves both sides of a render, hence the snapshot.
@@ -195,12 +193,11 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
   // Highlighting runs over the whole side at once, so a construct that spans
   // lines is read in context, and the runs are then taken one line at a time.
   // The line arrays line up with the rows because a row that draws no line
-  // contributes an empty one.
+  // contributes an empty one. Both texts are memoized because the highlighter
+  // is: an unmemoized string would re-highlight the whole side every render.
   const lang = langFromPath(diff.path)
-  const column = (pick: (row: DiffRow) => string | undefined): string =>
-    rows.map(row => (row.kind === 'fold' ? '' : pick(row.row) ?? '')).join('\n')
-  const leftText = column(row => row.left?.text)
-  const rightText = column(row => row.right?.text)
+  const leftText = useMemo(() => columnText(rows, row => row.left?.text), [rows])
+  const rightText = useMemo(() => columnText(rows, row => row.right?.text), [rows])
   const inlineText = useMemo(
     () => lines.map(line => line.text ?? '').join('\n'),
     [lines],
@@ -252,10 +249,14 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
     <div className={css.grid} data-view={inline ? 'inline' : 'split'}>
       {inline
         ? lines.map((line, at) => (line.kind === 'fold' || line.kind === 'gap'
-          ? <Held key={line.key}>{line.kind === 'fold' ? foldControl(line.key, line.hidden) : gapControl(line)}</Held>
+          ? (
+            <div key={line.key} className={css.held}>
+              {line.kind === 'fold' ? foldControl(line.key, line.hidden) : gapControl(line)}
+            </div>
+          )
           : <InlineCells key={line.key} line={line} highlighted={unified?.[at]} />))
         : rows.map((row, at) => (row.kind === 'fold' || row.row.kind === 'gap'
-          ? <Held key={row.key}>{heldControl(row)}</Held>
+          ? <div key={row.key} className={css.held}>{heldControl(row)}</div>
           : <Cells key={row.key} row={row.row} left={left?.[at]} right={right?.[at]} />))}
     </div>
   )
@@ -267,9 +268,9 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
     rows.map((row, at) => {
       if (row.kind === 'fold' || row.row.kind === 'gap') {
         return (
-          <Held key={row.key}>
+          <div key={row.key} className={css.held}>
             {side === 'right' ? <span className={css.heldSpacer} /> : heldControl(row)}
-          </Held>
+          </div>
         )
       }
       const cell = side === 'left' ? row.row.left : row.row.right
@@ -287,7 +288,11 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
       )
     })
   const laneInline: ReactNode = lines.map((line, at) => (line.kind === 'fold' || line.kind === 'gap'
-    ? <Held key={line.key}>{line.kind === 'fold' ? foldControl(line.key, line.hidden) : gapControl(line)}</Held>
+    ? (
+      <div key={line.key} className={css.held}>
+        {line.kind === 'fold' ? foldControl(line.key, line.hidden) : gapControl(line)}
+      </div>
+    )
     : (
       <LaneRow
         key={line.key}

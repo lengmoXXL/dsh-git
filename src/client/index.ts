@@ -64,11 +64,6 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 }
 
-export type { GitAddress } from './git-address.ts'
-export type { DiffBodyProps } from './DiffBody.tsx'
-export type { GitKey } from './locales.ts'
-export type { LogBodyProps } from './LogBody.tsx'
-
 /** The log page's static face, including the guide entry the add control lists. */
 function logDefinition(t: Translate<GitKey>): SidebarRightTabDefinition {
   return {

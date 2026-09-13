@@ -173,6 +173,10 @@ async function handleStatus(
   const workspaceRoot = await resolveWorkspaceRoot(deps.ctx, query.get('sessionId'))
   const repo = await discoverRepo(deps.ctx, workspaceRoot, signal)
   if (repo === null) return { repo: null, entries: [], truncated: false }
+  // Options are conditionally spread throughout this file rather than passed as
+  // `undefined`: `exactOptionalPropertyTypes` tells an absent field from an
+  // undefined one, and widening the readers' types to accept both would soften
+  // the contract this module is the boundary of.
   return await readStatus(deps.ctx, {
     repo,
     limit: deps.config.maxEntries,
@@ -335,6 +339,8 @@ async function handleCommitDiff(
     ...signal === undefined ? {} : { signal },
   })
 
+  // A commit's files share one budget of four single-diff caps, so opening a
+  // commit cannot cost a hundred diffs' worth of rows.
   const rowCap = deps.config.maxLines * 4
   const files: DiffPayload[] = []
   let rows = 0
@@ -344,13 +350,14 @@ async function handleCommitDiff(
       truncated = true
       break
     }
-    files.push(await alignChange(deps, repo, {
+    const diff = await alignChange(deps, repo, {
       path: file.path,
       ...file.origPath === undefined ? {} : { origPath: file.origPath },
       source: 'commit',
       rev,
-    }, signal))
-    rows += files[files.length - 1]?.rows.length ?? 0
+    }, signal)
+    files.push(diff)
+    rows += diff.rows.length
   }
   return { commit: payload.commit, files, truncated }
 }

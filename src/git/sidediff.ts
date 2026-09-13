@@ -312,19 +312,18 @@ function rowsOf(
   let inserts: number[] = []
 
   const flush = (): void => {
-    const pairs = Math.min(deletes.length, inserts.length)
-    for (let k = 0; k < pairs; k += 1) {
-      rows.push({
-        kind: 'replace',
-        left: sideOf(oldLines, deletes[k] ?? 0),
-        right: sideOf(newLines, inserts[k] ?? 0),
-      })
-    }
-    for (let k = pairs; k < deletes.length; k += 1) {
-      rows.push({ kind: 'delete', left: sideOf(oldLines, deletes[k] ?? 0), right: null })
-    }
-    for (let k = pairs; k < inserts.length; k += 1) {
-      rows.push({ kind: 'insert', left: null, right: sideOf(newLines, inserts[k] ?? 0) })
+    // Both runs are walked together: a position they share is a replacement,
+    // and a position only one of them reaches is that side's own row.
+    for (let k = 0; k < Math.max(deletes.length, inserts.length); k += 1) {
+      const oldIndex = deletes[k]
+      const newIndex = inserts[k]
+      if (oldIndex !== undefined && newIndex !== undefined) {
+        rows.push({ kind: 'replace', left: sideOf(oldLines, oldIndex), right: sideOf(newLines, newIndex) })
+      } else if (oldIndex !== undefined) {
+        rows.push({ kind: 'delete', left: sideOf(oldLines, oldIndex), right: null })
+      } else if (newIndex !== undefined) {
+        rows.push({ kind: 'insert', left: null, right: sideOf(newLines, newIndex) })
+      }
     }
     deletes = []
     inserts = []
@@ -378,9 +377,7 @@ export function buildSideBySide(oldText: string, newText: string, maxMs?: number
 function spanOf(rows: readonly DiffRow[], from: number, to: number): { left: number; right: number } {
   let left = 0
   let right = 0
-  for (let index = from; index < to; index += 1) {
-    const row = rows[index]
-    if (row === undefined) continue
+  for (const row of rows.slice(from, to)) {
     if (row.left !== null) left += 1
     if (row.right !== null) right += 1
   }
@@ -432,10 +429,7 @@ export function hunkRows(
     const budget = to < rows.length - 1 ? maxLines - 1 : maxLines
     if (out.length + withGap + (to - start + 1) > budget) break
     if (withGap === 1) out.push(gap(covered + 1, start))
-    for (let at = start; at <= to; at += 1) {
-      const row = rows[at]
-      if (row !== undefined) out.push(row)
-    }
+    for (const row of rows.slice(start, to + 1)) out.push(row)
     covered = to
   }
 

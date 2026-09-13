@@ -63,13 +63,11 @@ export function parseLog(output: string): CommitSummary[] {
 
 /** One history read. */
 export interface HistoryQuery {
-  /** The repository to read. */
   readonly repo: RepoIdentity
   /** Commits to return. */
   readonly limit: number
   /** Commits to skip, for paging. */
   readonly skip: number
-  /** Caller cancellation. */
   readonly signal?: AbortSignal | undefined
 }
 

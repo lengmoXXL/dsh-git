@@ -63,7 +63,7 @@ function stored(): DiffViewSettings {
       mode: window.localStorage.getItem(MODE_KEY) === 'inline' ? 'inline' : DEFAULTS.mode,
       // Only an explicit "off" turns wrapping off, so a value this plugin never
       // wrote cannot silently change how a diff reads.
-      wrap: window.localStorage.getItem(WRAP_KEY) !== 'clip' && DEFAULTS.wrap,
+      wrap: window.localStorage.getItem(WRAP_KEY) !== 'clip',
     }
   } catch {
     return DEFAULTS

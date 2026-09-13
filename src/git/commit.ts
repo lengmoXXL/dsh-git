@@ -57,11 +57,9 @@ export function parseNameStatus(output: string): CommitFile[] {
 
 /** One commit read. */
 export interface CommitQuery {
-  /** The repository to read. */
   readonly repo: RepoIdentity
   /** The revision to describe. */
   readonly rev: string
-  /** Caller cancellation. */
   readonly signal?: AbortSignal | undefined
 }
 

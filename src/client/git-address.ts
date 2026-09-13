@@ -45,7 +45,14 @@ export interface CommitAddress {
   readonly rev: string
 }
 
-/** Every address this plugin knows how to render. */
+/**
+ * Every address this plugin knows how to render.
+ *
+ * A commit address is built by nothing on screen — each file of a commit gets
+ * its own diff tab — but the parser must keep accepting one, because a tab
+ * restored from an earlier session carries it. `commitAddress` stays the single
+ * description of that shape so the two halves cannot drift.
+ */
 export type GitAddress = DiffAddress | CommitAddress
 
 /**
@@ -106,6 +113,8 @@ export function parseGitAddress(address: string): GitAddress | undefined {
     const path = url.searchParams.get('path')
     const source = url.searchParams.get('source')
     if (path === null || path === '') return undefined
+    // Spelled out rather than shared with the host's list: `wire.ts` is types
+    // only, so the one value list cannot live in the module both halves share.
     if (source !== 'worktree' && source !== 'index' && source !== 'commit') return undefined
     const orig = url.searchParams.get('orig')
     const rev = url.searchParams.get('rev')
@@ -132,6 +141,9 @@ export function parseGitAddress(address: string): GitAddress | undefined {
 export function gitAddressTitle(address: string): string {
   const parsed = parseGitAddress(address)
   if (parsed === undefined) return GIT_DIFF_KIND
+  // Shortened to a fixed seven characters, NOT through `revLabel`: a chip is a
+  // name the reader picks a tab by, and the label shortener keeps the `^`/`~2`
+  // suffix a comparison needs. A chip has no suffix to keep.
   if (parsed.kind === 'commit') return parsed.rev.slice(0, 7)
   const at = parsed.path.lastIndexOf('/')
   return at < 0 ? parsed.path : parsed.path.slice(at + 1)
