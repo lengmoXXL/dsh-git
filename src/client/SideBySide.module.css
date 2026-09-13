@@ -201,42 +201,98 @@
   line-height: var(--dsh-git-diff-row);
 }
 
-/* Left to scroll instead: whole lines and a row as wide as its longest, which
-   is how an editor shows a line that does not fit. Both columns keep their
-   width and travel together. */
-.grid[data-wrap='clip'] {
-  grid-template-columns:
-    var(--dsh-git-diff-gutter) minmax(24ch, 1fr)
-    var(--dsh-git-diff-gutter) minmax(24ch, 1fr);
-  min-width: max-content;
-}
-
-.grid[data-wrap='clip'][data-view='inline'] {
-  grid-template-columns:
-    var(--dsh-git-diff-gutter) var(--dsh-git-diff-gutter) minmax(24ch, 1fr);
-}
-
-.grid[data-wrap='clip'] .text {
-  white-space: pre;
-  overflow-wrap: normal;
-}
-
 /* The diff's own meaning-carrying colors, tinted from the same semantic tokens
    the rest of the client uses for added and removed text. The text stays in the
    reading tone: the band says what changed, and a line of red or green text is
    harder to read than the code it marks. */
+/* Mixed against the card's own surface rather than left translucent: a pinned
+   line number draws the band it sits on, and a see-through band would let the
+   line it is numbering scroll across the number. */
 .del {
-  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 13%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 13%, var(--dsw-alias-markdown-code-block));
 }
 
 .add {
-  background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 13%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 13%, var(--dsw-alias-markdown-code-block));
 }
 
 /* A side with no line on this row: the page showing through the card, so the
    gap reads as absence rather than as content. */
 .blank {
-  background: color-mix(in srgb, var(--dsw-alias-bg-base) 45%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-bg-base) 45%, var(--dsw-alias-markdown-code-block));
+}
+
+/* An unwrapped body: one lane per half, each scrolling its own long lines. Both
+   halves are the pane's width whatever their contents are, so a line wider than
+   half the pane is read by scrolling that half instead of widening the body and
+   pushing the other half out of view. */
+.lanes {
+  display: flex;
+  align-items: stretch;
+  font: var(--dsw-font-markdown-code-block);
+}
+
+.lanes[data-view='inline'] {
+  --dsh-git-diff-indent: calc(2 * var(--dsh-git-diff-gutter));
+}
+
+.lane {
+  flex: 1 1 0;
+  min-width: 0;
+  /* Sideways only: the body keeps one vertical scroller, which is what holds
+     the two halves' rows against each other. */
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.laneRow {
+  display: grid;
+  grid-template-columns: var(--dsh-git-diff-gutter) max-content;
+  line-height: var(--dsh-git-diff-row);
+}
+
+.laneRow[data-numbers='2'] {
+  grid-template-columns: var(--dsh-git-diff-gutter) var(--dsh-git-diff-gutter) max-content;
+}
+
+/* The number stays where the reader left it while the line scrolls past: it
+   draws the row's own band, so the line goes under it rather than through it. */
+.laneNum {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  padding-right: 14px;
+  background: inherit;
+  text-align: right;
+  color: var(--dsw-alias-label-tertiary);
+  user-select: none;
+}
+
+.laneRow[data-numbers='2'] .laneNum:nth-child(2) {
+  left: var(--dsh-git-diff-gutter);
+}
+
+.laneText {
+  padding-right: 16px;
+  white-space: pre;
+}
+
+/* A fold or a gap, stated once per row: in the lanes its band is pinned so the
+   control does not scroll away with the line it interrupts. */
+.held {
+  grid-column: 1 / -1;
+}
+
+.lane .held {
+  position: sticky;
+  left: 0;
+  width: max-content;
+  min-width: 100%;
+}
+
+.heldSpacer {
+  display: block;
+  height: var(--dsh-git-diff-row);
 }
 
 /* Where rows were left out: stated, never silently skipped. */

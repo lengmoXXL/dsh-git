@@ -6,6 +6,14 @@
  * algorithm in the browser and the two columns can never disagree about which
  * lines correspond.
  *
+ * Two layouts, chosen by the reader's settings. Wrapped, the body is one grid:
+ * the halves share the pane and a line too long for its half wraps inside it,
+ * which is also what keeps the two sides' rows the same height and therefore in
+ * step. Unwrapped, the halves still share the pane but each is its own
+ * horizontal scroller, so a line wider than half the pane is read by scrolling
+ * that half — widening the body instead would push the other half out of view,
+ * and two columns that cannot both be seen at once are not a side-by-side diff.
+ *
  * @module dsh-git/client/SideBySide
  */
 
@@ -22,7 +30,14 @@ import {
 } from './glyphs.tsx'
 import { highlightLines, langFromPath, type HighlightSpan } from './highlight.ts'
 import type { GitKey } from './locales.ts'
-import { collapseRows, diffText, inlineDisplayLines, revLabel, type InlineLine } from './state.ts'
+import {
+  collapseRows,
+  diffText,
+  inlineDisplayLines,
+  revLabel,
+  type DisplayRow,
+  type InlineLine,
+} from './state.ts'
 import {
   diffViewSettings,
   setDiffViewMode,
@@ -33,6 +48,9 @@ import css from './SideBySide.module.css'
 
 /** One line's highlighted runs, as the view draws them. */
 type HighlightedLine = readonly HighlightSpan[] | undefined
+
+/** Which half of a two-column reading a row is drawn for. */
+type Side = 'left' | 'right'
 
 /**
  * Draw one line's text: its highlighted runs when the grammar had an answer,
@@ -49,7 +67,15 @@ function LineText({ line, text }: {
   return line.map((span, index) => <span key={index} style={span.style}>{span.text}</span>)
 }
 
-/** The four cells one aligned row occupies. */
+/** The band a row carries. Opaque, because an unwrapped lane pins numbers over it. */
+function toneOf(kind: string | undefined): string | undefined {
+  if (kind === 'delete') return css.del
+  if (kind === 'insert') return css.add
+  if (kind === 'blank') return css.blank
+  return undefined
+}
+
+/** The four cells one aligned row occupies in the wrapped grid. */
 function Cells({ row, left, right }: {
   readonly row: DiffRow
   readonly left: HighlightedLine
@@ -73,6 +99,63 @@ function Cells({ row, left, right }: {
   )
 }
 
+/**
+ * The three cells one line of a one-column reading occupies: the old number,
+ * the new one, and the text. A blank cell keeps the columns in step, the way a
+ * missing side does in the two-column layout.
+ */
+function InlineCells({ line, highlighted }: {
+  readonly line: InlineLine
+  readonly highlighted: HighlightedLine
+}): ReactNode {
+  const tone = toneOf(line.kind)
+  return (
+    <>
+      <span className={cx(css.num, tone)}>{line.oldNo ?? ''}</span>
+      <span className={cx(css.num, tone)}>{line.newNo ?? ''}</span>
+      <span className={cx(css.text, tone)}>
+        <LineText line={highlighted} text={line.text ?? ''} />
+      </span>
+    </>
+  )
+}
+
+/**
+ * One line of an unwrapped half: its number — or the pair a one-column reading
+ * carries — pinned to the half's left edge, and the line itself, which scrolls
+ * sideways under them.
+ *
+ * The band rides the row rather than the cells, so a pinned number can own an
+ * opaque background: a number that let the line show through would be
+ * unreadable the moment a reader scrolled.
+ */
+function LaneRow({ numbers, text, highlighted, tone }: {
+  readonly numbers: readonly (number | undefined)[]
+  readonly text: string
+  readonly highlighted: HighlightedLine
+  readonly tone: string | undefined
+}): ReactNode {
+  return (
+    <div className={cx(css.laneRow, tone)} data-numbers={numbers.length}>
+      {numbers.map((no, index) => (
+        <span key={index} className={css.laneNum}>{no ?? ''}</span>
+      ))}
+      <span className={css.laneText}>
+        <LineText line={highlighted} text={text} />
+      </span>
+    </div>
+  )
+}
+
+/**
+ * A run the host left out or the reader folded: one band across the body.
+ * @param props.children - the control the band holds.
+ * @returns the band.
+ */
+function Held({ children }: { readonly children: ReactNode }): ReactNode {
+  return <div className={css.held}>{children}</div>
+}
+
 /** Props of the diff view. */
 export interface SideBySideProps {
   /** The diff to draw. Its tab owns loading and failure; this only draws rows. */
@@ -84,28 +167,6 @@ export interface SideBySideProps {
    * inside one. A commit's tab sets this; a single change's tab does not.
    */
   readonly embedded?: boolean | undefined
-}
-
-/**
- * The three cells one line of a one-column reading occupies: the old number,
- * the new one, and the text. A blank cell keeps the columns in step, the way a
- * missing side does in the two-column layout.
- */
-function InlineCells({ line, highlighted }: {
-  readonly line: InlineLine
-  readonly highlighted: HighlightedLine
-}): ReactNode {
-  const tone = line.kind === 'delete' ? css.del : line.kind === 'insert' ? css.add : undefined
-  const text = line.text ?? ''
-  return (
-    <>
-      <span className={cx(css.num, tone)}>{line.oldNo ?? ''}</span>
-      <span className={cx(css.num, tone)}>{line.newNo ?? ''}</span>
-      <span className={cx(css.text, tone)}>
-        <LineText line={highlighted} text={text} />
-      </span>
-    </>
-  )
 }
 
 /**
@@ -163,57 +224,91 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
   const root = embedded ? css.diffEmbedded : css.diff
   const parts = pathParts(diff.path)
   const notice = diff.binary ? t('diff.binary') : diff.truncated ? t('diff.truncated') : undefined
-  // A fold and a host gap are the same control in either layout, so both are
-  // drawn from the one description.
-  const drawer = (line: InlineLine, at: number): ReactNode => {
-    if (line.kind === 'fold') {
-      return (
-        <button
-          key={line.key}
-          type="button"
-          className={css.fold}
-          onClick={() => {
-            setExpanded(current => new Set(current).add(line.key))
-          }}
-        >
-          ⋯ {line.hidden} {t('diff.unchanged')}
-        </button>
-      )
-    }
-    if (line.kind === 'gap') {
-      // Rows the host left out to keep a huge diff readable. The counts are
-      // stated because a view that is not contiguous must say so.
-      const left = line.skippedLeft ?? 0
-      const right = line.skippedRight ?? 0
-      const count = left === right ? String(left) : `${String(left)} / ${String(right)}`
-      return <span key={line.key} className={css.gap}>⋯ {count} {t('diff.omitted')}</span>
-    }
-    return <InlineCells key={line.key} line={line} highlighted={unified?.[at]} />
+  const expand = useCallback((key: string) => {
+    setExpanded(current => new Set(current).add(key))
+  }, [])
+  /** The control that reopens a run of lines the reader folded. */
+  const foldControl = (key: string, hidden: number | undefined): ReactNode => (
+    <button type="button" className={css.fold} onClick={() => { expand(key) }}>
+      ⋯ {hidden} {t('diff.unchanged')}
+    </button>
+  )
+  /** A run the host left out. Its counts are stated, because a view that is not
+   *  contiguous must say so. */
+  const gapControl = (line: Pick<InlineLine, 'skippedLeft' | 'skippedRight'>): ReactNode => {
+    const before = line.skippedLeft ?? 0
+    const after = line.skippedRight ?? 0
+    const count = before === after ? String(before) : `${String(before)} / ${String(after)}`
+    return <span className={css.gap}>⋯ {count} {t('diff.omitted')}</span>
   }
+  /** The control one display row stands for, when it is not a line. */
+  const heldControl = (row: DisplayRow): ReactNode => row.kind === 'fold'
+    ? foldControl(row.key, row.hidden)
+    : gapControl(row.row)
+
+  // The wrapped body: one grid, so both halves share each row's height.
   const grid = (
-    <div
-      className={css.grid}
-      data-view={inline ? 'inline' : 'split'}
-      data-wrap={settings.wrap ? 'wrap' : 'clip'}
-    >
+    <div className={css.grid} data-view={inline ? 'inline' : 'split'}>
       {inline
-        ? lines.map((line, at) => drawer(line, at))
-        : rows.map((row, at) => {
-          if (row.kind === 'fold') {
-            return drawer({ kind: 'fold', key: row.key, hidden: row.hidden }, at)
-          }
-          if (row.row.kind === 'gap') {
-            return drawer({
-              kind: 'gap',
-              key: row.key,
-              ...row.row.skippedLeft === undefined ? {} : { skippedLeft: row.row.skippedLeft },
-              ...row.row.skippedRight === undefined ? {} : { skippedRight: row.row.skippedRight },
-            }, at)
-          }
-          return <Cells key={row.key} row={row.row} left={left?.[at]} right={right?.[at]} />
-        })}
+        ? lines.map((line, at) => (line.kind === 'fold' || line.kind === 'gap'
+          ? <Held key={line.key}>{line.kind === 'fold' ? foldControl(line.key, line.hidden) : gapControl(line)}</Held>
+          : <InlineCells key={line.key} line={line} highlighted={unified?.[at]} />))
+        : rows.map((row, at) => (row.kind === 'fold' || row.row.kind === 'gap'
+          ? <Held key={row.key}>{heldControl(row)}</Held>
+          : <Cells key={row.key} row={row.row} left={left?.[at]} right={right?.[at]} />))}
     </div>
   )
+
+  // The unwrapped body: one lane per half, each scrolling its own long lines. A
+  // fold or a gap is stated once, in the half a reader starts at, and the other
+  // half keeps step with a band of the same height.
+  const laneSide = (side: Side): ReactNode =>
+    rows.map((row, at) => {
+      if (row.kind === 'fold' || row.row.kind === 'gap') {
+        return (
+          <Held key={row.key}>
+            {side === 'right' ? <span className={css.heldSpacer} /> : heldControl(row)}
+          </Held>
+        )
+      }
+      const cell = side === 'left' ? row.row.left : row.row.right
+      const changed = side === 'left'
+        ? row.row.kind === 'delete' || row.row.kind === 'replace'
+        : row.row.kind === 'insert' || row.row.kind === 'replace'
+      return (
+        <LaneRow
+          key={row.key}
+          numbers={[cell?.no]}
+          text={cell?.text ?? ''}
+          highlighted={(side === 'left' ? left : right)?.[at]}
+          tone={cell === null ? css.blank : changed ? toneOf(side === 'left' ? 'delete' : 'insert') : undefined}
+        />
+      )
+    })
+  const laneInline: ReactNode = lines.map((line, at) => (line.kind === 'fold' || line.kind === 'gap'
+    ? <Held key={line.key}>{line.kind === 'fold' ? foldControl(line.key, line.hidden) : gapControl(line)}</Held>
+    : (
+      <LaneRow
+        key={line.key}
+        numbers={[line.oldNo, line.newNo]}
+        text={line.text ?? ''}
+        highlighted={unified?.[at]}
+        tone={toneOf(line.kind)}
+      />
+    )))
+  const lanes = (
+    <div className={css.lanes} data-view={inline ? 'inline' : 'split'}>
+      {inline
+        ? <div className={css.lane}>{laneInline}</div>
+        : (
+          <>
+            <div className={css.lane}>{laneSide('left')}</div>
+            <div className={css.lane}>{laneSide('right')}</div>
+          </>
+        )}
+    </div>
+  )
+  const body = settings.wrap ? grid : lanes
 
   return (
     <div className={root}>
@@ -254,8 +349,8 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
       </header>
       {notice !== undefined && <p className={css.notice}>{notice}</p>}
       {embedded
-        ? <div className={css.gridScroll} data-dsh-git-diff="">{grid}</div>
-        : <div className={css.scroll} data-dsh-git-diff="">{grid}</div>}
+        ? <div className={css.gridScroll} data-dsh-git-diff="">{body}</div>
+        : <div className={css.scroll} data-dsh-git-diff="">{body}</div>}
     </div>
   )
 }
