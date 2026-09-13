@@ -18,6 +18,9 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
+  /* Room for the per-file cards' rounded corners; a commit's diffs are cards,
+     not one continuous sheet. */
+  padding: 0 14px 12px;
 }
 
 .commitHeader {
@@ -43,10 +46,6 @@
 
 .sha {
   font: var(--dsw-font-markdown-code-block-small);
-}
-
-.file {
-  border-top: 0.5px solid var(--dsw-alias-border-l2);
 }
 
 .summary {

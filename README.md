@@ -79,6 +79,31 @@ ref 是用 `--decorate=full` 读的，所以本地分支 `feature/x` 与 `origin
 
 已知坑：`vscode-diff` 的 `toRangeMapping2` 对「某一侧整块为空」的输入会抛内部断言错误（整文件新增/删除经前缀后缀裁剪后正是这个形状）。适配层对空侧直接走平凡对齐、不调 computer，并对 computer 调用保留一个保持上述不变量的最后兜底。
 
+### diff 视图本身
+
+两栏是**等宽**的，而且**永远两栏都看得见**：行长超过半栏时在各自半栏里折行，而不是把另一栏顶出视野——同时看不见的两列不算双栏 diff；行短的时候（也就是编辑器里的常见情形）根本不折，和编辑器一样。不想看两栏时，右上角可以切成内联（见下）。
+
+视图本身照的是外壳自己的代码卡片（read 卡片 / 代码块）那套语言，所以它和聊天里的代码不会被认成两个产品：
+
+| 元素 | 取值 |
+| --- | --- |
+| 卡片 | `--dsw-alias-markdown-code-block` 面 + 12px 圆角（嵌在提交标签页里时每文件一张卡） |
+| banner | `--dsw-alias-markdown-code-block-banner`，路径用 12px 代码字（read 卡片的 label 字号） |
+| 行 | `--dsw-font-markdown-code-block`（11px/19px）+ 22px 最小行高（read 卡片同值） |
+| 行号槽 | 每侧固定 48px，右对齐，`user-select: none`（选中可见行拿到的是代码，不是行号） |
+| 计数 / 复制 | `--dsw-font-xs-13`，和 read 卡片右上角一致 |
+
+改动行只**染底**、不改字色：底色说「这行变了」，正文保持阅读色——一整行红字或绿字比它标注的代码更难读。空的一侧露出底色，读作「这里没有内容」。省略行与折叠行的缩进跟着行号槽，和 read 卡片的展开控件对齐。
+
+右上角的**复制**走外壳导出的 `writeClipboard`，复制的是统一格式文本（路径、`← 旧路径`、` ` / `-` / `+` 前缀，省略行写成 `⋯ N / M`），所以粘到别处能直接当 diff 用。
+
+**布局开关**在复制钮左边：图标画的是它将要切到的样子（两栏 / 一栏），tooltip 说明动作，照编辑器的做法。
+
+- **两栏**（默认）：两个对齐的列，旧号与新号各在自己那侧的行号槽里。
+- **内联**：一栏按顺序读——旧号、新号两个行号槽，然后是该行；被替换的行在这里变成「先删后增」两行，因为一栏没法同时显示两侧。
+
+选择是**读者的偏好，而不是这个标签页的状态**：所有 diff 标签页一起切，并且记在浏览器里（`localStorage` 的 `dsh-git:diff-view-mode`），刷新、重开标签页都还在。存储不可用（隐私模式等）时退回默认的两栏，不报错。
+
 ### 大文件：只给改动，并明说省略
 
 一个几千行的文件，改动通常散落在各处。若按「前 N 行」截断，读者只会看到一屏未改动内容、真正的改动在截断线以下。所以超过行数上限时，返回的是**改动区 ± 4 行上下文**，两处改动之间与首尾的省略都以 `⋯ N 行未显示` 显式标出（两侧行数不同时显示 `N / M`）。
@@ -145,7 +170,7 @@ npm run watch       # 客户端 bundle 监听重建
 
 - 合并提交的文件列表取的是「相对第一个父提交」的差异（`-m --first-parent`）。
 - 冲突文件的新侧是带冲突标记的工作区内容，旧侧优先用 stage 2（ours）；没有三方合并视图。
-- 二进制文件只给提示；不做行内（intraline）高亮。
+- 二进制文件只给提示；不做行内（intraline）高亮，也没有语法高亮。原因在外壳那边：带高亮的逐行输出（`highlightLines`）和分栏用的折叠控件（`FoldToggle`）都只在 `ui-primitives` 内部使用、没有从包入口导出，插件能拿到的只有整块的 `CodeBlock` / `ReadBlock` / `DiffBlock`，而它们都不按行对齐（`DiffBlock` 把一次 hunk 的旧文整段当 `-`、新文整段当 `+`），拼不出双栏。要上高亮，只有两条路：给外壳的 `ui-primitives` 入口加一个导出，或者插件自带一份高亮器（client bundle 会大几百 KB，并且和外壳各加载一份）。
 - 日志页不订阅文件系统变更推送，需要手动刷新。
 - 只读：不提供 stage / commit / discard。
 
@@ -165,7 +190,8 @@ src/
     DiffBody.tsx      diff 标签页：单条改动或整个提交
     Section.tsx       吸顶可折叠的分区头（改动 / 历史共用一个）
     ChangeList.tsx / HistoryList.tsx / RefChips.tsx / SideBySide.tsx / Feedback.tsx
-    state.ts          列表派生状态：分组、状态字母、ref 胶囊、折叠、失败描述
+    state.ts          列表派生状态：分组、状态字母、ref 胶囊、内联行、复制文本、折叠、失败描述
+    view-mode.ts      内联 / 两栏的选择，存在浏览器里，所有 diff 标签页共用
     format.ts / face.ts / locales.ts / glyphs.tsx
 cordis.patch.yml      bundle 补丁：只 insert 一行 dsh-git
 tsdown.config.ts      host ESM + client CJS(window.__ModuleLoader__) + CSS Modules 内联

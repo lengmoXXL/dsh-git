@@ -91,7 +91,7 @@ export function DiffBody({ useTabInfo, useResource, t }: DiffBodyProps): ReactNo
       <div className={css.scroll}>
         {value.files.length === 0 && <p className={css.summary}>{t('commit.empty')}</p>}
         {value.files.map(file => (
-          <div key={file.path} className={css.file}>
+          <div key={file.path}>
             {file.approximate === true && <p className={css.summary}>{t('diff.approximate')}</p>}
             <SideBySide diff={file} t={t} embedded />
           </div>

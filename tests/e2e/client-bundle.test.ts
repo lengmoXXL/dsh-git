@@ -404,7 +404,7 @@ test('the bundle carries its stylesheets inlined under hashed local names', asyn
   // Module into the artifact and attaches one tagged <style> at factory time.
   assert.match(source, /data-plugin-css/)
   const css = source.replace(/\s+/g, '')
-  for (const local of ['panel', 'grid', 'row', 'sectionHeader', 'rowLetter', 'nodeCurrent', 'ref']) {
+  for (const local of ['panel', 'grid', 'row', 'sectionHeader', 'rowLetter', 'nodeCurrent', 'ref', 'view']) {
     const mapped = new RegExp(`"${local}":\\s*"([^"]+)"`).exec(source)
     assert.notEqual(mapped, null, `the class map carries "${local}"`)
     const name = String(mapped?.[1])

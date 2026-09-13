@@ -55,6 +55,10 @@ export const zh = {
   'diff.approximate': '对齐超出时间预算，配对为近似结果',
   'diff.old': '旧',
   'diff.new': '新',
+  'diff.copy': '复制',
+  'diff.copied': '已复制',
+  'diff.inlineView': '切换到内联视图（单栏）',
+  'diff.splitView': '切换到两栏视图',
 
   'kind.modified': '修改',
   'kind.added': '新增',
@@ -119,6 +123,10 @@ export const en = {
   'diff.approximate': 'the diff computer hit its time budget; the pairing is approximate',
   'diff.old': 'old',
   'diff.new': 'new',
+  'diff.copy': 'Copy',
+  'diff.copied': 'Copied',
+  'diff.inlineView': 'Switch to inline view (one column)',
+  'diff.splitView': 'Switch to side-by-side view',
 
   'kind.modified': 'modified',
   'kind.added': 'added',

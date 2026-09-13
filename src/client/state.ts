@@ -13,7 +13,7 @@
  * @module dsh-git/client/state
  */
 
-import type { ChangeEntry, ChangeKind, ChangeStage, DiffRow } from '../shared/wire.ts'
+import type { ChangeEntry, ChangeKind, ChangeStage, DiffPayload, DiffRow } from '../shared/wire.ts'
 import { GitRequestError } from './face.ts'
 
 /** A failure, split so the panel can name the code and show the detail. */
@@ -161,6 +161,109 @@ export function parseRefs(refs: readonly string[]): RefChip[] {
  */
 function unqualified(name: string, prefix: string): string {
   return name.startsWith(prefix) ? name.slice(prefix.length) : name
+}
+
+/**
+ * The diff as text, for the copy control.
+ *
+ * A row whose old side was dropped copies as a `-` line and one whose new side
+ * was dropped as a `+` line, so a re-substitution of the whole file reproduces
+ * the change; a replaced row copies both, old first. Context copies once — the
+ * two sides of an unchanged line are the same line. The host's own "rows left
+ * out" markers stay, so a copy of a truncated diff is not read as complete.
+ *
+ * @param diff - one change, already aligned.
+ * @returns the change as unified diff text.
+ */
+export function diffText(diff: DiffPayload): string {
+  const lines = [diff.path]
+  if (diff.origPath !== undefined) lines.push(`← ${diff.origPath}`)
+  for (const line of inlineLines(diff.rows)) {
+    switch (line.kind) {
+      case 'context': lines.push(` ${line.text ?? ''}`); break
+      case 'delete': lines.push(`-${line.text ?? ''}`); break
+      case 'insert': lines.push(`+${line.text ?? ''}`); break
+      case 'gap': lines.push(`⋯ ${String(line.skippedLeft ?? 0)} / ${String(line.skippedRight ?? 0)}`); break
+      // A fold is the reader's own display state, so it is never part of a copy.
+      case 'fold': break
+    }
+  }
+  return `${lines.join('\n')}\n`
+}
+
+/** One line of a diff read in one column instead of two. */
+export interface InlineLine {
+  /** What this line is. `fold` is a run the reader closed; `gap` is one the host left out. */
+  readonly kind: 'context' | 'delete' | 'insert' | 'gap' | 'fold'
+  /** Stable identity, for keys and for a fold's expansion set. */
+  readonly key: string
+  /** The old-side line number, when this line is on the old side. */
+  readonly oldNo?: number
+  /** The new-side line number, when this line is on the new side. */
+  readonly newNo?: number
+  /** The line's text; a `gap` and a `fold` carry counts instead. */
+  readonly text?: string
+  /** A fold's hidden line count. */
+  readonly hidden?: number
+  /** A gap's skipped old-side lines. */
+  readonly skippedLeft?: number
+  /** A gap's skipped new-side lines. */
+  readonly skippedRight?: number
+}
+
+/**
+ * The lines one aligned row becomes in one column.
+ *
+ * A replaced row becomes two lines — its removal, then its insertion — because
+ * one column cannot show both at once; every other row becomes one. A context
+ * line carries both numbers: it is the same line on either side.
+ * @param row - one aligned row.
+ * @returns the lines it draws, in order.
+ */
+function linesOfRow(row: DiffRow, at: number): InlineLine[] {
+  const key = `i${String(at)}`
+  if (row.kind === 'gap') {
+    return [{
+      kind: 'gap',
+      key,
+      ...row.skippedLeft === undefined ? {} : { skippedLeft: row.skippedLeft },
+      ...row.skippedRight === undefined ? {} : { skippedRight: row.skippedRight },
+    }]
+  }
+  const lines: InlineLine[] = []
+  if (row.left !== null) {
+    lines.push({
+      kind: row.kind === 'context' ? 'context' : 'delete',
+      key: `${key}l`,
+      oldNo: row.left.no,
+      ...row.kind === 'context' && row.right !== null ? { newNo: row.right.no } : {},
+      text: row.left.text,
+    })
+  }
+  if (row.right !== null && row.kind !== 'context') {
+    lines.push({ kind: 'insert', key: `${key}r`, newNo: row.right.no, text: row.right.text })
+  }
+  return lines
+}
+
+/**
+ * Flatten aligned rows into the lines a one-column reading draws.
+ * @param rows - the aligned rows, as the host sent them.
+ * @returns every line, in reading order.
+ */
+export function inlineLines(rows: readonly DiffRow[]): InlineLine[] {
+  return rows.flatMap((row, at) => linesOfRow(row, at))
+}
+
+/**
+ * Flatten rows the reader has been folding, keeping the folds.
+ * @param rows - the display rows {@link collapseRows} produced.
+ * @returns every line, in reading order, with each fold in place.
+ */
+export function inlineDisplayLines(rows: readonly DisplayRow[]): InlineLine[] {
+  return rows.flatMap((row, at): InlineLine[] => row.kind === 'fold'
+    ? [{ kind: 'fold', key: row.key, hidden: row.hidden }]
+    : linesOfRow(row.row, at))
 }
 
 /**

@@ -1,53 +1,93 @@
 /*
- * The side-by-side diff: one grid whose four columns are shared by every row,
- * so the two sides stay in step no matter how wide either one is. The grid is
- * as wide as its widest line and the scroll container owns both axes, which is
- * what keeps a long source line readable instead of wrapped.
+ * The side-by-side diff, drawn in the code-card language the rest of the client
+ * already speaks: the code surface, a banner over it, 11px/19px code on rows no
+ * shorter than the read card's, and a fixed line-number gutter per side.
+ *
+ * Both sides always get the same width — half the pane each — so a change is
+ * read against its counterpart instead of scrolled for. A line too long for its
+ * half wraps inside that half rather than widening the row: two columns that
+ * cannot both be seen at once are not a side-by-side diff. Where the lines fit,
+ * which is the editor's own case, nothing wraps at all.
  */
 
 .diff {
+  --dsh-git-diff-radius: 12px;
+  --dsh-git-diff-row: 22px;
+  /* Fixed-width gutter, so the code edge stays put however wide the numbers grow. */
+  --dsh-git-diff-gutter: 48px;
+  /* Where a run's own text starts: past the gutter, or past both of them when
+     the two sides share one column. */
+  --dsh-git-diff-indent: var(--dsh-git-diff-gutter);
+
   flex: 1;
   min-height: 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
+  background: var(--dsw-alias-markdown-code-block);
+}
+
+/* Stacked inside a commit's tab, each file is its own card with room around it,
+   the way a diff reads in the transcript. */
+.diffEmbedded {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 16px 0;
+  background: var(--dsw-alias-markdown-code-block);
+  border-radius: var(--dsh-git-diff-radius);
+  overflow: hidden;
 }
 
 .header {
   flex: none;
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 8px 12px;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  background: var(--dsw-alias-markdown-code-block-banner);
   border-bottom: 0.5px solid var(--dsw-alias-border-l2);
-  font: var(--dsw-font-xs-13);
 }
 
+.diffEmbedded .header {
+  border-top-left-radius: var(--dsh-git-diff-radius);
+  border-top-right-radius: var(--dsh-git-diff-radius);
+}
+
+/* The path is the banner's label: the code face at the read card's size, not
+   the panel's prose face, so a diff's chrome never outsizes its code. */
 .path {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+  font-family: var(--ds-font-family-code);
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .orig {
   color: var(--dsw-alias-label-tertiary);
-  font-weight: 400;
 }
 
-.revs {
+.actions {
   flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.revs,
+.stat {
   color: var(--dsw-alias-label-tertiary);
-  font: var(--dsw-font-xxxs-11);
+  font: var(--dsw-font-xs-13);
 }
 
 .stat {
-  flex: none;
   display: flex;
   gap: 6px;
-  font: var(--dsw-font-xxxs-11);
 }
 
 .added {
@@ -58,89 +98,137 @@
   color: var(--dsw-alias-state-error-primary);
 }
 
+/* The layout toggle: an icon whose own shape names what it offers, since the
+   shared icon set has no split/inline pair to borrow. */
+.view {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.view:hover {
+  color: var(--dsw-alias-label-primary);
+}
+
+.view:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 2px;
+}
+
+.copy {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  font: var(--dsw-font-xs-13);
+}
+
+.copy:hover {
+  color: var(--dsw-alias-label-primary);
+}
+
+.copy:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 2px;
+}
+
 .scroll {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  font: var(--dsw-font-markdown-code-block);
+  padding: 12px 0;
 }
 
-.diffEmbedded {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-/* Stacked inside an outer scroll region, one file's grid still scrolls its own
-   long lines sideways rather than widening the whole column. */
+/* Stacked inside an outer scroll region, which owns the scrolling; this only
+   holds the card's own inset. */
 .gridScroll {
-  overflow-x: auto;
+  padding: 12px 0;
 }
 
 .grid {
-  --dsh-git-line-height: 20px;
-
   display: grid;
-  grid-template-columns: max-content minmax(44ch, max-content) max-content minmax(44ch, max-content);
-  width: max-content;
-  min-width: 100%;
+  grid-template-columns:
+    var(--dsh-git-diff-gutter) minmax(0, 1fr)
+    var(--dsh-git-diff-gutter) minmax(0, 1fr);
+  width: 100%;
+  font: var(--dsw-font-markdown-code-block);
+}
+
+/* One column, read in order: the old number, the new one, then the line. The
+   two gutters stay, so a line's numbers are the same ones the two-column layout
+   puts beside it. */
+.grid[data-view='inline'] {
+  --dsh-git-diff-indent: calc(2 * var(--dsh-git-diff-gutter));
+
+  grid-template-columns:
+    var(--dsh-git-diff-gutter) var(--dsh-git-diff-gutter) minmax(0, 1fr);
 }
 
 .num {
-  padding: 0 8px;
+  padding-right: 14px;
   text-align: right;
   color: var(--dsw-alias-label-tertiary);
-  background: var(--dsw-alias-bg-layer-1);
+  /* The gutter is chrome, not content: a text selection of the visible rows
+     should carry the code, not the line numbers. */
   user-select: none;
-  font: var(--dsw-font-xxxs-11);
-  line-height: var(--dsh-git-line-height);
+  line-height: var(--dsh-git-diff-row);
 }
 
+/* Whole lines while they fit their half, wrapping inside it when they do not.
+   `break-word` rather than `anywhere`: a line breaks at its spaces first, and
+   only a token with nowhere to break — a long identifier, a URL — is cut. */
 .text {
-  padding: 0 10px;
-  white-space: pre;
-  line-height: var(--dsh-git-line-height);
+  padding-right: 16px;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  line-height: var(--dsh-git-diff-row);
 }
 
-/* The diff's own meaning-carrying colors, tinted from the semantic state
-   tokens the rest of the client uses for added and removed text. */
+/* The diff's own meaning-carrying colors, tinted from the same semantic tokens
+   the rest of the client uses for added and removed text. The text stays in the
+   reading tone: the band says what changed, and a line of red or green text is
+   harder to read than the code it marks. */
 .del {
-  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent);
-  color: var(--dsw-alias-state-error-primary);
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 13%, transparent);
 }
 
 .add {
-  background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 12%, transparent);
-  color: var(--dsw-alias-state-success-primary);
+  background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 13%, transparent);
 }
 
-/* A side with no line on this row: still tinted, so the block reads as a block. */
+/* A side with no line on this row: the page showing through the card, so the
+   gap reads as absence rather than as content. */
 .blank {
-  background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 60%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-bg-base) 45%, transparent);
 }
 
 /* Where rows were left out: stated, never silently skipped. */
 .gap {
   grid-column: 1 / -1;
-  padding: 0 12px;
-  background: var(--dsw-alias-bg-layer-1);
+  padding: 0 16px 0 var(--dsh-git-diff-indent);
   color: var(--dsw-alias-label-tertiary);
-  font: var(--dsw-font-xxxs-11);
-  line-height: var(--dsh-git-line-height);
+  line-height: var(--dsh-git-diff-row);
+  user-select: none;
 }
 
 .fold {
   grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
+  display: block;
+  padding: 0 16px 0 var(--dsh-git-diff-indent);
   border: none;
-  background: var(--dsw-alias-bg-layer-1);
+  background: transparent;
   color: var(--dsw-alias-label-tertiary);
   cursor: pointer;
   text-align: left;
-  font: var(--dsw-font-xxxs-11);
-  line-height: var(--dsh-git-line-height);
+  font: inherit;
+  line-height: var(--dsh-git-diff-row);
+  user-select: none;
 }
 
 .fold:hover {
@@ -154,7 +242,9 @@
 
 .notice {
   flex: none;
-  padding: 8px 12px;
+  margin: 0;
+  padding: 8px 14px;
+  background: var(--dsw-alias-markdown-code-block);
   color: var(--dsw-alias-state-warn-label);
   font: var(--dsw-font-xs-13);
 }
