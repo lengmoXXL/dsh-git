@@ -178,6 +178,11 @@ npm run build
 npm run watch       # 客户端 bundle 监听重建
 ```
 
+两类只有布局引擎能回答的东西，验证方式和断言层次都不同：
+
+- **滚动状态**（横向滚到一半时行号是否遮住正文、色带是否跟上）：截图工具不执行 JS，所以用**负边距**模拟横向滚动偏移再出图——被钉住的元素仍钉在原处，视觉效果与真滚动一致。
+- **这类不变量在 markup 里看不见**（塌陷是"计算高度"、遮挡是"绘制顺序"、色带宽度是"轨道尺寸"），所以它们由 `client-bundle.test.ts` 直接对**构建产物里的 CSS** 断言，而不是对渲染出的 HTML 断言。
+
 `shiki` / `@shikijs/langs` 是**构建期依赖**（devDependencies）：客户端 bundle 把它们内联进去，运行时不解析它们，所以放在 dependencies 反而会被 tsdown 外部化，加载时撞上模块表而报错。版本精确锁 `4.3.1`，与 harness 的文件视图一致。实测的 bundle 规模：
 
 | grammar 集合 | raw | gzip |

@@ -205,21 +205,27 @@
    the rest of the client uses for added and removed text. The text stays in the
    reading tone: the band says what changed, and a line of red or green text is
    harder to read than the code it marks. */
-/* Mixed against the card's own surface rather than left translucent: a pinned
-   line number draws the band it sits on, and a see-through band would let the
-   line it is numbering scroll across the number. */
+/* Mixed against the card's own surface rather than left translucent, and named
+   as a variable as well: an unwrapped lane's pinned line number paints this
+   band, and a see-through band would let the line scroll across the number. */
 .del {
-  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 13%, var(--dsw-alias-markdown-code-block));
+  --dsh-git-diff-band: color-mix(in srgb, var(--dsw-alias-state-error-primary) 13%, var(--dsw-alias-markdown-code-block));
+
+  background: var(--dsh-git-diff-band);
 }
 
 .add {
-  background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 13%, var(--dsw-alias-markdown-code-block));
+  --dsh-git-diff-band: color-mix(in srgb, var(--dsw-alias-state-success-primary) 13%, var(--dsw-alias-markdown-code-block));
+
+  background: var(--dsh-git-diff-band);
 }
 
 /* A side with no line on this row: the page showing through the card, so the
    gap reads as absence rather than as content. */
 .blank {
-  background: color-mix(in srgb, var(--dsw-alias-bg-base) 45%, var(--dsw-alias-markdown-code-block));
+  --dsh-git-diff-band: color-mix(in srgb, var(--dsw-alias-bg-base) 45%, var(--dsw-alias-markdown-code-block));
+
+  background: var(--dsh-git-diff-band);
 }
 
 /* An unwrapped body: one lane per half, each scrolling its own long lines. Both
@@ -259,6 +265,11 @@
 }
 
 .laneRow {
+  /* A row with no band of its own still paints the card's surface, because the
+     pinned number below draws this: a context row's number would otherwise be
+     transparent, and the line would scroll straight through it. */
+  --dsh-git-diff-band: var(--dsw-alias-markdown-code-block);
+
   display: grid;
   grid-template-columns: var(--dsh-git-diff-gutter) max-content;
   line-height: var(--dsh-git-diff-row);
@@ -268,14 +279,15 @@
   grid-template-columns: var(--dsh-git-diff-gutter) var(--dsh-git-diff-gutter) max-content;
 }
 
-/* The number stays where the reader left it while the line scrolls past: it
-   draws the row's own band, so the line goes under it rather than through it. */
+/* The number stays where the reader left it while the line scrolls past, and it
+   is opaque: it draws the row's band (or the card's surface when the row has
+   none), so the line goes under the number rather than through it. */
 .laneNum {
   position: sticky;
   left: 0;
   z-index: 1;
   padding-right: 14px;
-  background: inherit;
+  background: var(--dsh-git-diff-band);
   text-align: right;
   color: var(--dsw-alias-label-tertiary);
   user-select: none;

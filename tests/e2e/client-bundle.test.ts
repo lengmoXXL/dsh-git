@@ -337,6 +337,36 @@ test('sizes an unwrapped lane\'s rows and its track itself', async () => {
   )
 })
 
+test('masks the line that scrolls under a pinned number', async () => {
+  const source = await readArtifact(bundlePath)
+  const laneRow = /"laneRow":\s*"([^"]+)"/.exec(source)?.[1]
+  assert.notEqual(laneRow, undefined, 'the class map carries "laneRow"')
+  const prefix = String(laneRow).slice(0, String(laneRow).indexOf('_laneRow'))
+  const sheets = [...source.matchAll(/const css(?:\$\d+)? = "((?:[^"\\]|\\.)*)";/g)]
+    .map(match => JSON.parse(`"${match[1]}"`))
+  const sheet = String(sheets.find(text => text.includes(`.${prefix}_lane{`)) ?? '')
+
+  // The lane scrolls sideways and the number stays, so the line passes under the
+  // number. A number whose background is inherited from a row that has none is
+  // transparent, and the line then scrolls straight through it — which reads as
+  // two lines of text tangled in the gutter rather than one line beside a
+  // number. The number therefore paints a band of its own, and every row defines
+  // one, the card's own surface being the default.
+  const num = new RegExp(`\\.${prefix}_laneNum\\{([^{}]*)\\}`).exec(sheet)
+  assert.notEqual(num, null, 'the lane number has a rule of its own')
+  assert.match(
+    String(num?.[1]),
+    /background:var\(--dsh-git-diff-band\)/,
+    'the number paints a band rather than inheriting whatever its row has',
+  )
+  const row = new RegExp(`\\.${prefix}_laneRow\\{([^{}]*)\\}`).exec(sheet)
+  assert.match(
+    String(row?.[1]),
+    /--dsh-git-diff-band:var\(--dsw-alias-markdown-code-block\)/,
+    'a row with no band of its own still names one',
+  )
+})
+
 test('replaces a stylesheet the document already carries, rather than skipping it', async () => {
   const source = await readArtifact(bundlePath)
   const nodeRequire = createRequire(import.meta.url)
