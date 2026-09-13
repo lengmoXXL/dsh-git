@@ -298,7 +298,7 @@ test('declares the diff geometry for the embedded card as well as the tab', asyn
   assert.match(selector, /_diffEmbedded(?![\w-])/, 'the embedded card carries it too')
 })
 
-test('gives an unwrapped lane\'s rows a height of their own', async () => {
+test('sizes an unwrapped lane\'s rows and its track itself', async () => {
   const source = await readArtifact(bundlePath)
   const laneRow = /"laneRow":\s*"([^"]+)"/.exec(source)?.[1]
   assert.notEqual(laneRow, undefined, 'the class map carries "laneRow"')
@@ -308,16 +308,29 @@ test('gives an unwrapped lane\'s rows a height of their own', async () => {
   const sheet = String(sheets.find(text => text.includes(`.${prefix}_lane{`)) ?? '')
   const lane = new RegExp(`\\.${prefix}_lane\\{([^{}]*)\\}`).exec(sheet)
   assert.notEqual(lane, null, 'the lane has a rule of its own')
+  const body = String(lane?.[1])
 
   // A lane is a stack of its own, not a grid row shared with the other half, so
-  // a row whose OWN side has no line — the blank half of an insertion or a
-  // deletion — draws nothing at all. Unless the lane sizes its rows itself, that
-  // row collapses and the halves drift a row apart for every blank row between
-  // them, which reads as the two sides showing different code.
+  // its geometry cannot come from the row's contents:
+  //
+  // - A row whose OWN side has no line — the blank half of an insertion or a
+  //   deletion — draws nothing, and a row sized by its content collapses while
+  //   the other half keeps its height. The halves then drift a row apart for
+  //   every blank row between them.
+  // - A row's band is only as wide as the track it sits in. Sized to the
+  //   longest line, the band of a changed block stops short of the half's edge
+  //   and the half reads as if it were narrower than it is.
+  //
+  // Both are why the lane sizes its rows and its track itself.
   assert.match(
-    String(lane?.[1]),
+    body,
     /grid-auto-rows:[^;}]*var\(--dsh-git-diff-row\)|min-height:[^;}]*var\(--dsh-git-diff-row\)/,
     'every lane row is a row high whether or not it has anything in it',
+  )
+  assert.match(
+    body,
+    /grid-template-columns:[^;}]*minmax\(100%/,
+    'a lane\'s track is at least the half it draws in',
   )
 })
 

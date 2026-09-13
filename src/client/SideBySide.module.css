@@ -246,7 +246,10 @@
      Tracks of a fixed height cannot: a row is a row whether or not it has
      anything in it. */
   display: grid;
-  grid-template-columns: max-content;
+  /* The track is at least the half's own width, so a row's band reaches the
+     half's edge instead of stopping at the longest line in it — and wider than
+     that when a line is, which is what the lane then scrolls. */
+  grid-template-columns: minmax(100%, max-content);
   grid-auto-rows: var(--dsh-git-diff-row);
   align-content: start;
   /* Sideways only: the body keeps one vertical scroller, which is what holds
@@ -259,7 +262,6 @@
   display: grid;
   grid-template-columns: var(--dsh-git-diff-gutter) max-content;
   line-height: var(--dsh-git-diff-row);
-  min-width: 100%;
 }
 
 .laneRow[data-numbers='2'] {
