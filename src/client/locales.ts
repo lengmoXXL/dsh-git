@@ -24,7 +24,7 @@ export const zh = {
   'panel.retry': '重试',
   'loading': '正在加载…',
 
-  'log.title': 'Git 日志',
+  'log.title': 'Git',
   'log.guide': '浏览工作区改动与提交历史，点开即在新标签页看 diff',
   'changes.title': '改动',
   'changes.empty': '工作区没有改动',
@@ -94,7 +94,7 @@ export const en = {
   'panel.retry': 'Retry',
   'loading': 'Loading…',
 
-  'log.title': 'Git log',
+  'log.title': 'Git',
   'log.guide': 'Working-tree changes and history; a click opens the diff in its own tab',
   'changes.title': 'Changes',
   'changes.empty': 'No changes in the working tree',
