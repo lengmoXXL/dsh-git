@@ -13,6 +13,7 @@ import { Fragment, useState, type ReactNode } from 'react'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ChangeEntry, ChangeStage } from '../shared/wire.ts'
 import { FileRow } from './FileRow.tsx'
+import { LIST_PREVIEW, MoreRow } from './MoreRow.tsx'
 import { cx } from './format.ts'
 import type { GitKey } from './locales.ts'
 import { Section } from './Section.tsx'
@@ -64,8 +65,17 @@ export interface ChangeListProps {
  */
 export function ChangeList({ grouped, truncated, t, onSelect }: ChangeListProps): ReactNode {
   const [open, setOpen] = useState(true)
+  const [opened, setOpened] = useState<ReadonlySet<ChangeStage>>(() => new Set())
   const groups = nonEmptyGroups(grouped)
   const total = groups.reduce((sum, group) => sum + group.entries.length, 0)
+  const toggle = (stage: ChangeStage): void => {
+    setOpened((current) => {
+      const next = new Set(current)
+      if (next.has(stage)) next.delete(stage)
+      else next.add(stage)
+      return next
+    })
+  }
   return (
     <Section
       title={t('changes.title')}
@@ -81,7 +91,7 @@ export function ChangeList({ grouped, truncated, t, onSelect }: ChangeListProps)
             {t(GROUP_KEY[stage])}
             <span className={css.groupCount}>{entries.length}</span>
           </h4>
-          {entries.map(entry => (
+          {(opened.has(stage) ? entries : entries.slice(0, LIST_PREVIEW)).map(entry => (
             <ChangeRow
               key={`${entry.stage}:${entry.path}`}
               entry={entry}
@@ -89,6 +99,14 @@ export function ChangeList({ grouped, truncated, t, onSelect }: ChangeListProps)
               onSelect={onSelect}
             />
           ))}
+          {entries.length > LIST_PREVIEW && (
+            <MoreRow
+              label={t('list.moreFiles', { n: entries.length - LIST_PREVIEW })}
+              open={opened.has(stage)}
+              t={t}
+              onToggle={() => { toggle(stage) }}
+            />
+          )}
         </Fragment>
       ))}
       {truncated && <p className={cx(css.note, css.noteMore)}>{t('changes.truncated', { n: total })}</p>}

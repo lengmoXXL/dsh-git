@@ -73,11 +73,13 @@ export const name = 'dsh-git-ui'
 /** Client services this plugin needs before it activates. */
 export const inject = ['slots', 'locale', 'sidebarRightTabs', 'resources', 'sidebarRight']
 
-// Exported for the suite: the diff view is the one component whose geometry is
-// worth asserting against the built bundle, and a page body rendered on the server
-// never reaches its effects. The shell reads `name`, `inject` and `apply`.
+// Exported for the suite: how the diff draws and what the lists show are the two
+// things worth asserting against the built bundle, and a page body rendered on the
+// server never reaches its effects. The shell reads `name`, `inject` and `apply`.
 export { SideBySide } from './SideBySide.tsx'
 export type { SideBySideProps } from './SideBySide.tsx'
+export { ChangeList } from './ChangeList.tsx'
+export { HistoryList } from './HistoryList.tsx'
 
 /**
  * Mount the client half.

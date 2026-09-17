@@ -314,6 +314,39 @@
   font: var(--dsw-font-xs-13);
 }
 
+/* A control, not an entry: smaller than a row, led by its glyph, dimmer. A word
+   in a commit row's clothing reads as a commit. */
+.more {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 2px 4px 2px 8px;
+  border: none;
+  background: none;
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-font-xxxs-11);
+  text-align: left;
+  cursor: pointer;
+}
+
+.more:hover {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.moreGlyph {
+  flex: none;
+  width: 12px;
+  text-align: center;
+}
+
+.moreLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .note {
   margin: 0;
   padding: 4px 12px 8px;

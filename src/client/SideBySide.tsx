@@ -318,12 +318,6 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
     const count = before === after ? String(before) : `${String(before)} / ${String(after)}`
     return <span className={css.gap}>⋯ {count} {t('diff.omitted')}</span>
   }
-  /**
-   * Whether a display row draws a band rather than a line: a run the reader folded
-   * or opened, or a run the host left out — which arrives as a diff row, because
-   * the host sent it as a row.
-   */
-  const isBand = (row: DisplayRow): boolean => row.kind !== 'diff' || row.row.kind === 'gap'
   /** The control one display row stands for, when it is not a line. */
   const heldControl = (row: DisplayRow): ReactNode => {
     if (row.kind === 'fold') return foldControl(row.key, row.hidden)
@@ -344,7 +338,7 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
             </div>
           )
           : <InlineCells key={line.key} line={line} highlighted={unified?.[at]} />))
-        : rows.map((row, at) => (isBand(row)
+        : rows.map((row, at) => (row.kind !== 'diff' || row.row.kind === 'gap'
           ? (
             <div key={row.key} className={cx(css.held, row.kind === 'collapse' && css.heldBack)}>
               {heldControl(row)}
@@ -359,7 +353,9 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
   // half keeps step with a band of the same height.
   const laneSide = (side: Side): ReactNode =>
     rows.map((row, at) => {
-      if (isBand(row)) {
+      // A band is a run the reader folded or opened, or a run the host left out —
+      // which arrives as a diff row, because the host sent it as a row.
+      if (row.kind !== 'diff' || row.row.kind === 'gap') {
         // Stated once, in the half a reader starts at; the other half draws its
         // row empty, which the lane's fixed-height tracks keep in step.
         return (

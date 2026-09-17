@@ -21,6 +21,7 @@ import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { CommitFile, CommitSummary } from '../shared/wire.ts'
 import { gitFace } from './face.ts'
 import { FileRow } from './FileRow.tsx'
+import { HISTORY_PREVIEW, LIST_PREVIEW, MoreRow } from './MoreRow.tsx'
 import { cx, timeLabel } from './format.ts'
 import { logCache } from './log-cache.ts'
 import type { GitKey } from './locales.ts'
@@ -60,6 +61,7 @@ function CommitRow({ commit, sessionId, now, t, selected, onToggle, onSelectFile
   const [files, setFiles] = useState<Load<readonly CommitFile[]>>(
     () => cached(logCache(sessionId).commitFiles.get(commit.sha)),
   )
+  const [openFiles, setOpenFiles] = useState(false)
 
   // One read per opening: `selected` is this row's own switch, so a commit that
   // is not open never asks the host for anything.
@@ -133,7 +135,7 @@ function CommitRow({ commit, sessionId, now, t, selected, onToggle, onSelectFile
                 {t('commit.files')}
                 <span className={css.groupCount}>{files.value.length}</span>
               </h4>
-              {files.value.map(file => (
+              {(openFiles ? files.value : files.value.slice(0, LIST_PREVIEW)).map(file => (
                 <FileRow
                   key={`${file.path}:${file.origPath ?? ''}`}
                   path={file.path}
@@ -144,6 +146,14 @@ function CommitRow({ commit, sessionId, now, t, selected, onToggle, onSelectFile
                   onSelect={() => { onSelectFile(commit.sha, file) }}
                 />
               ))}
+              {files.value.length > LIST_PREVIEW && (
+                <MoreRow
+                  label={t('list.moreFiles', { n: files.value.length - LIST_PREVIEW })}
+                  open={openFiles}
+                  t={t}
+                  onToggle={() => { setOpenFiles(value => !value) }}
+                />
+              )}
             </>
           )}
         </div>
@@ -166,6 +176,9 @@ export function HistoryList({
   onSelectFile,
 }: HistoryListProps): ReactNode {
   const [open, setOpen] = useState(true)
+  // A page of history is a page, not the whole log: the rail shows the newest
+  // few and one control for the rest, and the same holds for one commit's files.
+  const [openCommits, setOpenCommits] = useState(false)
   // One commit at a time: the files of the commit being read are what the
   // reader is looking at, and a page of fifty open file lists is a page of
   // fifty commits nobody can find again. Which one that is outlives this mount:
@@ -189,7 +202,7 @@ export function HistoryList({
       t={t}
     >
       {commits.length === 0 && <p className={css.note}>{t('history.empty')}</p>}
-      {commits.map(commit => (
+      {(openCommits ? commits : commits.slice(0, HISTORY_PREVIEW)).map(commit => (
         <CommitRow
           key={commit.sha}
           commit={commit}
@@ -201,6 +214,14 @@ export function HistoryList({
           onSelectFile={onSelectFile}
         />
       ))}
+      {commits.length > HISTORY_PREVIEW && (
+        <MoreRow
+          label={t('list.moreCommits')}
+          open={openCommits}
+          t={t}
+          onToggle={() => { setOpenCommits(value => !value) }}
+        />
+      )}
       {hasMore && <p className={cx(css.note, css.noteMore)}>{t('history.more')}</p>}
     </Section>
   )

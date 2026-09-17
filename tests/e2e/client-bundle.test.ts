@@ -39,7 +39,10 @@ test('the built bundle registers itself under the plugin id', async () => {
 test('the loaded module exposes exactly the plugin surface', async () => {
   const { exports } = await loadBundle()
   // `SideBySide` is exported for this suite; the shell reads only these three.
-  assert.deepEqual(Object.keys(exports).sort(), ['SideBySide', 'apply', 'inject', 'name'])
+  assert.deepEqual(
+    Object.keys(exports).sort(),
+    ['ChangeList', 'HistoryList', 'SideBySide', 'apply', 'inject', 'name'],
+  )
   assert.equal(exports['name'], 'dsh-git-ui')
   assert.deepEqual(exports['inject'], ['slots', 'locale', 'sidebarRightTabs', 'resources', 'sidebarRight'])
 })
@@ -141,6 +144,52 @@ test('the diff body states the rows the host left out', async () => {
   assert.match(markup, /900/)
   assert.match(markup, /1200/)
   assert.match(markup, /diff\.truncated/)
+})
+
+test('shows the newest twelve commits and one control for the rest', async () => {
+  const { exports } = await loadBundle()
+  const commits = Array.from({ length: 20 }, (_unused, at) => ({
+    sha: `${String(at)}`.padStart(40, 'a'),
+    short: `c${String(at)}`,
+    subject: `commit ${String(at)}`,
+    author: 'someone',
+    at: Date.UTC(2024, 0, 1 + at),
+    refs: [],
+    parents: ['a'.repeat(40)],
+  }))
+  const markup = await render(exports['HistoryList'], {
+    commits,
+    hasMore: true,
+    sessionId: 's',
+    now: Date.UTC(2024, 1, 1),
+    onSelectFile: () => {},
+  })
+  // A page is a page, not the whole log: the newest twelve, and one control saying
+  // there are older ones — without a number, which no side can know.
+  assert.match(markup, /commit 11/)
+  assert.doesNotMatch(markup, /commit 12/)
+  assert.match(markup, /list\.moreCommits/)
+  assert.doesNotMatch(markup, /list\.moreCommits[^<]*\d/)
+})
+
+test('shows eight changes per group and one control for the rest', async () => {
+  const { exports } = await loadBundle()
+  const entries = Array.from({ length: 11 }, (_unused, at) => ({
+    path: `src/file${String(at)}.ts`,
+    stage: 'unstaged' as const,
+    kind: 'modified' as const,
+    origPath: undefined,
+  }))
+  const markup = await render(exports['ChangeList'], {
+    grouped: { conflicted: [], staged: [], unstaged: entries, untracked: [] },
+    truncated: false,
+    onSelect: () => {},
+  })
+  assert.match(markup, /src\/file7\.ts/)
+  assert.doesNotMatch(markup, /src\/file8\.ts/)
+  // The control is a control: three dots, a count, and it says what it stands for.
+  assert.match(markup, /⋯/)
+  assert.match(markup, /list\.moreFiles/)
 })
 
 test('the bundle carries its stylesheets inlined under hashed local names', async () => {
