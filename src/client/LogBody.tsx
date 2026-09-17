@@ -304,6 +304,10 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
       if (target instanceof HTMLElement && (target.isContentEditable || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
       if (event.key === 'Escape' && focusedPane !== undefined) closeFocused()
       if (event.key === 'b') setRailOpen(!railSettings().open)
+      // The two switches have keys as well as buttons, because a reader who reads
+      // diffs all day should not have to aim at a glyph to change how they read.
+      if (event.key === 'w') setDiffWrap(!diffViewSettings().wrap)
+      if (event.key === 'i') setDiffViewMode(diffViewSettings().mode === 'inline' ? 'split' : 'inline')
     }
     document.addEventListener('keydown', onKey)
     return () => { document.removeEventListener('keydown', onKey) }

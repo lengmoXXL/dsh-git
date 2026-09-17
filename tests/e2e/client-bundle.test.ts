@@ -465,6 +465,14 @@ test('replaces a stylesheet the document already carries, rather than skipping i
   }
 })
 
+test('keeps the scrollbars thin without restyling the shell', async () => {
+  const source = await readArtifact(bundlePath)
+  const css = source.replace(/\s+/g, '')
+  assert.match(css, /--dsh-scrollbar-width:6px/)
+  // On the panel's own rule, not on the document's.
+  assert.doesNotMatch(css, /:root\{[^}]*--dsh-scrollbar-width/)
+})
+
 test('carries the build it came from', async () => {
   const source = await readArtifact(bundlePath)
   // Substituted at build time, so a page can be asked which build it is

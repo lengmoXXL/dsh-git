@@ -13,6 +13,9 @@
   overflow: hidden;
   background: var(--dsw-alias-bg-base);
   color: var(--dsw-alias-label-primary);
+  /* Thin scrollbars, set on this panel rather than on the document: the page is a
+     guest in the shell and has no business restyling the shell's own scrollbars. */
+  --dsh-scrollbar-width: 6px;
 }
 
 /* The header names the branch and where it stands, and gives way from the inside
