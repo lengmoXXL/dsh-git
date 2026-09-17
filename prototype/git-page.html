@@ -96,6 +96,12 @@
   }
 
   * { box-sizing: border-box; }
+
+  /* A drag belongs to the half it began in. The other half is not selectable
+     while it lasts, so a copied hunk is one side's text and never both sides
+     interleaved — which is what copying out of a two-column diff is for. */
+  body[data-selecting='left'] [data-half='right'],
+  body[data-selecting='right'] [data-half='left'] { user-select: none; }
   html, body { height: 100%; margin: 0; }
   body {
     display: flex; flex-direction: column;
@@ -492,9 +498,9 @@ function cells(row, view) {
   const rightTone = rno === null ? 'blank' : kind === 'insert' || kind === 'replace' ? 'add' : ''
   return `<div class="line">
     <span class="num ${leftTone}">${lno === null ? '' : lno}</span>
-    <span class="text ${leftTone}">${lno === null ? '' : highlight(ltext, view.lang)}</span>
+    <span class="text ${leftTone}" data-half="left">${lno === null ? '' : highlight(ltext, view.lang)}</span>
     <span class="num ${rightTone}">${rno === null ? '' : rno}</span>
-    <span class="text ${rightTone}">${rno === null ? '' : highlight(rtext, view.lang)}</span>
+    <span class="text ${rightTone}" data-half="right">${rno === null ? '' : highlight(rtext, view.lang)}</span>
   </div>`
 }
 
@@ -531,7 +537,7 @@ function laneMarkup(rows, view, side) {
     }
     const no = side === 'left' ? lno : rno
     const text = side === 'left' ? ltext : rtext
-    return `<div class="lane-row" data-band="${band(row)}">
+    return `<div class="lane-row" data-band="${band(row)}" data-half="${side}">
       <span class="b lane-num">${no === null ? '' : no}</span>
       <span class="b lane-text">${no === null ? '' : highlight(text, view.lang)}</span>
     </div>`
@@ -727,6 +733,48 @@ $('board').addEventListener('click', (event) => {
   }
   focusCard(address)
 })
+
+/* The drag rule above covers the mouse; a selection made with the keyboard, or
+   one that outran the pointer, is settled here: the copy takes the half the
+   selection started in. */
+const halfOf = (node) => {
+  const element = node === null ? null : node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement
+  return element?.closest('[data-half]')?.dataset.half ?? null
+}
+
+function halfText(selection) {
+  const from = halfOf(selection.anchorNode)
+  const to = halfOf(selection.focusNode)
+  if (from !== null && from === to) return null
+  const range = selection.getRangeAt(0)
+  const covered = [...document.querySelectorAll('[data-half]')].filter((row) => range.intersectsNode(row))
+  if (covered.length === 0) return null
+  // A selection made from outside both halves — a triple click on the card, a
+  // select-all — takes the half of the first line it covers.
+  const half = from ?? covered[0].dataset.half
+  const lines = covered
+    .filter((row) => row.dataset.half === half)
+    .map((row) => (row.matches('.text') ? row : row.querySelector('.lane-text, .text'))?.textContent ?? '')
+  if (lines.length === 0) return null
+  return lines.join('\n') + '\n'
+}
+
+document.addEventListener('copy', (event) => {
+  const selection = window.getSelection()
+  if (selection === null || selection.isCollapsed || event.clipboardData === null) return
+  const text = halfText(selection)
+  if (text === null) return
+  event.clipboardData.setData('text/plain', text)
+  event.preventDefault()
+})
+
+document.addEventListener('pointerdown', (event) => {
+  const half = event.target instanceof Element ? event.target.closest('[data-half]')?.dataset.half : undefined
+  if (half !== undefined) document.body.dataset.selecting = half
+})
+for (const done of ['pointerup', 'pointercancel']) {
+  document.addEventListener(done, () => { delete document.body.dataset.selecting })
+}
 
 document.addEventListener('keydown', (event) => {
   if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
