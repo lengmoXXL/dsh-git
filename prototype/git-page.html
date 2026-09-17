@@ -39,7 +39,9 @@
    8. [原型] 点提交就地展开它的文件列表；文件超过 8 个同样折叠。**提交的文件块整体
       比提交缩进一级**：文件行与它下面那条 `⋯ N 个文件` 一起缩进，而 `⋯ N 个提交`
       留在提交这一级——两条折叠行分属两级，不能长在同一列上。
-   9. [原型] 历史超过 12 条折叠成同一形式的小号控制行（`▾ 24 个提交`）。落地：这一行不是展开已有的，
+   9. [原型] 历史超过 12 条折叠成同一形式的小号控制行：`⋯ 更早的提交`——**不带数字**。
+      仓库有多少提交两边都不知道（要数就得走一遍历史，成本高），而"这一页里还藏了 N 条"
+      会被读成仓库总数。落地：这一行不是展开已有的，
       而是向 host 要下一页（GET /dsh-git/history 已支持 skip）。
   10. [原型] 上游 ref 不在行里单独画胶囊。
   11. [原型] 侧栏可抽屉收起（页头按钮或 b），可拖宽（最窄 220px，最宽
@@ -512,7 +514,10 @@ function railRows() {
   }
   if (state.filter !== 'changes') {
     const commits = DATA.commits
-    if (commits.length > 0) rows.push({ kind: 'section', label: '历史', count: commits.length })
+    // No count on this header: how many commits a repository holds is not known to
+    // either side without walking the history, and a number that only counts the
+    // page in hand would be read as the repository's total.
+    if (commits.length > 0) rows.push({ kind: 'section', label: '历史' })
     for (const commit of shown(commits, 'history', LOG_PREVIEW)) {
       rows.push({ kind: 'commit', key: `commit:${commit.short}`, commit })
       if (!state.open.has(commit.short)) continue
@@ -537,18 +542,22 @@ function railMarkup() {
   return railRows().map((row, index) => {
     const selected = index === state.cursor ? ' aria-selected="true"' : ''
     if (row.kind === 'section') {
-      return `<div class="section">${esc(row.label)}<span class="count">${row.count}</span></div>`
+      const count = row.count === undefined ? '' : `<span class="count">${row.count}</span>`
+      return `<div class="section">${esc(row.label)}${count}</div>`
     }
     if (row.kind === 'group') {
       return `<div class="group">${esc(row.label)} ${row.count}</div>`
     }
     if (row.kind === 'more') {
       const open = state.expandedGroups.has(row.owner)
-      const label = open ? `收起${row.unit === '提交' ? '历史' : '文件'}` : `还有 ${row.hidden} 个${row.unit}`
+      // Files are counted exactly — a commit's list is in hand. Commits are not: a
+      // page says there are more of them, never how many there are altogether.
+      const noun = row.unit === '提交' ? '更早的提交' : `${row.hidden} 个文件`
+      const label = open ? `收起${row.unit === '提交' ? '历史' : '文件'}` : `还有 ${noun}`
       return `<button class="row more" role="option"${selected} data-index="${index}" data-more="${esc(row.owner)}"
         data-scope="${row.unit === '文件' ? 'files' : 'history'}" aria-expanded="${open}" title="${esc(label)}">
         <span class="chev">${open ? '▴' : '⋯'}</span>
-        <span class="name">${open ? '' : row.hidden}${open ? '' : ` 个${row.unit}`}</span>
+        <span class="name">${open ? '' : noun}</span>
       </button>`
     }
     if (row.kind === 'change') {
