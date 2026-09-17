@@ -21,7 +21,9 @@
    3. [原型] diff 开在右侧卡片里；同一条 diff 已经在板上时只聚焦，不重复开
       （地址即身份）。落地：直接复用 SideBySide。
    4. [原型] 行尾 ↗（或 ⌥Enter）把 diff 并排开在已有卡片旁边。
-   5. [原型] 卡片可关闭、可折叠；点卡片聚焦。
+   5. [原型] 卡片可关闭、可折叠；点卡片聚焦。卡片**没有标题带**——列表已经说明这是
+      哪个文件，横幅只是把同一件事再说一遍；路径、两侧 rev 与 +/− 放进卡片 tooltip，
+      控件悬停时才浮出来；未抓到 diff 的"示例"标记留在左上角（它不能藏）。
 
   二、列表
    6. [原型] 改动按 冲突/已暂存/未暂存/未跟踪 分组；一组超过 8 条折叠成
@@ -310,19 +312,18 @@
     border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
   }
   .card:last-child { margin-right: 8px; }
-  .card-head {
-    flex: none; display: flex; align-items: center; gap: 8px;
-    padding: 6px 10px; background: var(--banner); border-bottom: 1px solid var(--line);
+  /* No title bar: the list already says which file this is, and a banner over a
+     diff is a row spent on saying it twice. The path and the two revisions live
+     in the card's tooltip, the controls show up when the card is hovered, and a
+     sampled diff keeps a small mark where it cannot be missed. */
+  .card { position: relative; }
+  .card-tools {
+    position: absolute; top: 4px; right: 4px; z-index: 4; display: flex; gap: 2px;
+    opacity: 0; transition: opacity .12s ease;
   }
-  .card-head .path { font: 12px var(--code-font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .card-head .path .dir { color: var(--text-faint); }
-  .card-head .revs { color: var(--text-dim); font: 11px var(--code-font); white-space: nowrap; }
-  .card-head .stat { font: 11px var(--code-font); white-space: nowrap; }
-  .card-head .stat .a { color: var(--dsw-alias-state-success-primary); }
-  .card-head .stat .d { color: var(--dsw-alias-state-error-primary); }
-  .card-head .actions { margin-left: auto; display: flex; gap: 2px; align-items: center; }
-  .icon { padding: 2px 5px; border-radius: 6px; color: var(--text-dim); }
-  .icon:hover { color: var(--text); background: var(--bg); }
+  .card:hover .card-tools, .card:focus-within .card-tools { opacity: 1; }
+  .card-tools .icon { background: var(--banner); }
+  .card-mark { position: absolute; top: 5px; left: 8px; z-index: 3; }
   .card-body { flex: 1; min-height: 0; overflow: auto; }
   .card.collapsed .card-body { display: none; }
   .note { margin: 0; padding: 10px 12px; color: var(--text-dim); font-size: 12px; }
@@ -718,19 +719,14 @@ function cardMarkup(address, index) {
   const diff = captured ?? sampleDiff(address)
   const focused = state.focused === address ? ' focused' : ''
   const collapsed = state.collapsed.has(address) ? ' collapsed' : ''
-  const [dir, base] = pathParts(diff.path)
-  return `<article class="card${focused}${collapsed}" data-address="${esc(address)}">
-    <header class="card-head">
-      <span class="path" title="${esc(address)}"><span class="dir">${esc(dir)}</span>${esc(base)}</span>
-      <span class="revs" title="${esc(address)}">${esc(diff.oldLabel)} → ${esc(diff.newLabel)}</span>
-      ${captured === undefined
-        ? '<span class="chip" title="这个文件的 diff 没有收进原型，画的是该文件类型的示例">示例</span>'
-        : `<span class="stat"><span class="a">+${diff.added}</span> <span class="d">−${diff.removed}</span></span>`}
-      <span class="actions">
-        <button class="icon" data-act="collapse" title="折叠 / 展开">▾</button>
-        <button class="icon" data-act="close" title="关闭">✕</button>
-      </span>
-    </header>
+  const stat = captured === undefined ? '' : ` · +${diff.added} −${diff.removed}`
+  const title = `${diff.path} · ${diff.oldLabel} → ${diff.newLabel}${stat}`
+  return `<article class="card${focused}${collapsed}" data-address="${esc(address)}" title="${esc(title)}">
+    ${captured === undefined ? '<span class="chip card-mark" title="这个文件的 diff 没有收进原型，画的是该文件类型的示例">示例</span>' : ''}
+    <div class="card-tools">
+      <button class="icon" data-act="collapse" title="折叠 / 展开">▾</button>
+      <button class="icon" data-act="close" title="关闭">✕</button>
+    </div>
     <div class="card-body">${diffMarkup(diff, { ...state, lang: langOf(diff.path) })}</div>
   </article>`
 }
