@@ -110,7 +110,8 @@
   .row .grow { flex: 1; }
   .row.more { color: var(--text-dim); }
   .row.more .chev { flex: none; width: 10px; color: var(--text-faint); }
-  .row .chip { flex: none; }
+  .row .chip { flex: none; white-space: nowrap; }
+  .row .meta { flex: 0 1 auto; min-width: 0; overflow: hidden; }
   .row .letter { flex: none; font-weight: 600; font-size: 11px; }
   .letter[data-k='M'] { color: #b45309; }
   .letter[data-k='A'], .letter[data-k='U'] { color: #15803d; }
@@ -123,7 +124,7 @@
   .node.merge { background: transparent; border: 1.5px solid var(--text-faint); }
   .subject { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .row.open .subject { font-weight: 600; }
-  .meta { flex: none; margin-left: auto; color: var(--text-faint); font-size: 11px; white-space: nowrap; }
+  .meta { flex: 0 1 auto; margin-left: auto; color: var(--text-faint); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .beside { flex: none; padding: 0 4px; border-radius: 6px; color: var(--text-faint); opacity: 0; }
   .row:hover .beside, .row[aria-selected='true'] .beside { opacity: 1; }
   .beside:hover { color: var(--accent); background: var(--bg); }
@@ -277,6 +278,21 @@ const state = {
 const PREVIEW = 8
 
 const refName = (ref) => ref.replace(/^HEAD -> /, '').replace(/^refs\/heads\//, '').replace(/^refs\/remotes\//, '').replace(/^tag: refs\/tags\//, '')
+
+/**
+ * The chips a commit's row carries.
+ *
+ * A remote-tracking ref that is this branch on its remote — `origin/main` while
+ * on `main` — is left out: the header already names the upstream, and next to
+ * the branch it tracks it reads as a second branch rather than the same one
+ * somewhere else.
+ */
+function rowRefs(commit) {
+  const upstreamOfHead = `${DATA.repo.upstream ?? ''}`
+  return commit.refs
+    .filter((ref) => refName(ref) !== upstreamOfHead)
+    .slice(0, 2)
+}
 const ageOf = (at) => {
   const minutes = Math.max(1, Math.round((Date.now() / 1000 - at) / 60))
   if (minutes < 60) return `${minutes} 分钟前`
@@ -376,7 +392,7 @@ function railMarkup() {
         <span class="subject">${esc(commit.subject)}</span>
         ${count}
         <span class="meta">${esc(commit.author)} · ${esc(ageOf(commit.at))}</span>
-        ${commit.refs.slice(0, 2).map((ref, at) => `<span class="chip ${at === 0 && current ? 'head' : ''}">${esc(refName(ref))}</span>`).join('')}
+        ${rowRefs(commit).map((ref, at) => `<span class="chip ${at === 0 && current ? 'head' : ''}">${esc(refName(ref))}</span>`).join('')}
       </button>`
     }
     const [dir, base] = pathParts(row.file.path)
