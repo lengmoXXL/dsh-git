@@ -25,8 +25,12 @@ export interface LogCache {
   status?: StatusPayload | undefined
   /** The last history read, kept for the same reason. */
   history?: HistoryPayload | undefined
-  /** The commit whose file list was open, if any. */
-  openCommit?: string | undefined
+  /**
+   * The commit whose file list is open. `undefined` is a reader who has not said;
+   * `null` is one who closed the newest commit's list, which is a choice and not a
+   * silence — the difference decides what the page opens with.
+   */
+  openCommit?: string | null | undefined
   /** File lists read so far, by commit id. */
   readonly commitFiles: Map<string, readonly CommitFile[]>
   /** Where the list was scrolled to, in pixels. */

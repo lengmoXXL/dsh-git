@@ -250,6 +250,10 @@ test('shows the newest twelve commits and one control for the rest', async () =>
   // A commit row is a commit: the node, its subject, when and by whom. Nothing
   // per-row says "expandable" — the whole row is the target.
   assert.doesNotMatch(markup, /_disclosure/)
+  // The newest commit is open before anyone asks: a page about a repository should
+  // show what it just did, not a column of subjects. Exactly one commit row says so
+  // — the section above it is a collapsible of its own, which is a different thing.
+  assert.equal((markup.match(/_row [^>]*aria-expanded="true"/g) ?? []).length, 1)
 })
 
 test('shows eight changes per group and one control for the rest', async () => {

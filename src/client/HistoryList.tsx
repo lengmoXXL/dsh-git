@@ -184,12 +184,17 @@ export function HistoryList({
   // reader is looking at, and a page of fifty open file lists is a page of
   // fifty commits nobody can find again. Which one that is outlives this mount:
   // opening a diff and coming back finds the same list open.
-  const [opened, setOpened] = useState<string | undefined>(
-    () => logCache(sessionId).openCommit,
-  )
+  const [opened, setOpened] = useState<string | null>(() => {
+    const remembered = logCache(sessionId).openCommit
+    // Nothing said yet: the newest commit's files are open, so the page shows what
+    // the repository just did rather than a column of subjects. A reader who closes
+    // it has said something, and that is remembered as `null`.
+    if (remembered === undefined) return commits[0]?.sha ?? null
+    return remembered
+  })
   const toggle = useCallback((sha: string) => {
     setOpened((current) => {
-      const next = current === sha ? undefined : sha
+      const next = current === sha ? null : sha
       logCache(sessionId).openCommit = next
       return next
     })
