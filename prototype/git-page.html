@@ -41,7 +41,9 @@
   13. [原型] 只是查看器：不 stage、不 commit、不 discard（插件本身只读）。
   14. [原型] 四个控件：双栏/单栏、折行/不折行、复制（统一 diff 文本）；它们是
       读者的偏好，全局生效并持久化。
-  15. [原型] 行高固定 22px，不能由内容撑（否则空半边那一行会塌，两栏逐行错开）；
+  15. [原型] 单栏只有一个行号列，显示该行自己那一侧的号码（删除＝旧号、新增＝新号、
+      上下文＝新号）；只有两栏才需要两个行号槽。
+  15b. [原型] 行高固定 22px，不能由内容撑（否则空半边那一行会塌，两栏逐行错开）；
       行号槽 48px 且不可选；色带铺满各自半栏（宽度写在滚动内容上，不是轨道上）；
       不折行时行号与折叠标签都钉在各自栏内。
   16. [原型] 改动行只染底、不改字色；空的一侧露出底色；省略行/折叠行带自己的计数。
@@ -66,6 +68,8 @@
   六、这份文件的数据边界
   24. [原型] 内嵌 36 条真实提交（含各自真实的文件列表）与 5 份真实 diff；没有抓到
       diff 的文件画一份该类型的"示例"并在卡片上标注，且不显示编造的 +/−。
+  25. [原型] 单栏目前只按折行渲染（不折行的单栏在这个原型里没做）；插件里单栏也有
+      折行/不折行两种，落地时按 15/15b 的同一条几何处理。
 */
 
   /* The shell's own panel language: card surfaces, semantic aliases, 11px/19px
@@ -317,7 +321,7 @@
   /* One aligned row per line pair, drawn exactly as the plugin draws it. */
   .grid { font: var(--dsw-font-markdown-code-block); }
   .grid .line { display: grid; grid-template-columns: var(--gutter) minmax(0, 1fr) var(--gutter) minmax(0, 1fr); min-height: var(--row); }
-  .grid[data-view='inline'] .line { grid-template-columns: var(--gutter) var(--gutter) minmax(0, 1fr); }
+  .grid[data-view='inline'] .line { grid-template-columns: var(--gutter) minmax(0, 1fr); }
   .grid .num { text-align: right; padding-right: 12px; color: var(--text-faint); background: var(--surface); user-select: none; }
   .grid .text { padding: 0 12px 0 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
   .grid .held { grid-column: 1 / -1; background: var(--surface); color: var(--text-faint); padding-left: 12px; }
@@ -603,17 +607,21 @@ function cells(row, view) {
   </div>`
 }
 
-function inlineLine(no, other, tone, text, lang) {
-  return `<div class="line"><span class="num ${tone}">${no === null ? '' : no}</span><span class="num ${tone}">${other === null ? '' : other}</span><span class="text ${tone}">${text === null ? '' : highlight(text, lang)}</span></div>`
+/* One number column: the number this line has on its own side — the old one for a
+   removal, the new one for an addition, the new one for context, where both sides
+   agree. Two columns of numbers above one column of code was saying the same
+   thing twice, and the second number was always the one worth reading anyway. */
+function inlineLine(number, tone, text, lang) {
+  return `<div class="line"><span class="num ${tone}">${number === null ? '' : number}</span><span class="text ${tone}">${text === null ? '' : highlight(text, lang)}</span></div>`
 }
 
 function inlineCells(row, view) {
   const [kind, lno, ltext, rno, rtext] = row
   if (kind === 'fold') return `<div class="held" style="grid-column:1/-1">⋯ ${lno} 行未改动</div>`
-  if (kind === 'context') return inlineLine(lno, rno, '', ltext, view.lang)
-  if (kind === 'replace') return inlineLine(lno, null, 'del', ltext, view.lang) + inlineLine(null, rno, 'add', rtext, view.lang)
-  if (kind === 'delete') return inlineLine(lno, null, 'del', ltext, view.lang)
-  return inlineLine(null, rno, 'add', rtext, view.lang)
+  if (kind === 'context') return inlineLine(rno, '', ltext, view.lang)
+  if (kind === 'replace') return inlineLine(lno, 'del', ltext, view.lang) + inlineLine(rno, 'add', rtext, view.lang)
+  if (kind === 'delete') return inlineLine(lno, 'del', ltext, view.lang)
+  return inlineLine(rno, 'add', rtext, view.lang)
 }
 
 function laneMarkup(rows, view, side) {
