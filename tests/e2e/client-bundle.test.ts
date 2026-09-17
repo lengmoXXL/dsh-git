@@ -273,7 +273,7 @@ test('shows eight changes per group and one control for the rest', async () => {
   assert.match(markup, /list\.moreFiles/)
   // And a row offers the file as well as its diff, in a span because a button
   // inside a button is not a thing a browser will draw.
-  assert.match(markup, /_rowOpen/)
+  assert.match(markup, /_rowFile/)
 })
 
 test('the bundle carries its stylesheets inlined under hashed local names', async () => {

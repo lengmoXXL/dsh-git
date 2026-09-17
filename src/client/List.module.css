@@ -137,7 +137,9 @@
 /* What a row offers when the pointer is on it: reading the file, which the row's
    own click — opening the diff — cannot mean. It sits before the status letter,
    because the letter is the row's last mark. */
-.rowOpen {
+/* `rowFile`, not `rowOpen`: a commit row is already `rowOpen` while its files are
+   showing, and a class that means two things made an open commit invisible. */
+.rowFile {
   flex: none;
   display: inline-flex;
   align-items: center;
@@ -147,12 +149,12 @@
   opacity: 0;
 }
 
-.row:hover .rowOpen,
-.row:focus-visible .rowOpen {
+.row:hover .rowFile,
+.row:focus-visible .rowFile {
   opacity: 1;
 }
 
-.rowOpen:hover {
+.rowFile:hover {
   color: var(--dsw-alias-state-business-primary);
   background: var(--dsw-alias-bg-base);
 }

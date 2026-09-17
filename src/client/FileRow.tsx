@@ -78,7 +78,7 @@ export function FileRow({
       {onOpenFile !== undefined && (
         <span
           role="presentation"
-          className={css.rowOpen}
+          className={css.rowFile}
           title={t('diff.openFile')}
           onClick={(event) => { event.stopPropagation(); onOpenFile() }}
         >
