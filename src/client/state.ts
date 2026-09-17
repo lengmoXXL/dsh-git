@@ -13,7 +13,7 @@
  * @module dsh-git/client/state
  */
 
-import type { ChangeEntry, ChangeKind, ChangeStage, DiffPayload, DiffRow, DiffSource } from '../shared/wire.ts'
+import type { ChangeEntry, ChangeKind, ChangeStage, DiffRow, DiffSource } from '../shared/wire.ts'
 import { GitRequestError, type DiffRequest } from './face.ts'
 
 /**
@@ -182,34 +182,6 @@ export function parseRefs(refs: readonly string[]): RefChip[] {
  */
 function unqualified(name: string, prefix: string): string {
   return name.startsWith(prefix) ? name.slice(prefix.length) : name
-}
-
-/**
- * The diff as text, for the copy control.
- *
- * A row whose old side was dropped copies as a `-` line and one whose new side
- * was dropped as a `+` line, so a re-substitution of the whole file reproduces
- * the change; a replaced row copies both, old first. Context copies once — the
- * two sides of an unchanged line are the same line. The host's own "rows left
- * out" markers stay, so a copy of a truncated diff is not read as complete.
- *
- * @param diff - one change, already aligned.
- * @returns the change as unified diff text.
- */
-export function diffText(diff: DiffPayload): string {
-  const lines = [diff.path]
-  if (diff.origPath !== undefined) lines.push(`← ${diff.origPath}`)
-  for (const line of inlineLines(diff.rows)) {
-    switch (line.kind) {
-      case 'context': lines.push(` ${line.text ?? ''}`); break
-      case 'delete': lines.push(`-${line.text ?? ''}`); break
-      case 'insert': lines.push(`+${line.text ?? ''}`); break
-      case 'gap': lines.push(`⋯ ${String(line.skippedLeft ?? 0)} / ${String(line.skippedRight ?? 0)}`); break
-      // A fold is the reader's own display state, so it is never part of a copy.
-      case 'fold': break
-    }
-  }
-  return `${lines.join('\n')}\n`
 }
 
 /**

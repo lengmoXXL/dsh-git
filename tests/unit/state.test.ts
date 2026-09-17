@@ -8,11 +8,10 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import type { ChangeEntry, ChangeKind, DiffPayload, DiffRow } from '../../src/shared/wire.ts'
+import type { ChangeEntry, ChangeKind, DiffRow } from '../../src/shared/wire.ts'
 import { GitRequestError } from '../../src/client/face.ts'
 import {
   collapseRows,
-  diffText,
   clampRailWidth,
   failureInfoOf,
   placePane,
@@ -174,52 +173,7 @@ test('reads a detached HEAD, skips blanks, and falls back to the raw ref name', 
   assert.deepEqual(parseRefs(['refs/stash']), [{ kind: 'branch', name: 'refs/stash' }])
 })
 
-test('copies a change as unified text, old side first', () => {
-  const diff: DiffPayload = {
-    path: 'src/a.ts',
-    source: 'worktree',
-    oldLabel: 'index',
-    newLabel: 'working tree',
-    binary: false,
-    truncated: false,
-    removed: 2,
-    added: 2,
-    rows: [
-      { kind: 'context', left: { no: 1, text: 'keep' }, right: { no: 1, text: 'keep' } },
-      { kind: 'replace', left: { no: 2, text: 'old' }, right: { no: 2, text: 'new' } },
-      { kind: 'delete', left: { no: 3, text: 'gone' }, right: null },
-      { kind: 'insert', left: null, right: { no: 3, text: 'added' } },
-    ],
-  }
-  assert.equal(diffText(diff), [
-    'src/a.ts',
-    ' keep',
-    '-old',
-    '+new',
-    '-gone',
-    '+added',
-    '',
-  ].join('\n'))
-})
 
-test('names the old path and the rows the host left out in a copy', () => {
-  const diff: DiffPayload = {
-    path: 'src/new.ts',
-    origPath: 'src/old.ts',
-    source: 'commit',
-    oldLabel: 'abc^',
-    newLabel: 'abc',
-    binary: false,
-    truncated: true,
-    removed: 0,
-    added: 0,
-    rows: [
-      { kind: 'gap', left: null, right: null, skippedLeft: 900, skippedRight: 901 },
-      { kind: 'insert', left: null, right: { no: 901, text: 'line' } },
-    ],
-  }
-  assert.equal(diffText(diff), ['src/new.ts', '← src/old.ts', '⋯ 900 / 901', '+line', ''].join('\n'))
-})
 
 test('reads a change in one column, where a replacement becomes its two lines', () => {
   const rows: DiffRow[] = [

@@ -116,7 +116,9 @@ test('the page header carries the controls, and only what it can act on', async 
   assert.match(markup, /panel\.railHide/)
   assert.match(markup, /panel\.railRight/)
   assert.match(markup, /diff\.openFile/)
-  assert.match(markup, /diff\.copy/)
+  // No copy button: copying is what a selection does, and that keeps to the half it
+  // started in without a control of its own.
+  assert.doesNotMatch(markup, /diff\.copy/)
   assert.match(markup, /diff\.inlineView/)
   assert.match(markup, /diff\.clipView/)
   assert.match(markup, /disabled/)

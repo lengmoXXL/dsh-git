@@ -32,7 +32,6 @@ import {
   Button,
   IconBranchOutline16,
   IconRefreshOutline16,
-  writeClipboard,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale, PropsRuntime, Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type {
@@ -40,7 +39,6 @@ import type {
   ChangeEntry,
   CommitFile,
   CommitSummary,
-  DiffPayload,
   HistoryPayload,
   StatusPayload,
 } from '../shared/wire.ts'
@@ -68,7 +66,6 @@ import {
   cached,
   clampRailWidth,
   diffKey,
-  diffText,
   failureInfoOf,
   groupChanges,
   placePane,
@@ -273,13 +270,6 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
 
   const focusedPane = panes.find(pane => pane.key === focused)
 
-  // The page's controls act on the pane the reader is in, and the page cannot see
-  // into a pane's read: each pane reports its diff as it arrives.
-  const [diffs, setDiffs] = useState<ReadonlyMap<string, DiffPayload>>(() => new Map())
-  const onLoaded = useCallback((key: string, diff: DiffPayload) => {
-    setDiffs(current => new Map(current).set(key, diff))
-  }, [])
-  const focusedDiff = focused === null ? undefined : diffs.get(focused)
   const settings = useSyncExternalStore(
     subscribeDiffViewSettings,
     diffViewSettings,
@@ -290,15 +280,6 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   // goes to storage when it is let go: a drag is not a reason to touch storage
   // sixty times a second.
   const [dragging, setDragging] = useState<number | undefined>(undefined)
-  const [copied, setCopied] = useState(false)
-  const copy = useCallback(() => {
-    if (focusedDiff === undefined) return
-    void writeClipboard(diffText(focusedDiff)).then((ok) => {
-      if (!ok) return
-      setCopied(true)
-      window.setTimeout(() => { setCopied(false) }, 1000)
-    })
-  }, [focusedDiff])
 
   // Escape closes the pane the reader is in, which is the only way a pane goes
   // away: a pane is replaced by the next diff, not dismissed from over the code.
@@ -404,16 +385,6 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
           }}
         >
           <OpenFileGlyph />
-        </button>
-        <button
-          type="button"
-          className={css.control}
-          title={t('diff.copy')}
-          aria-label={t('diff.copy')}
-          disabled={focusedDiff === undefined}
-          onClick={copy}
-        >
-          {copied ? t('diff.copied') : t('diff.copy')}
         </button>
         {/* The switches are the reader's, not a pane's: two panes showing two sets
             of them is the same question asked twice. Each pair names both of its
@@ -533,13 +504,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
             onDoubleClick={() => { setRailWidth(336) }}
           />
         )}
-        <GitBoard
-          panes={panes}
-          focused={focused}
-          t={t}
-          onFocus={focusPane}
-          onLoaded={onLoaded}
-        />
+        <GitBoard panes={panes} focused={focused} t={t} onFocus={focusPane} />
       </div>
     </div>
   )

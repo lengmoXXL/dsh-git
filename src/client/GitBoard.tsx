@@ -34,11 +34,6 @@ export interface GitBoardProps {
   readonly t: Translate<GitKey>
   /** Called when a pane is clicked, so the next diff knows where to land. */
   readonly onFocus: (key: string) => void
-  /**
-   * Called once a pane has its diff. The page's own controls — copying, above all
-   * — act on the focused pane, and the page cannot reach into a pane's read.
-   */
-  readonly onLoaded?: ((key: string, diff: DiffPayload) => void) | undefined
 }
 
 /**
@@ -46,12 +41,11 @@ export interface GitBoardProps {
  * @param props - the pane, whether it is focused, and the page's translator.
  * @returns the pane.
  */
-function DiffPane({ pane, focused, t, onFocus, onLoaded }: {
+function DiffPane({ pane, focused, t, onFocus }: {
   readonly pane: BoardPane
   readonly focused: boolean
   readonly t: Translate<GitKey>
   readonly onFocus: (key: string) => void
-  readonly onLoaded?: ((key: string, diff: DiffPayload) => void) | undefined
 }): ReactNode {
   const [load, setLoad] = useState<Load<DiffPayload>>({ phase: 'loading' })
 
@@ -64,7 +58,6 @@ function DiffPane({ pane, focused, t, onFocus, onLoaded }: {
       (value) => {
         if (controller.signal.aborted) return
         setLoad({ phase: 'ready', value })
-        onLoaded?.(pane.key, value)
       },
       (error: unknown) => {
         if (controller.signal.aborted) return
@@ -104,7 +97,7 @@ function DiffPane({ pane, focused, t, onFocus, onLoaded }: {
  * @param props - see {@link GitBoardProps}.
  * @returns the panes, or what stands in for them.
  */
-export function GitBoard({ panes, focused, t, onFocus, onLoaded }: GitBoardProps): ReactNode {
+export function GitBoard({ panes, focused, t, onFocus }: GitBoardProps): ReactNode {
   if (panes.length === 0) {
     return (
       <div className={css.board}>
@@ -124,7 +117,6 @@ export function GitBoard({ panes, focused, t, onFocus, onLoaded }: GitBoardProps
           focused={pane.key === focused}
           t={t}
           onFocus={onFocus}
-          onLoaded={onLoaded}
         />
       ))}
     </div>
