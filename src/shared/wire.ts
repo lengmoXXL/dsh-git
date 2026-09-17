@@ -200,21 +200,3 @@ export interface CommitDiffPayload {
   readonly truncated: boolean
 }
 
-/**
- * The value a `dsh-resource://git/...` tab renders: one change, one commit's
- * worth of changes, or the failure that stopped it.
- *
- * A failure is a value rather than a broken stream on purpose: the resource
- * carrier delivers failures as frames in its own vocabulary, and keeping this
- * one inside the value lets the tab draw the reason the host gave without this
- * plugin depending on that vocabulary.
- */
-export type GitResource =
-  | { readonly kind: 'diff'; readonly diff: DiffPayload }
-  | {
-    readonly kind: 'commit'
-    readonly commit: CommitSummary
-    readonly files: readonly DiffPayload[]
-    readonly truncated: boolean
-  }
-  | { readonly kind: 'error'; readonly code: string; readonly message: string }

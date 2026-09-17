@@ -323,20 +323,6 @@ export function diffKey(request: {
   return [request.source, request.rev ?? '', request.origPath ?? '', request.path].join('\u0000')
 }
 
-/**
- * A revision label as a reader writes it.
- *
- * A commit's own address is a full object id, and the host labels the two sides
- * of a commit's diff with it; forty hex characters are not a label. The suffix
- * git's revision syntax adds — `^`, `~2` — is kept, so the pair still says what
- * is being compared.
- *
- * @param label - a revision label from the host.
- * @returns the label with any full object id shortened to seven characters.
- */
-export function revLabel(label: string): string {
-  return label.replace(/[0-9a-f]{40}/gi, id => id.slice(0, 7))
-}
 
 /** One line of a diff read in one column instead of two. */
 export interface InlineLine {

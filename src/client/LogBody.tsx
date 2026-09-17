@@ -114,7 +114,7 @@ function trackingLabel(branch: BranchStatus, t: Translate<GitKey>): string | und
  * @param path - a repository-relative path, as git reported it.
  * @returns the address the file view opens.
  */
-export function fileAddress(sessionId: string, path: string): string {
+function fileAddress(sessionId: string, path: string): string {
   const encoded = path.split('/').map(segment => encodeURIComponent(segment)).join('/')
   return `dsh-resource://file/session/${encodeURIComponent(sessionId)}/${encoded}`
 }

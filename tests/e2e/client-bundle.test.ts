@@ -102,6 +102,78 @@ test('the log body renders its frame while the reads are still in flight', async
   assert.match(markup, /loading/)
 })
 
+test('the page header carries the controls, and only what it can act on', async () => {
+  const { registrations } = await applied()
+  const log = registrations.find(entry => entry.definition['key'] === 'dsh-git/log')
+  const markup = await render(log?.component, {
+    useTabInfo: tabInfo('sidebar://git-log'),
+    sessionId: 'session-1',
+    openResource: () => {},
+  })
+  // The list's own controls, then the actions on the pane the reader is in. With
+  // no diff open yet there is nothing to open a file from or copy, so those two
+  // say so rather than doing nothing when clicked.
+  assert.match(markup, /panel\.railHide/)
+  assert.match(markup, /panel\.railRight/)
+  assert.match(markup, /diff\.openFile/)
+  assert.match(markup, /diff\.copy/)
+  assert.match(markup, /diff\.inlineView/)
+  assert.match(markup, /diff\.clipView/)
+  assert.match(markup, /disabled/)
+})
+
+test('draws a wholly added or removed file in one column', async () => {
+  const { exports } = await loadBundle()
+  const added = await render(exports['SideBySide'], {
+    diff: {
+      path: 'src/new.ts',
+      source: 'commit',
+      oldLabel: 'abc^',
+      newLabel: 'abc',
+      binary: false,
+      truncated: false,
+      removed: 0,
+      added: 2,
+      rows: [{ kind: 'insert', left: null, right: { no: 1, text: 'one' } }],
+    },
+  })
+  // A column of blanks beside a column of code is not a comparison.
+  assert.match(added, /data-view="inline"/)
+  const both = await render(exports['SideBySide'], {
+    diff: {
+      path: 'src/both.ts',
+      source: 'commit',
+      oldLabel: 'abc^',
+      newLabel: 'abc',
+      binary: false,
+      truncated: false,
+      removed: 1,
+      added: 1,
+      rows: [{ kind: 'replace', left: { no: 1, text: 'old' }, right: { no: 1, text: 'new' } }],
+    },
+  })
+  assert.match(both, /data-view="split"/)
+})
+
+test('marks each half, so a copy can take one side rather than both', async () => {
+  const { exports } = await loadBundle()
+  const markup = await render(exports['SideBySide'], {
+    diff: {
+      path: 'src/a.ts',
+      source: 'worktree',
+      oldLabel: 'index',
+      newLabel: 'working tree',
+      binary: false,
+      truncated: false,
+      removed: 1,
+      added: 1,
+      rows: [{ kind: 'replace', left: { no: 1, text: 'old' }, right: { no: 1, text: 'new' } }],
+    },
+  })
+  assert.match(markup, /data-half="left"/)
+  assert.match(markup, /data-half="right"/)
+})
+
 test('the diff body highlights a line through the sheet the file view uses', async () => {
   const { exports } = await loadBundle()
   const payload = {
@@ -202,7 +274,7 @@ test('the bundle carries its stylesheets inlined under hashed local names', asyn
   // Module into the artifact and attaches one tagged <style> at factory time.
   assert.match(source, /data-plugin-css/)
   const css = source.replace(/\s+/g, '')
-  for (const local of ['panel', 'grid', 'row', 'sectionHeader', 'rowLetter', 'nodeCurrent', 'ref', 'view']) {
+  for (const local of ['panel', 'control', 'grip', 'grid', 'fold', 'row', 'rowOpen', 'sectionHeader', 'rowLetter', 'nodeCurrent', 'ref']) {
     const mapped = new RegExp(`"${local}":\\s*"([^"]+)"`).exec(source)
     assert.notEqual(mapped, null, `the class map carries "${local}"`)
     const name = String(mapped?.[1])
