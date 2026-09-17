@@ -149,11 +149,14 @@
 
 /* Six pixels of grip, straddling the border, so the pointer finds it without the
    layout paying for it. */
+/* Twelve pixels of grip for a hairline border: at twice the pixels the six it used to
+   be was three CSS pixels of radius, and a press a little to either side landed on the
+   list or the board and did nothing. */
 .grip {
   flex: none;
   position: relative;
-  width: 6px;
-  margin: 0 -3px;
+  width: 12px;
+  margin: 0 -6px;
   /* Above both neighbours: a static box with a z-index paints in tree order, and the
      board comes after this one, so half the grip's width belonged to the board. */
   z-index: 2;
