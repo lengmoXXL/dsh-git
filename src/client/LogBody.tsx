@@ -24,6 +24,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react'
 import {
@@ -57,10 +58,16 @@ import { HistoryList } from './HistoryList.tsx'
 import { logCache } from './log-cache.ts'
 import type { GitKey, GitNamespace } from './locales.ts'
 import {
+  clampRailWidth,
   diffViewSettings,
+  railSettings,
   setDiffViewMode,
   setDiffWrap,
+  setRailOpen,
+  setRailSide,
+  setRailWidth,
   subscribeDiffViewSettings,
+  subscribeRailSettings,
 } from './view-mode.ts'
 import {
   cached,
@@ -268,6 +275,11 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
     diffViewSettings,
     diffViewSettings,
   )
+  const rail = useSyncExternalStore(subscribeRailSettings, railSettings, railSettings)
+  // While the grip is held the width follows the pointer locally, and one write
+  // goes to storage when it is let go: a drag is not a reason to touch storage
+  // sixty times a second.
+  const [dragging, setDragging] = useState<number | undefined>(undefined)
   const [copied, setCopied] = useState(false)
   const copy = useCallback(() => {
     if (focusedDiff === undefined) return
@@ -282,11 +294,30 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   // away: a pane is replaced by the next diff, not dismissed from over the code.
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
+      // A page that eats keystrokes while someone is typing is a page that cannot
+      // be typed in; the composer may be elsewhere, but the rule costs nothing.
+      const target = event.target
+      if (target instanceof HTMLElement && (target.isContentEditable || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
       if (event.key === 'Escape' && focusedPane !== undefined) closeFocused()
+      if (event.key === 'b') setRailOpen(!railSettings().open)
     }
     document.addEventListener('keydown', onKey)
     return () => { document.removeEventListener('keydown', onKey) }
   }, [closeFocused, focusedPane])
+
+  // Which way the drawer's arrow points: at the edge the list is nearest, so the
+  // same control means "put it away" wherever the list has been moved to.
+  const listOnRight = rail.side === 'right'
+  const drawerGlyph = rail.open === listOnRight ? '›' : '‹'
+
+  /** Follow the pointer while the grip is held, clamped to what a diff can spare. */
+  const dragWidth = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    setDragging(clampRailWidth(
+      listOnRight ? window.innerWidth - event.clientX : event.clientX,
+      window.innerWidth,
+    ))
+  }
+  const railWidth = dragging ?? rail.width
 
   const ready = status.phase === 'ready' ? status.value : undefined
   const repo = ready?.repo ?? null
@@ -301,6 +332,25 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   return (
     <div className={css.panel}>
       <header className={css.header}>
+        <button
+          type="button"
+          className={css.control}
+          title={rail.open ? t('panel.railHide') : t('panel.railShow')}
+          aria-label={rail.open ? t('panel.railHide') : t('panel.railShow')}
+          aria-expanded={rail.open}
+          onClick={() => { setRailOpen(!rail.open) }}
+        >
+          {drawerGlyph}
+        </button>
+        <button
+          type="button"
+          className={css.control}
+          title={listOnRight ? t('panel.railLeft') : t('panel.railRight')}
+          aria-label={listOnRight ? t('panel.railLeft') : t('panel.railRight')}
+          onClick={() => { setRailSide(listOnRight ? 'left' : 'right') }}
+        >
+          {listOnRight ? '◨' : '◧'}
+        </button>
         {repo !== null && (
           <span className={css.branch} title={branchTitle}>
             <IconBranchOutline16 size={12} className={css.branchIcon} />
@@ -360,9 +410,13 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
           {t('panel.refresh')}
         </Button>
       </header>
-      <div className={css.body}>
+      <div className={css.body} data-side={rail.side}>
+        {/* The list stays mounted when it is put away, so the reader's place in it
+            is still there when it comes back. */}
         <div
           className={css.list}
+          style={{ width: rail.open ? `${String(railWidth)}px` : '0px' }}
+          aria-hidden={!rail.open}
           ref={scroller}
           onScroll={(event) => { logCache(sessionId).scrollTop = event.currentTarget.scrollTop }}
         >
@@ -397,6 +451,27 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
             </>
           )}
         </div>
+        {rail.open && (
+          <div
+            className={css.grip}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label={t('panel.resize')}
+            title={t('panel.resize')}
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId)
+              setDragging(rail.width)
+            }}
+            onPointerMove={(event) => { dragWidth(event) }}
+            onPointerUp={(event) => {
+              event.currentTarget.releasePointerCapture(event.pointerId)
+              if (dragging !== undefined) setRailWidth(dragging)
+              setDragging(undefined)
+            }}
+            onPointerCancel={() => { setDragging(undefined) }}
+            onDoubleClick={() => { setRailWidth(336) }}
+          />
+        )}
         <GitBoard
           panes={panes}
           focused={focused}

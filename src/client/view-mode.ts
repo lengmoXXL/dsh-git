@@ -1,12 +1,11 @@
 /**
- * How diffs are drawn, and the one place that remembers it.
+ * How the page is arranged, and the one place that remembers it.
  *
- * The editor this panel borrows its diff from keeps the same two choices: two
- * aligned columns or one column in reading order, and whole lines or wrapped
- * ones. Both are properties of the reader, not of the change, so every diff tab
- * follows the same answer and the answer outlives the tab — a preference the
- * browser holds, since the host has no business knowing how a viewer likes its
- * diffs.
+ * Two kinds of choice live here, and both are the reader's rather than the
+ * change's. How a diff is drawn — two aligned columns or one in reading order,
+ * whole lines or wrapped ones — so every diff follows the same answer. And where
+ * the list sits — which side, how wide, whether it is put away — so the page opens
+ * the way it was left. None of it is the host's business, so the browser holds it.
  *
  * @module dsh-git/client/view-mode
  */
@@ -111,4 +110,139 @@ function apply(next: DiffViewSettings): void {
 export function subscribeDiffViewSettings(listener: () => void): () => void {
   listeners.add(listener)
   return () => { listeners.delete(listener) }
+}
+
+/** Which side of the page the list is on. */
+export type RailSide = 'left' | 'right'
+
+/** Everything the reader chose about the list's place on the page. */
+export interface RailSettings {
+  /** The edge the list sits against. */
+  readonly side: RailSide
+  /** How wide it is, in pixels. */
+  readonly width: number
+  /** Whether it is showing at all. */
+  readonly open: boolean
+}
+
+/** What a reader who has said nothing gets: a comfortable list on the left. */
+const RAIL_DEFAULTS: RailSettings = { side: 'left', width: 336, open: true }
+
+/** The narrowest the list may be dragged, and the widest. */
+export const RAIL_MIN_WIDTH = 220
+const RAIL_MAX_WIDTH = 760
+
+/** The room a diff keeps whatever the list does. */
+const DIFF_RESERVE = 420
+
+/** Where each choice is kept between page loads. */
+const SIDE_KEY = 'dsh-git:rail-side'
+const WIDTH_KEY = 'dsh-git:rail-width'
+const OPEN_KEY = 'dsh-git:rail-open'
+
+/** The settings last resolved, so a render reads a stable value. */
+let currentRail: RailSettings | undefined
+
+/** Who to tell when the list's place changes. */
+const railListeners = new Set<() => void>()
+
+/**
+ * How wide the list may be, given the window it sits in.
+ *
+ * The list may be dragged from a sliver to a generous column, but a diff needs
+ * room to be a diff: the width stops short of eating the page, and on a window too
+ * narrow for both the minimum wins rather than the reserve.
+ *
+ * @param width - the width asked for, in pixels.
+ * @param windowWidth - the width of the window, in pixels.
+ * @returns the width to use.
+ */
+export function clampRailWidth(width: number, windowWidth: number): number {
+  const widest = Math.min(RAIL_MAX_WIDTH, Math.max(RAIL_MIN_WIDTH, windowWidth - DIFF_RESERVE))
+  return Math.max(RAIL_MIN_WIDTH, Math.min(widest, Math.round(width)))
+}
+
+/**
+ * The remembered place of the list, or the defaults.
+ * @returns the settings to lay the page out with.
+ */
+export function railSettings(): RailSettings {
+  currentRail ??= storedRail()
+  return currentRail
+}
+
+/**
+ * Read the list's place from the browser.
+ * @returns the stored settings, defaulted field by field.
+ */
+function storedRail(): RailSettings {
+  if (typeof window === 'undefined') return RAIL_DEFAULTS
+  try {
+    const width = Number(window.localStorage.getItem(WIDTH_KEY))
+    return {
+      side: window.localStorage.getItem(SIDE_KEY) === 'right' ? 'right' : RAIL_DEFAULTS.side,
+      width: Number.isFinite(width) && width > 0 ? width : RAIL_DEFAULTS.width,
+      // Only an explicit "shut" puts the list away, so a value this plugin never
+      // wrote cannot hide the list on someone.
+      open: window.localStorage.getItem(OPEN_KEY) !== '0',
+    }
+  } catch {
+    return RAIL_DEFAULTS
+  }
+}
+
+/**
+ * Put the list on one side or the other.
+ * @param side - the edge to sit against.
+ */
+export function setRailSide(side: RailSide): void {
+  applyRail({ ...railSettings(), side })
+}
+
+/**
+ * Set how wide the list is.
+ * @param width - the width to use; clamped by the caller's window.
+ */
+export function setRailWidth(width: number): void {
+  applyRail({ ...railSettings(), width })
+}
+
+/**
+ * Show the list or put it away.
+ * @param open - whether it is showing.
+ */
+export function setRailOpen(open: boolean): void {
+  applyRail({ ...railSettings(), open })
+}
+
+/**
+ * Remember a choice and tell the page about it.
+ * @param next - the settings to lay out with.
+ */
+function applyRail(next: RailSettings): void {
+  const previous = railSettings()
+  if (
+    next.side === previous.side
+    && next.width === previous.width
+    && next.open === previous.open
+  ) return
+  currentRail = next
+  try {
+    window.localStorage.setItem(SIDE_KEY, next.side)
+    window.localStorage.setItem(WIDTH_KEY, String(next.width))
+    window.localStorage.setItem(OPEN_KEY, next.open ? '1' : '0')
+  } catch {
+    // The choice still holds for this page; it just will not be remembered.
+  }
+  for (const listener of railListeners) listener()
+}
+
+/**
+ * Watch the list's place, for `useSyncExternalStore`.
+ * @param listener - called after every change.
+ * @returns the unsubscribe.
+ */
+export function subscribeRailSettings(listener: () => void): () => void {
+  railListeners.add(listener)
+  return () => { railListeners.delete(listener) }
 }

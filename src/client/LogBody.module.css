@@ -92,11 +92,39 @@
   display: flex;
 }
 
+/* The list takes the width the reader gave it, and gives way from the inside: its
+   own scroller is what shrinks. */
 .list {
   flex: none;
-  width: 336px;
   min-height: 0;
   overflow: auto;
   padding-bottom: 12px;
   border-right: 0.5px solid var(--dsw-alias-border-l2);
+}
+
+/* The list can sit against either edge. Reversing the row is the whole of it: the
+   grip stays between the two, so dragging and the drawer need no second
+   implementation, and the border moves to the edge that now faces the diffs. */
+.body[data-side='right'] {
+  flex-direction: row-reverse;
+}
+
+.body[data-side='right'] .list {
+  border-right: none;
+  border-left: 0.5px solid var(--dsw-alias-border-l2);
+}
+
+/* Six pixels of grip, straddling the border, so the pointer finds it without the
+   layout paying for it. */
+.grip {
+  flex: none;
+  width: 6px;
+  margin: 0 -3px;
+  z-index: 1;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.grip:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
 }
