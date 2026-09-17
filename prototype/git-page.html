@@ -79,9 +79,9 @@
       `kind: 'text'`（该类型声明 `dsh-resource://file/**`，见 ui-sidebar-documentpreview）。
       原型里没有外壳，所以它只飘一条提示说明这一步交给谁。
   18c. [原型] 同一条 diff 已在板上时只聚焦、不重复开（地址即身份）；同一个文件在**不同
-      来源**下（工作区 / 某个提交）是两条不同的 diff，会并排出现——这是有意的。示例数据的
-      标记只写两个字"示例"（画面上不再重复"在比什么"），完整的路径与两侧 rev 放在它的
-      tooltip 里：两条示例并排时，悬停即可分辨。
+      来源**下（工作区 / 某个提交）是两条不同的 diff，会并排出现——这是有意的。示例数据
+      **在画面上不做任何标记**（只有这份清单和第 24 条说明它是替身）；路径与两侧 rev 在
+      卡片的 tooltip 里。插件里不会有替身——它总是在向 host 要真实的 diff。
 
   四、外观
   19. [原型] 颜色一律用外壳 token（--dsw-alias-*），不自造色板；主题跟随外壳，
@@ -98,8 +98,9 @@
   23. [原型] ↑↓ 移动、Enter 打开、⌥Enter 并排、Esc 关卡片、b 收列表、w/i 切换布局。
 
   六、这份文件的数据边界
-  24. [原型] 内嵌 36 条真实提交（含各自真实的文件列表）与 5 份真实 diff；没有抓到
-      diff 的文件画一份该类型的"示例"并在卡片上标注，且不显示编造的 +/−。
+  24. [原型] 内嵌 36 条真实提交（含各自真实的文件列表）与 5 份真实 diff。没有抓到 diff
+      的文件画一份**该文件类型的示例**（ts/css/md/其它各一份，走同一个渲染器），
+      **不在画面上标注**、也不显示编造的 +/−；哪些是替身，只有这份清单和代码知道。
   25. [原型] 单栏目前只按折行渲染（不折行的单栏在这个原型里没做）；插件里单栏也有
       折行/不折行两种，落地时按 15/15b 的同一条几何处理。
   27. [原型] 底部状态栏先不做。它当时显示的是"选中了什么 + 完整资源地址 + 快捷键"，
@@ -358,12 +359,6 @@
     margin: 0; background: var(--surface); overflow: hidden;
   }
   .card + .card { margin-left: 10px; }
-  /* A sampled diff keeps a mark; nothing else overlays the code. */
-  .card { position: relative; }
-  /* A stand-in has to say what it stands for: two addresses can name the same
-     file at different revisions, and without the comparison on the mark the two
-     panes would be indistinguishable. */
-  .card-mark { position: absolute; top: 5px; left: 8px; z-index: 3; }
   .card-body { flex: 1; min-height: 0; overflow: auto; }
   .note { margin: 0; padding: 10px 12px; color: var(--text-dim); font-size: 12px; }
   /* Prototype only: the click's handoff is stated, then it goes away. */
@@ -834,9 +829,6 @@ function cardMarkup(address, index) {
   const stat = captured === undefined ? '' : ` · +${diff.added} −${diff.removed}`
   const title = `${diff.path} · ${diff.oldLabel} → ${diff.newLabel}${stat}`
   return `<article class="card${focused}" data-address="${esc(address)}" title="${esc(title)}">
-    ${captured === undefined
-      ? `<span class="chip card-mark" title="${esc(title)}">示例</span>`
-      : ''}
     <div class="card-body">${diffMarkup(diff, { ...state, lang: langOf(diff.path) }, address)}</div>
   </article>`
 }
