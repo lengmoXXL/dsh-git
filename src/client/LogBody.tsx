@@ -262,13 +262,20 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   // a second. The list can sit against either edge, so the pointer's distance from
   // that edge is the width.
   const [dragging, setDragging] = useState<number | undefined>(undefined)
-  const dragWidth = useRef<number | undefined>(undefined)
   const grip = useRef<HTMLDivElement>(null)
+  // Where the grip was taken hold of, and how wide the list was then: the drag moves
+  // by how far the pointer has travelled from there, so taking hold never moves the
+  // border by itself.
+  const grab = useRef<{ readonly x: number; readonly width: number } | undefined>(undefined)
+  /** The width the drag has settled on, for the release to write. */
+  const dragWidth = useRef<number | undefined>(undefined)
   const listOnRight = rail.side === 'right'
   // The drawer's arrow points at the edge the list is nearest, so the control means
   // "put it away" wherever the list has been moved to.
   const drawerGlyph = rail.open === listOnRight ? '›' : '‹'
   const railWidth = dragging ?? rail.width
+  const shownWidth = useRef(railWidth)
+  shownWidth.current = railWidth
 
   // Armed here rather than with React's own handler: the page is a guest inside the
   // shell, and a shell that stops the press at a wrapper would keep a delegated
@@ -279,9 +286,11 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
     if (element === null) return
     const start = (event: Event): void => {
       event.preventDefault()
-      const width = railSettings().width
-      dragWidth.current = width
-      setDragging(width)
+      grab.current = { x: (event as PointerEvent).clientX, width: shownWidth.current }
+      dragWidth.current = shownWidth.current
+      // The width already on screen, so taking hold moves nothing — and setting it is
+      // what arms the listeners below, which wait for a drag to be under way.
+      setDragging(shownWidth.current)
     }
     element.addEventListener('pointerdown', start, true)
     // `mousedown` as well: the same press, for anything that does not deliver the
@@ -306,14 +315,18 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   useEffect(() => {
     if (dragging === undefined) return
     const move = (event: PointerEvent): void => {
+      const from = grab.current
+      if (from === undefined) return
+      const travel = event.clientX - from.x
       dragWidth.current = clampRailWidth(
-        listOnRight ? window.innerWidth - event.clientX : event.clientX,
+        listOnRight ? from.width - travel : from.width + travel,
         window.innerWidth,
       )
       setDragging(dragWidth.current)
     }
     const finish = (commit: boolean): void => {
       if (commit && dragWidth.current !== undefined) setRailWidth(dragWidth.current)
+      grab.current = undefined
       dragWidth.current = undefined
       setDragging(undefined)
     }
