@@ -288,7 +288,7 @@
   .group { padding: 8px 10px 2px; font-size: 11px; color: var(--text-faint); }
   .row {
     display: flex; align-items: center; gap: 6px; width: 100%;
-    padding: 3px 10px; text-align: left; line-height: 20px;
+    padding: 3px 4px 3px 10px; text-align: left; line-height: 20px;
   }
   .row:hover { background: var(--hover); }
   .row[aria-selected='true'] { background: var(--accent-soft); }
@@ -321,7 +321,7 @@
   .subject { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .row.open .subject { font-weight: 600; }
   .meta { flex: 0 1 auto; margin-left: auto; color: var(--text-faint); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .beside { flex: none; padding: 0 4px; border-radius: 6px; color: var(--text-faint); opacity: 0; }
+  .beside { flex: none; padding: 0 2px; border-radius: 6px; color: var(--text-faint); opacity: 0; }
   .row:hover .beside, .row[aria-selected='true'] .beside { opacity: 1; }
   .beside:hover { color: var(--accent); background: var(--bg); }
 
@@ -556,16 +556,16 @@ function railMarkup() {
       const label = open ? `收起${row.unit === '提交' ? '历史' : '文件'}` : `还有 ${noun}`
       return `<button class="row more" role="option"${selected} data-index="${index}" data-more="${esc(row.owner)}"
         data-scope="${row.unit === '文件' ? 'files' : 'history'}" aria-expanded="${open}" title="${esc(label)}">
-        <span class="chev">${open ? '▴' : '⋯'}</span>
-        <span class="name">${open ? '' : noun}</span>
+        <span class="chev">${open ? '' : '⋯'}</span>
+        <span class="name">${open ? '收起' : noun}</span>
       </button>`
     }
     if (row.kind === 'change') {
       const [dir, base] = pathParts(row.change.path)
       return `<button class="row" role="option"${selected} data-index="${index}">
         <span class="name">${esc(base)}</span>${dir ? `<span class="dir">${esc(dir)}</span>` : ''}
-        <span class="grow"></span><span class="letter" data-k="${letterOf(row.change.status)}">${esc(letterOf(row.change.status))}</span>
-        <span class="beside" data-beside="${index}" title="并排打开">↗</span>
+        <span class="grow"></span><span class="beside" data-beside="${index}" title="并排打开">↗</span>
+        <span class="letter" data-k="${letterOf(row.change.status)}">${esc(letterOf(row.change.status))}</span>
       </button>`
     }
     if (row.kind === 'commit') {
@@ -585,8 +585,8 @@ function railMarkup() {
     const [dir, base] = pathParts(row.file.path)
     return `<button class="row file" role="option"${selected} data-index="${index}">
       <span class="name">${esc(base)}</span>${dir ? `<span class="dir">${esc(dir)}</span>` : ''}
-      <span class="grow"></span><span class="letter" data-k="${letterOf(row.file.status)}">${esc(letterOf(row.file.status))}</span>
-      <span class="beside" data-beside="${index}" title="并排打开">↗</span>
+      <span class="grow"></span><span class="beside" data-beside="${index}" title="并排打开">↗</span>
+      <span class="letter" data-k="${letterOf(row.file.status)}">${esc(letterOf(row.file.status))}</span>
     </button>`
   }).join('')
 }
