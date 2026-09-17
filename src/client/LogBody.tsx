@@ -209,24 +209,34 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   const openDiff = useCallback((request: DiffRequest, beside: boolean) => {
     const key = diffKey(request)
     const cache = logCache(sessionId)
-    setPanes((current) => {
-      const next = placePane(current, { key, request }, beside, cache.focused)
-      cache.panes = next
-      return next
-    })
-    setFocused(key)
+    // The board is computed from the cache rather than inside a state updater: an
+    // updater runs when React renders, by which time the focus has already moved on,
+    // and a pane that cannot find the one it replaces adds itself instead.
+    const next = placePane(cache.panes, { key, request }, beside, cache.focused)
+    cache.panes = next
     cache.focused = key
+    setPanes(next)
+    setFocused(key)
   }, [sessionId])
 
+  /**
+   * Close the pane the reader is in, and move to the one before it.
+   *
+   * With nothing focused — after a close — the last pane goes, so pressing Escape
+   * walks the board down one diff at a time instead of stopping at the first.
+   */
   const closeFocused = useCallback(() => {
     const cache = logCache(sessionId)
-    setPanes((current) => {
-      const next = current.filter(pane => pane.key !== cache.focused)
-      cache.panes = next
-      return next
-    })
-    setFocused(null)
-    cache.focused = null
+    const current = cache.panes
+    const at = current.findIndex(pane => pane.key === cache.focused)
+    const target = at < 0 ? current.length - 1 : at
+    if (target < 0) return
+    const next = current.filter((_pane, index) => index !== target)
+    const nextFocused = next[Math.min(target, next.length - 1)]?.key ?? null
+    cache.panes = next
+    cache.focused = nextFocused
+    setPanes(next)
+    setFocused(nextFocused)
   }, [sessionId])
 
   const focusPane = useCallback((key: string) => {
@@ -301,8 +311,10 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
     const onKey = (event: KeyboardEvent): void => {
       // A page that eats keystrokes while someone is typing is a page that cannot
       // be typed in; the composer may be elsewhere, but the rule costs nothing.
-      const target = event.target
-      if (target instanceof HTMLElement && (target.isContentEditable || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
+      // Asked by shape rather than by `instanceof`: an environment that lacks the
+      // constructor would otherwise throw on every key pressed.
+      const target = event.target as { tagName?: string; isContentEditable?: boolean } | null
+      if (target?.isContentEditable === true || target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return
       if (event.key === 'Escape' && focusedPane !== undefined) closeFocused()
       if (event.key === 'b') setRailOpen(!railSettings().open)
       // The two switches have keys as well as buttons, because a reader who reads

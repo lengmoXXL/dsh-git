@@ -24,7 +24,8 @@ export interface SectionProps {
   /** What the header names this section. */
   readonly title: string
   /** How many rows it holds, drawn as a count badge. */
-  readonly count: number
+  /** How many entries are under it, when that number is knowable and exact. */
+  readonly count?: number | undefined
   /** Whether the rows are drawn. */
   readonly open: boolean
   /** Flip {@link SectionProps.open}. */
@@ -55,7 +56,7 @@ export function Section({ title, count, open, onToggle, t, children }: SectionPr
             {open ? <IconChevronDownOutline14 /> : <IconChevronRightOutline14 />}
           </span>
           <span className={css.sectionTitle}>{title}</span>
-          <Tag tone="neutral" className={css.sectionCount}>{count}</Tag>
+          {count !== undefined && <Tag tone="neutral" className={css.sectionCount}>{count}</Tag>}
         </button>
       </h3>
       {open && children}

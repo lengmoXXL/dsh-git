@@ -201,7 +201,8 @@ export function HistoryList({
   return (
     <Section
       title={t('history.title')}
-      count={commits.length}
+      // No count: how many commits a repository holds is not known to either side,
+      // and a number that only counts the page in hand would read as the total.
       open={open}
       onToggle={() => { setOpen(value => !value) }}
       t={t}
