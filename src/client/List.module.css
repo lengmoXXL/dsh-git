@@ -319,14 +319,11 @@
   background: var(--dsw-alias-interactive-bg-active);
 }
 
-/* The files under an open commit: the heading lines up with the file glyphs it
-   labels, so the whole block reads as one step in from the commit above it. */
+/* The files under an open commit: they begin where the commit's row ends, one step
+   in — the commit is the heading. */
 .files {
-  padding-bottom: 6px;
-}
-
-.files > .group {
-  padding-left: 30px;
+  margin: 0;
+  padding: 0 0 6px;
 }
 
 /* A commit's file list that could not be read. */
