@@ -87,8 +87,9 @@
   19. [原型] 颜色一律用外壳 token（--dsw-alias-*），不自造色板；主题跟随外壳，
       不做自己的深浅色开关。兜底值挂在 :root，外壳把同一批 token 定义在 body 上，
       因此内嵌时外壳的取值赢。
-  20. [原型] 页头只显示一个分支胶囊；只有分叉时才在同一个胶囊上写 ↑n / ↓n，
-      上游名字放进 tooltip。
+  20. [原型] 页头只显示一个分支胶囊；**不显示仓库名**（工作区通常只有一个仓库，
+      而名字占掉的位置比它带来的信息多——仓库名放进这个胶囊的 tooltip）；只有分叉时
+      才在同一个胶囊上写 ↑n / ↓n，上游名字也放进同一个 tooltip。
   21. [原型] 不要蓝色描边：聚焦的卡片不画边框（class 留着给 Esc / 关闭用）。
   22. [原型] 滚动条要细：沿用外壳那套滚动条做法（--dsh-scrollbar-width 与
       --dsw-alias-scrollbar-*），并把宽度重绑为 6px。落地：在 SideBySide.module.css
@@ -424,8 +425,7 @@
 <header class="top">
   <button id="rail-toggle" class="icon" title="收起 / 展开列表（b）" aria-pressed="true">‹</button>
   <button id="rail-side" class="icon" title="列表放到另一边">◧</button>
-  <span class="repo" id="repo">dsh-git</span>
-  <span class="chip head" id="branch">main</span>
+  <span class="chip head" id="branch" title="">main</span>
   <span class="spacer"></span>
   <button id="open-file" class="icon" title="在内置的文件窗口中打开这个 diff 对应的文件"></button>
   <span class="toggle" role="group" aria-label="布局">
@@ -1084,7 +1084,6 @@ $('v-inline').onclick = () => setSplit(false)
 $('w-wrap').onclick = () => setWrap(true)
 $('w-clip').onclick = () => setWrap(false)
 
-$('repo').textContent = DATA.repo.name
 /* One chip for the branch. The upstream is not a second branch and only says
    something when the two differ, so it is told as divergence from the branch it
    tracks — and named in the tooltip either way. */
@@ -1092,7 +1091,9 @@ const ahead = DATA.repo.ahead ?? 0
 const behind = DATA.repo.behind ?? 0
 const divergence = [ahead > 0 ? `↑${ahead}` : '', behind > 0 ? `↓${behind}` : ''].filter((part) => part !== '').join(' ')
 $('branch').textContent = divergence === '' ? DATA.repo.branch : `${DATA.repo.branch} ${divergence}`
-$('branch').title = divergence === '' ? DATA.repo.branch : `${DATA.repo.branch} 与 ${DATA.repo.upstream} 相差 ${divergence}`
+// The header names the branch and nothing else; which repository it is lives in
+// this tooltip, where it can be read but does not take a line.
+$('branch').title = `${DATA.repo.name} · ${divergence === '' ? DATA.repo.branch : `${DATA.repo.branch} 与 ${DATA.repo.upstream} 相差 ${divergence}`}`
 setSplit(true)
 setWrap(true)
 render()
