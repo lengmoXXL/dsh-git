@@ -240,8 +240,12 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
     const onCopy = (event: ClipboardEvent): void => {
       const selection = window.getSelection()
       if (selection === null || selection.isCollapsed || event.clipboardData === null) return
+      const range = selection.getRangeAt(0)
+      // A copy handler that throws is worse than one that steps aside: whatever
+      // cannot answer "did the selection touch this" leaves the copy to the browser.
+      if (typeof range.intersectsNode !== 'function') return
       const covered = [...document.querySelectorAll('[data-half]')]
-        .filter(node => selection.getRangeAt(0).intersectsNode(node))
+        .filter(node => range.intersectsNode(node))
       if (covered.length === 0) return
       const from = halfAt(selection.anchorNode) ?? covered[0]?.getAttribute('data-half') ?? null
       const lines = covered

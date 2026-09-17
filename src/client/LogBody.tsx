@@ -24,6 +24,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react'
@@ -327,6 +328,25 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   }
   const railWidth = dragging ?? rail.width
 
+  /**
+   * Move down the list with the arrow keys.
+   *
+   * A rail of twenty rows is twenty tabs to a keyboard reader. The rows are buttons
+   * already, so the arrows only have to hand focus from one to the next — and the
+   * one they hand it to is scrolled into view, because a focused row off-screen is
+   * a row nobody is reading.
+   */
+  const onRailKey = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+    const rows = [...event.currentTarget.querySelectorAll<HTMLElement>('button')]
+    const at = rows.indexOf(document.activeElement as HTMLElement)
+    if (at < 0) return
+    event.preventDefault()
+    const next = rows[at + (event.key === 'ArrowDown' ? 1 : -1)]
+    next?.focus()
+    next?.scrollIntoView({ block: 'nearest' })
+  }
+
   const ready = status.phase === 'ready' ? status.value : undefined
   const repo = ready?.repo ?? null
   const grouped = groupChanges(ready?.entries ?? NO_ENTRIES)
@@ -426,6 +446,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
           style={{ width: rail.open ? `${String(railWidth)}px` : '0px' }}
           aria-hidden={!rail.open}
           ref={scroller}
+          onKeyDown={onRailKey}
           onScroll={(event) => { logCache(sessionId).scrollTop = event.currentTarget.scrollTop }}
         >
           {status.phase === 'failed' && (
