@@ -1,11 +1,12 @@
 # dsh-git
 
-A DSH plugin that adds a **Git** tab to the right sidebar — the working tree's changes and the recent commits — and
-opens a read-only, highlighted, side-by-side diff in its own tab when you click a change, or a file inside a commit.
+A DSH plugin that adds a **Git** page to the right sidebar: the working tree's changes and the
+recent commits on one side, and the diff a click opens on the other — read-only, highlighted,
+side by side. The list stays where it is, so two diffs can be put beside each other.
 
 English | [中文](README.zh.md)
 
-![The Git tab: changes above, commits below. Click a commit to expand its files, a file to open its diff.](docs/screenshots/en/01-log.png)
+![The Git page: changes and commits on the left, the diff a click opens beside them. Click a commit to expand its files.](docs/screenshots/en/01-log.png)
 
 | Two columns, wrapped | Two columns, unwrapped | One column |
 | --- | --- | --- |
