@@ -18,33 +18,21 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { DiffPayload, DiffRow } from '../shared/wire.ts'
-import { cx, pathParts } from './format.ts'
-import {
-  ClipLinesGlyph,
-  InlineLayoutGlyph,
-  SplitLayoutGlyph,
-  WrapLinesGlyph,
-} from './glyphs.tsx'
-import { BUILD_STAMP } from './build.ts'
+import { cx } from './format.ts'
 import { highlightLines, langFromPath, type HighlightSpan } from './highlight.ts'
 import type { GitKey } from './locales.ts'
 import {
   collapseRows,
-  diffText,
   inlineDisplayLines,
   lineNumber,
   oneSided,
-  revLabel,
   type DisplayRow,
   type InlineLine,
 } from './state.ts'
 import {
   diffViewSettings,
-  setDiffViewMode,
-  setDiffWrap,
   subscribeDiffViewSettings,
 } from './view-mode.ts'
 import css from './SideBySide.module.css'
@@ -222,17 +210,6 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
     () => (inline ? highlightLines(inlineText, lang) : undefined),
     [inline, inlineText, lang],
   )
-  // The copy control's label flips for a moment after a copy, the way the
-  // transcript's diff card confirms one.
-  const [copied, setCopied] = useState(false)
-  const copy = useCallback(() => {
-    void writeClipboard(diffText(diff)).then((ok) => {
-      if (!ok) return
-      setCopied(true)
-      window.setTimeout(() => { setCopied(false) }, 1000)
-    })
-  }, [diff])
-
   const root = embedded ? css.diffEmbedded : css.diff
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -277,7 +254,6 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
     document.addEventListener('copy', onCopy)
     return () => { document.removeEventListener('copy', onCopy) }
   }, [])
-  const parts = pathParts(diff.path)
   const notice = diff.binary ? t('diff.binary') : diff.truncated ? t('diff.truncated') : undefined
   const toggleFold = useCallback((key: string) => {
     setExpanded((current) => {
@@ -413,45 +389,6 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
 
   return (
     <div className={root}>
-      <header className={css.header}>
-        <span className={css.path} title={diff.path}>
-          {parts.dir !== '' && <span className={css.orig}>{parts.dir}/</span>}
-          {parts.base}
-          {diff.origPath !== undefined && <span className={css.orig}> ← {diff.origPath}</span>}
-        </span>
-        <span className={css.actions}>
-          {/* The tooltip names the bundle drawing this: a page can be running
-              an older one while the diff's content is current. */}
-          <span className={css.revs} title={`${diff.oldLabel} → ${diff.newLabel} · ${BUILD_STAMP}`}>
-            {revLabel(diff.oldLabel)} → {revLabel(diff.newLabel)}
-          </span>
-          <span className={css.stat}>
-            <span className={css.added}>+{diff.added}</span>
-            <span className={css.removed}>−{diff.removed}</span>
-          </span>
-          <button
-            type="button"
-            className={css.view}
-            title={inline ? t('diff.splitView') : t('diff.inlineView')}
-            aria-label={inline ? t('diff.splitView') : t('diff.inlineView')}
-            onClick={() => { setDiffViewMode(inline ? 'split' : 'inline') }}
-          >
-            {inline ? <SplitLayoutGlyph /> : <InlineLayoutGlyph />}
-          </button>
-          <button
-            type="button"
-            className={css.view}
-            title={settings.wrap ? t('diff.clipView') : t('diff.wrapView')}
-            aria-label={settings.wrap ? t('diff.clipView') : t('diff.wrapView')}
-            onClick={() => { setDiffWrap(!settings.wrap) }}
-          >
-            {settings.wrap ? <ClipLinesGlyph /> : <WrapLinesGlyph />}
-          </button>
-          <button type="button" className={css.copy} onClick={copy}>
-            {copied ? t('diff.copied') : t('diff.copy')}
-          </button>
-        </span>
-      </header>
       {notice !== undefined && <p className={css.notice}>{notice}</p>}
       {embedded
         ? <div className={css.gridScroll} data-dsh-git-diff="" ref={scrollRef}>{body}</div>

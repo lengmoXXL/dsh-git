@@ -60,7 +60,9 @@
 }
 
 /* The controls sit at the far end, whatever the branch name does. */
-.openFile {
+/* One control in the page's header. The diff has no title bar of its own, so the
+   switches that used to ride each diff live here, once. */
+.control {
   flex: none;
   display: inline-flex;
   align-items: center;
@@ -72,12 +74,12 @@
   cursor: pointer;
 }
 
-.openFile:hover:enabled {
+.control:hover:enabled {
   color: var(--dsw-alias-label-primary);
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
-.openFile:disabled {
+.control:disabled {
   color: var(--dsw-alias-label-tertiary);
   cursor: default;
 }
