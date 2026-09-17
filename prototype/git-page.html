@@ -21,7 +21,7 @@
    3. [原型] diff 开在右侧卡片里；同一条 diff 已经在板上时只聚焦，不重复开
       （地址即身份）。落地：直接复用 SideBySide。
    4. [原型] 行尾 ↗（或 ⌥Enter）把 diff 并排开在已有卡片旁边。
-   5. [原型] 右半边是**纯 diff 视图**：没有卡片框、没有边框、没有标题带、没有按钮。
+   5. [原型] 右半边是**纯 diff 视图**：没有卡片框、没有边框、没有标题带、没有右键头按钮。
       一列就是一段 diff（代码里仍叫 card，落地时改叫 pane）。路径、两侧 rev 与 +/−
       在 tooltip 里；关闭只靠 Esc（关掉聚焦的那一列）；未抓到 diff 的"示例"标记在左上角。卡片**没有标题带**——列表已经说明这是
       哪个文件，横幅只是把同一件事再说一遍；路径、两侧 rev 与 +/− 放进卡片 tooltip，
@@ -71,6 +71,15 @@
   17. [原型] 双栏复制只取起始栏：拖拽归属按下的那一栏（另一栏在拖拽期间不可选），
       键盘或其他方式产生的跨栏选区在 copy 时按起始栏重写。
   18. [原型] 语法高亮与文件视图同源（同一张 --shiki-token-* 色板）。
+  18b. [原型] 页头有一个"**打开文件**"按钮（文档+箭头图标），对**当前聚焦的那一列**
+      diff 生效：把这条 diff 对应的文件交给外壳自己的文件窗口。落地：走命名导航控制器，
+      地址用外壳文档预览类型的形状 `dsh-resource://file/session/<sessionId>/<路径按段百分号编码>`，
+      `kind: 'text'`（该类型声明 `dsh-resource://file/**`，见 ui-sidebar-documentpreview）。
+      原型里没有外壳，所以它只飘一条提示说明这一步交给谁。
+  18c. [原型] 同一条 diff 已在板上时只聚焦、不重复开（地址即身份）；同一个文件在**不同
+      来源**下（工作区 / 某个提交）是两条不同的 diff，会并排出现——这是有意的。示例数据
+      因此必须把"在比什么"写在示例标记上（`示例 · index → working tree`），否则两条会
+      长得一模一样，看起来像 bug。
 
   四、外观
   19. [原型] 颜色一律用外壳 token（--dsw-alias-*），不自造色板；主题跟随外壳，
@@ -334,7 +343,7 @@
   /* The board is the page; each column in it is a diff on the code surface. No
      frame, no title, no controls: the row of code is the whole content, and the
      gutter of page between two diffs is what tells them apart. */
-  .board { flex: 1; display: flex; min-width: 0; min-height: 0; background: var(--bg); }
+  .board { position: relative; flex: 1; display: flex; min-width: 0; min-height: 0; background: var(--bg); }
   .empty { margin: auto; max-width: 380px; padding: 24px; text-align: center; color: var(--text-dim); }
   .empty h2 { margin: 0 0 6px; font-size: 14px; color: var(--text); }
   .card {
@@ -344,9 +353,18 @@
   .card + .card { margin-left: 10px; }
   /* A sampled diff keeps a mark; nothing else overlays the code. */
   .card { position: relative; }
+  /* A stand-in has to say what it stands for: two addresses can name the same
+     file at different revisions, and without the comparison on the mark the two
+     panes would be indistinguishable. */
   .card-mark { position: absolute; top: 5px; left: 8px; z-index: 3; }
   .card-body { flex: 1; min-height: 0; overflow: auto; }
   .note { margin: 0; padding: 10px 12px; color: var(--text-dim); font-size: 12px; }
+  /* Prototype only: the click's handoff is stated, then it goes away. */
+  .handoff {
+    position: absolute; right: 16px; bottom: 16px; z-index: 5; margin: 0;
+    padding: 4px 10px; border-radius: 8px; background: var(--banner);
+    color: var(--text-dim); font: var(--dsw-font-xs-13);
+  }
 
   /* One aligned row per line pair, drawn exactly as the plugin draws it. */
   .grid { font: var(--dsw-font-markdown-code-block); }
@@ -407,6 +425,13 @@
   <span class="repo" id="repo">dsh-git</span>
   <span class="chip head" id="branch">main</span>
   <span class="spacer"></span>
+  <button id="open-file" class="icon" title="在内置的文件窗口中打开这个 diff 对应的文件">
+    <svg width="13" height="13" viewBox="0 0 12 12" aria-hidden="true">
+      <path d="M2.5 1.5h3.4L8.5 4.1v6.4h-6z" fill="none" stroke="currentColor" stroke-width="1"/>
+      <path d="M5.9 1.5v2.6h2.6" fill="none" stroke="currentColor" stroke-width="1"/>
+      <path d="M8.6 7.4h3M10.4 6l1.4 1.4-1.4 1.4" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+    </svg>
+  </button>
   <span class="toggle" role="group" aria-label="布局">
     <button id="v-split" aria-pressed="true">双栏</button>
     <button id="v-inline" aria-pressed="false">单栏</button>
@@ -789,7 +814,13 @@ function sampleDiff(address) {
   for (const line of sample.after) rows.push(['insert', null, null, (no += 1), line])
   for (const line of sample.tail) rows.push(['context', (no += 1), line, no, line])
   rows.push(['fold', 128, '', null, ''])
-  return { path, oldLabel: `${path.split('/').length > 1 ? 'HEAD' : 'index'}`, newLabel: 'working tree', added: sample.after.length, removed: sample.before.length, rows, sample: true }
+  // The comparison comes from the address, not from the file: an address naming a
+  // commit is a commit's diff, and a sample has to say which one it stands for.
+  const rev = /[?&]rev=([^&]*)/.exec(address)?.[1]
+  const labels = rev === undefined || rev === ''
+    ? { oldLabel: 'index', newLabel: 'working tree' }
+    : { oldLabel: `${rev}^`, newLabel: rev }
+  return { path, ...labels, added: sample.after.length, removed: sample.before.length, rows, sample: true }
 }
 
 function cardMarkup(address, index) {
@@ -799,7 +830,9 @@ function cardMarkup(address, index) {
   const stat = captured === undefined ? '' : ` · +${diff.added} −${diff.removed}`
   const title = `${diff.path} · ${diff.oldLabel} → ${diff.newLabel}${stat}`
   return `<article class="card${focused}" data-address="${esc(address)}" title="${esc(title)}">
-    ${captured === undefined ? '<span class="chip card-mark" title="这个文件的 diff 没有收进原型，画的是该文件类型的示例">示例</span>' : ''}
+    ${captured === undefined
+      ? `<span class="chip card-mark" title="${esc(title)}">示例 · ${esc(diff.oldLabel)} → ${esc(diff.newLabel)}</span>`
+      : ''}
     <div class="card-body">${diffMarkup(diff, { ...state, lang: langOf(diff.path) }, address)}</div>
   </article>`
 }
@@ -815,6 +848,29 @@ function renderBoard() {
     return
   }
   board.innerHTML = state.cards.map(cardMarkup).join('')
+}
+
+/* The file view is the shell's, not this page's: the prototype says so instead of
+   pretending to open one. In the plugin this calls the named navigation
+   controller with the shell's own file address, whose type is `text`
+   (`dsh-resource://file/session/<sessionId>/<percent-encoded path>`). */
+function openFocusedFile() {
+  const address = state.focused
+  if (address === null) return
+  const path = decodeURIComponent((address.match(/path=([^&]*)/) ?? [, ''])[1])
+  const pane = document.querySelector('.card.focused .card-body')
+  if (pane === null) return
+  pane.scrollTop = 0
+  let note = document.getElementById('handoff')
+  if (note === null) {
+    note = document.createElement('p')
+    note.id = 'handoff'
+    note.className = 'note handoff'
+    document.getElementById('board').appendChild(note)
+  }
+  note.textContent = `交给外壳的文件窗口：${path}`
+  clearTimeout(openFocusedFile.timer)
+  openFocusedFile.timer = setTimeout(() => { note.remove() }, 1600)
 }
 
 function render() {
@@ -988,6 +1044,7 @@ function setWrap(wrap) {
   $('w-clip').setAttribute('aria-pressed', String(!wrap))
   render()
 }
+$('open-file').onclick = () => { openFocusedFile() }
 $('rail-toggle').onclick = () => { state.railOpen = !state.railOpen; render() }
 $('rail-side').onclick = () => { state.railSide = state.railSide === 'left' ? 'right' : 'left'; render() }
 
