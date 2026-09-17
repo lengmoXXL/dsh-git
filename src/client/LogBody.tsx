@@ -274,41 +274,33 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   // "put it away" wherever the list has been moved to.
   const drawerGlyph = rail.open === listOnRight ? '›' : '‹'
   const railWidth = dragging ?? rail.width
-  const shownWidth = useRef(railWidth)
-  shownWidth.current = railWidth
 
-  // Armed here rather than with React's own handler: the page is a guest inside the
-  // shell, and a shell that stops the press at a wrapper would keep a delegated
-  // handler from ever running. The grip's own listener in the capture phase fires
-  // before anything above it can decide otherwise.
+  // Armed on the grip itself, in the capture phase: the page is a guest, and a shell
+  // that stops the press at a wrapper would keep a handler delegated to the page's own
+  // root from ever running.
   useEffect(() => {
     const element = grip.current
     if (element === null) return
+    const list = element.previousElementSibling
     const start = (event: Event): void => {
       event.preventDefault()
-      grab.current = { x: (event as PointerEvent).clientX, width: shownWidth.current }
-      dragWidth.current = shownWidth.current
-      // The width already on screen, so taking hold moves nothing — and setting it is
+      const width = Math.round(list?.getBoundingClientRect().width ?? railSettings().width)
+      grab.current = { x: (event as PointerEvent).clientX, width }
+      dragWidth.current = width
+      // Equal to the width already on screen, so taking hold moves nothing — and it is
       // what arms the listeners below, which wait for a drag to be under way.
-      setDragging(shownWidth.current)
+      setDragging(width)
     }
     element.addEventListener('pointerdown', start, true)
-    // `mousedown` as well: the same press, for anything that does not deliver the
-    // pointer sequence a browser normally synthesises from it.
-    element.addEventListener('mousedown', start, true)
-    return () => {
-      element.removeEventListener('pointerdown', start, true)
-      element.removeEventListener('mousedown', start, true)
-    }
+    return () => { element.removeEventListener('pointerdown', start, true) }
   }, [rail.open])
 
   /**
    * Follow the pointer while the grip is held.
    *
-   * The listeners are on the document, not on the grip: the grip is six pixels wide
-   * and the browser may decide the gesture is a scroll the moment the pointer leaves
-   * it, which cancels a pointer capture and ends the drag before it starts. The
-   * width is kept in a ref as well as in state because the release has to write what
+   * The listeners are on the document, not on the grip: a narrow grip loses a pointer
+   * capture the moment the pointer leaves it and the browser decides the gesture is a
+   * scroll. The width in flight lives in a ref because the release has to write what
    * the last move settled on, and an effect closure would see the value it started
    * with.
    */
