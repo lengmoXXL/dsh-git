@@ -90,6 +90,7 @@
     --add: color-mix(in srgb, var(--dsw-alias-state-success-primary) 13%, var(--dsw-alias-markdown-code-block));
     --del: color-mix(in srgb, var(--dsw-alias-state-error-primary) 13%, var(--dsw-alias-markdown-code-block));
     --blank: color-mix(in srgb, var(--dsw-alias-bg-base) 45%, var(--dsw-alias-markdown-code-block));
+    --rail: 336px;
     --row: 22px;
     --gutter: 48px;
     --radius: 12px;
@@ -135,14 +136,24 @@
   /* ── split: rail + board ────────────────────────────────────────────── */
   main { flex: 1; display: flex; min-height: 0; }
   .rail {
-    flex: none; width: 336px; min-height: 0; overflow: hidden;
+    flex: none; width: var(--rail); min-height: 0; overflow: hidden;
     border-right: 1px solid var(--line); background: var(--bg);
     transition: width .18s ease, border-right-width .18s ease;
   }
   /* The rail animates shut; its inside keeps its width so nothing reflows on
      the way out. */
-  .rail-inner { width: 336px; height: 100%; display: flex; flex-direction: column; min-height: 0; }
+  .rail-inner { width: var(--rail); height: 100%; display: flex; flex-direction: column; min-height: 0; }
   body.rail-shut .rail { width: 0; border-right-width: 0; }
+
+  /* The rail is a pane, so its edge is a handle: drag it to the width the list
+     needs, double-click to come back to the default. */
+  .grip {
+    flex: none; position: relative; z-index: 3; width: 6px; margin: 0 -3px;
+    cursor: col-resize; background: transparent;
+  }
+  .grip:hover, body.resizing .grip { background: var(--line); }
+  body.resizing { cursor: col-resize; user-select: none; }
+  body.rail-shut .grip { display: none; }
   .rail-list { flex: 1; overflow: auto; padding: 4px 0 24px; outline: none; }
   .section {
     position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 6px;
@@ -277,6 +288,7 @@
       <div class="rail-list" id="list" tabindex="0" role="listbox" aria-label="改动与提交"></div>
     </div>
   </aside>
+  <div class="grip" id="grip" title="拖动调整宽度，双击复位"></div>
   <section class="board" id="board"></section>
 </main>
 
@@ -303,6 +315,7 @@ const state = {
   focused: null,
   cursor: 0,
   railOpen: true,
+  railWidth: 336,
   split: true,
   wrap: true,
   open: new Set([DATA.commits[0].short]),
@@ -805,6 +818,35 @@ function setWrap(wrap) {
   render()
 }
 $('rail-toggle').onclick = () => { state.railOpen = !state.railOpen; render() }
+
+/* The rail keeps the room it was given, and the board keeps enough of its own:
+   the width is held between a readable list and a diff that can still be read. */
+const RAIL_MIN = 220
+const railLimit = () => Math.min(760, Math.max(RAIL_MIN, window.innerWidth - 420))
+const setRailWidth = (width) => {
+  state.railWidth = Math.round(Math.min(railLimit(), Math.max(RAIL_MIN, width)))
+  document.documentElement.style.setProperty('--rail', `${state.railWidth}px`)
+}
+
+let resizing = null
+$('grip').addEventListener('pointerdown', (event) => {
+  resizing = { x: event.clientX, width: state.railWidth }
+  document.body.classList.add('resizing')
+  $('grip').setPointerCapture(event.pointerId)
+  event.preventDefault()
+})
+$('grip').addEventListener('pointermove', (event) => {
+  if (resizing === null) return
+  setRailWidth(resizing.width + (event.clientX - resizing.x))
+})
+for (const done of ['pointerup', 'pointercancel']) {
+  $('grip').addEventListener(done, (event) => {
+    resizing = null
+    document.body.classList.remove('resizing')
+    $('grip').releasePointerCapture(event.pointerId)
+  })
+}
+$('grip').addEventListener('dblclick', () => { setRailWidth(336) })
 $('v-split').onclick = () => setSplit(true)
 $('v-inline').onclick = () => setSplit(false)
 $('w-wrap').onclick = () => setWrap(true)
