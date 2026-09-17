@@ -36,9 +36,11 @@
       文件数超过 8 个时在时间前用小字写"N 个文件"。**行首不放展开箭头**（多一个图标只是
       噪音），点整行就是展开/收起，`aria-expanded` 跟着变；"后面还有"由文件列表末尾那条
       `⋯ N 个文件` 说出来。
-   8. [原型] 点提交就地展开它的文件列表；文件超过 8 个同样折叠。**提交的文件块整体
-      比提交缩进一级**：文件行与它下面那条 `⋯ N 个文件` 一起缩进，而 `⋯ N 个提交`
-      留在提交这一级——两条折叠行分属两级，不能长在同一列上。
+   8. [原型] 点提交就地展开它的文件列表；文件超过 8 个同样折叠。每条文件行前面有一个
+      **文件图标**（落地时用外壳的 `FileTypeIcon`，那份是带类型颜色的；这里画的是中性
+      文档形），缩进只比提交行多一点点（图标对齐块的首列）：文件行与它下面那条
+      `⋯ N 个文件` 一起缩进，而 `⋯ N 个提交` 留在提交这一级——两条折叠行分属两级，
+      不能长在同一列上。
    9. [原型] 历史超过 12 条折叠成同一形式的小号控制行：`⋯ 更早的提交`——**不带数字**。
       仓库有多少提交两边都不知道（要数就得走一遍历史，成本高），而"这一页里还藏了 N 条"
       会被读成仓库总数。落地：这一行不是展开已有的，
@@ -312,8 +314,11 @@
   /* A commit's files are a level below the commits: the rows and the control that
      says "there are more of them" are indented together, so the rail's two `⋯`
      rows can never be mistaken for each other. */
-  .row.file { padding-left: 36px; }
-  .row.more[data-scope='files'] { padding-left: 36px; }
+  .row.file { padding-left: 30px; }
+  .row.more[data-scope='files'] { padding-left: 30px; }
+  /* The glyph is what says "this is a file"; the indent only needs to be enough
+     to see that the block belongs to the commit above it. */
+  .fileIcon { flex: none; width: 12px; height: 12px; color: var(--text-faint); }
   .row.file .name { color: var(--text); }
   .node { flex: none; width: 6px; height: 6px; margin: 0 2px; border-radius: 50%; background: var(--text-faint); }
   .node.current { background: var(--accent); box-shadow: 0 0 0 1.5px var(--accent-soft); }
@@ -584,6 +589,10 @@ function railMarkup() {
     }
     const [dir, base] = pathParts(row.file.path)
     return `<button class="row file" role="option"${selected} data-index="${index}">
+      <svg class="fileIcon" viewBox="0 0 12 12" aria-hidden="true">
+        <path d="M3 1.5h3.6L9.5 4.4v6.1H3z" fill="none" stroke="currentColor" stroke-width="1"/>
+        <path d="M6.6 1.5v2.9h2.9" fill="none" stroke="currentColor" stroke-width="1"/>
+      </svg>
       <span class="name">${esc(base)}</span>${dir ? `<span class="dir">${esc(dir)}</span>` : ''}
       <span class="grow"></span><span class="beside" data-beside="${index}" title="并排打开">↗</span>
       <span class="letter" data-k="${letterOf(row.file.status)}">${esc(letterOf(row.file.status))}</span>
