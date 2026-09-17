@@ -263,11 +263,35 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   // that edge is the width.
   const [dragging, setDragging] = useState<number | undefined>(undefined)
   const dragWidth = useRef<number | undefined>(undefined)
+  const grip = useRef<HTMLDivElement>(null)
   const listOnRight = rail.side === 'right'
   // The drawer's arrow points at the edge the list is nearest, so the control means
   // "put it away" wherever the list has been moved to.
   const drawerGlyph = rail.open === listOnRight ? '›' : '‹'
   const railWidth = dragging ?? rail.width
+
+  // Armed here rather than with React's own handler: the page is a guest inside the
+  // shell, and a shell that stops the press at a wrapper would keep a delegated
+  // handler from ever running. The grip's own listener in the capture phase fires
+  // before anything above it can decide otherwise.
+  useEffect(() => {
+    const element = grip.current
+    if (element === null) return
+    const start = (event: Event): void => {
+      event.preventDefault()
+      const width = railSettings().width
+      dragWidth.current = width
+      setDragging(width)
+    }
+    element.addEventListener('pointerdown', start, true)
+    // `mousedown` as well: the same press, for anything that does not deliver the
+    // pointer sequence a browser normally synthesises from it.
+    element.addEventListener('mousedown', start, true)
+    return () => {
+      element.removeEventListener('pointerdown', start, true)
+      element.removeEventListener('mousedown', start, true)
+    }
+  }, [rail.open])
 
   /**
    * Follow the pointer while the grip is held.
@@ -486,18 +510,12 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
         </div>
         {rail.open && (
           <div
+            ref={grip}
             className={css.grip}
             role="separator"
             aria-orientation="vertical"
             aria-label={t('panel.resize')}
             title={t('panel.resize')}
-            onPointerDown={(event) => {
-              // Without this the browser takes the drag as a scroll gesture and
-              // cancels the pointer sequence under us.
-              event.preventDefault()
-              dragWidth.current = rail.width
-              setDragging(rail.width)
-            }}
             onDoubleClick={() => { setRailWidth(RAIL_DEFAULT_WIDTH) }}
           />
         )}

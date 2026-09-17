@@ -151,9 +151,12 @@
    layout paying for it. */
 .grip {
   flex: none;
+  position: relative;
   width: 6px;
   margin: 0 -3px;
-  z-index: 1;
+  /* Above both neighbours: a static box with a z-index paints in tree order, and the
+     board comes after this one, so half the grip's width belonged to the board. */
+  z-index: 2;
   cursor: col-resize;
   touch-action: none;
 }
