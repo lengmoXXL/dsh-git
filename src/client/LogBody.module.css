@@ -1,6 +1,7 @@
 /*
- * The git log tab: a header naming the repository, then the whole body scrolls
- * as one list of changes and commits.
+ * The git page: a header naming the branch, then the list and the diff board
+ * side by side. The list is the way in and stays put; the board is what the
+ * reader came for and can hold two diffs at once.
  */
 
 .panel {
@@ -14,26 +15,16 @@
   color: var(--dsw-alias-label-primary);
 }
 
-/* The header names the repository and where it stands, and gives way from the
- * inside out: the branch and the tracking line ellipsize before the refresh
- * control is allowed to wrap. */
+/* The header names the branch and where it stands, and gives way from the inside
+ * out: the branch ellipsizes before the controls are allowed to wrap. */
 .header {
   flex: none;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   padding: 8px 12px;
   border-bottom: 0.5px solid var(--dsw-alias-border-l2);
   font: var(--dsw-font-s-14);
-}
-
-.repoName {
-  flex: 0 1 auto;
-  min-width: 0;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .branch {
@@ -44,6 +35,7 @@
   gap: 3px;
   color: var(--dsw-alias-label-secondary);
   font: var(--dsw-font-xs-13);
+  font-weight: 600;
 }
 
 .branchIcon {
@@ -57,16 +49,6 @@
   white-space: nowrap;
 }
 
-.tracking {
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--dsw-alias-label-tertiary);
-  font: var(--dsw-font-xxs-12);
-}
-
 .spacer {
   flex: 1;
   min-width: 8px;
@@ -77,9 +59,42 @@
   white-space: nowrap;
 }
 
-.scroll {
+/* The controls sit at the far end, whatever the branch name does. */
+.openFile {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+.openFile:hover:enabled {
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.openFile:disabled {
+  color: var(--dsw-alias-label-tertiary);
+  cursor: default;
+}
+
+/* The rail and the board share the page; each scrolls on its own. */
+.body {
   flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+}
+
+.list {
+  flex: none;
+  width: 336px;
   min-height: 0;
   overflow: auto;
   padding-bottom: 12px;
+  border-right: 0.5px solid var(--dsw-alias-border-l2);
 }

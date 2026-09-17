@@ -1,17 +1,18 @@
 /**
- * The git log tab: the current Session's changes and history, as one list.
+ * The git page: the Session's changes and history on the left, the diffs they open
+ * on the right.
  *
- * It is a page type, so it takes no address and holds no selection. Every row
- * is a navigation: clicking a change or a commit opens that content in its own
- * resource tab beside this one, which is what keeps a log entry and the diff of
- * a log entry separable — you can leave the log where it is and stack diffs.
+ * It is a page type, so it takes no address and holds no selection of its own. The
+ * list is a way in, not a thing that gets replaced: clicking a change or a file
+ * loads that comparison into a pane beside it, which is why a reader can leave the
+ * list where it is and stack two diffs to compare.
  *
  * The workspace is resolved on the host from the Session identity this seat
  * supplies; nothing here sends a path the host did not already report.
  *
- * The list is a snapshot, not a subscription: a repository that changes
- * underneath it is re-read by the refresh control, or by mounting the tab again.
- * Watching the filesystem is the host's to offer, and this plugin does not ask.
+ * The list is a snapshot, not a subscription: a repository that changes underneath
+ * it is re-read by the refresh control, or by mounting the tab again. Watching the
+ * filesystem is the host's to offer, and this plugin does not ask.
  *
  * @module dsh-git/client/LogBody
  */
@@ -33,13 +34,21 @@ import type {
 } from '../shared/wire.ts'
 import { ChangeList } from './ChangeList.tsx'
 import { FailureBlock, Note } from './Feedback.tsx'
-import { BUILD_STAMP } from './build.ts'
-import { gitFace } from './face.ts'
-import { logCache } from './log-cache.ts'
-import { diffAddress } from './git-address.ts'
+import { GitBoard } from './GitBoard.tsx'
+import { gitFace, type DiffRequest } from './face.ts'
+import { OpenFileGlyph } from './glyphs.tsx'
 import { HistoryList } from './HistoryList.tsx'
+import { logCache } from './log-cache.ts'
 import type { GitKey, GitNamespace } from './locales.ts'
-import { cached, failureInfoOf, groupChanges, type FailureInfo, type Load } from './state.ts'
+import {
+  cached,
+  diffKey,
+  failureInfoOf,
+  groupChanges,
+  type BoardPane,
+  type FailureInfo,
+  type Load,
+} from './state.ts'
 import css from './LogBody.module.css'
 
 /** Stable empties, so a not-yet-loaded read does not mint a new array on every render. */
@@ -61,14 +70,32 @@ function trackingLabel(branch: BranchStatus, t: Translate<GitKey>): string | und
   return parts.length === 0 ? undefined : parts.join(' · ')
 }
 
-/** The log tab's composed props: the tab seat, the Session identity, and its dictionary. */
+/**
+ * The shell's file address for one workspace path.
+ *
+ * The file view is the shell's, not this page's: opening a file means handing it
+ * the address its own type claims (`dsh-resource://file/session/<sessionId>/<path>`),
+ * with each path segment percent-encoded. The plugin cannot import that package to
+ * borrow the builder — the client module table seeds package names, not subpaths —
+ * so the shape is written out here, and the kind is named rather than left to the
+ * registry's claim ranking.
+ * @param sessionId - the Session whose workspace resolves the path.
+ * @param path - a repository-relative path, as git reported it.
+ * @returns the address the file view opens.
+ */
+export function fileAddress(sessionId: string, path: string): string {
+  const encoded = path.split('/').map(segment => encodeURIComponent(segment)).join('/')
+  return `dsh-resource://file/session/${encodeURIComponent(sessionId)}/${encoded}`
+}
+
+/** The page's composed props: the tab seat, the Session identity, and its dictionary. */
 export type LogBodyProps =
   & PropsRuntime<'sidebar.right.pane.tab'>
   & PropsLocale<GitNamespace>
-  & { readonly openResource: (address: string) => void }
+  & { readonly openResource: (address: string, kind: string) => void }
 
 /**
- * Draw the log.
+ * Draw the page.
  * @param props - see {@link LogBodyProps}.
  * @returns the tab's body.
  */
@@ -77,13 +104,17 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   const [epoch, setEpoch] = useState(0)
   const [now, setNow] = useState(() => Date.now())
   // Mount starts from what was read last time, so a tab that was unmounted for
-  // a diff comes back drawn rather than blank.
+  // another one comes back drawn rather than blank.
   const [status, setStatus] = useState<Load<StatusPayload>>(
     () => cached(logCache(sessionId).status),
   )
   const [history, setHistory] = useState<Load<HistoryPayload>>(
     () => cached(logCache(sessionId).history),
   )
+  // The panes live as long as the page does: switching to another tab and back
+  // finds the comparison the reader had set up.
+  const [panes, setPanes] = useState<readonly BoardPane[]>(() => logCache(sessionId).panes)
+  const [focused, setFocused] = useState<string | null>(() => logCache(sessionId).focused)
   const scroller = useRef<HTMLDivElement>(null)
 
   // One page of the repository's state, both halves at once. A page already in
@@ -121,8 +152,8 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
     return () => { controller.abort() }
   }, [sessionId, epoch])
 
-  // The reader's place in the list, put back after a round trip through a diff.
-  // A layout effect so it lands before the frame is painted, and the height it
+  // The reader's place in the list, put back after a round trip through another
+  // tab. A layout effect so it lands before the frame is painted, and the height it
   // needs is already there because the cached page drew on mount.
   useLayoutEffect(() => {
     const element = scroller.current
@@ -134,57 +165,116 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
     setNow(Date.now())
     setEpoch(value => value + 1)
   }, [])
-  // A click that fails must say so: a dead click reads as a broken plugin,
-  // while a named failure reads as a repository problem.
+
+  /** Show one comparison, replacing the focused pane or opening the first one. */
+  const openDiff = useCallback((request: DiffRequest) => {
+    const key = diffKey(request)
+    const cache = logCache(sessionId)
+    setPanes((current) => {
+      if (current.some(pane => pane.key === key)) return current
+      const at = current.findIndex(pane => pane.key === cache.focused)
+      const next = at < 0
+        ? [...current, { key, request }]
+        : current.map((pane, index) => (index === at ? { key, request } : pane))
+      cache.panes = next
+      return next
+    })
+    setFocused(key)
+    cache.focused = key
+  }, [sessionId])
+
+  const closeFocused = useCallback(() => {
+    const cache = logCache(sessionId)
+    setPanes((current) => {
+      const next = current.filter(pane => pane.key !== cache.focused)
+      cache.panes = next
+      return next
+    })
+    setFocused(null)
+    cache.focused = null
+  }, [sessionId])
+
+  const focusPane = useCallback((key: string) => {
+    setFocused(key)
+    logCache(sessionId).focused = key
+  }, [sessionId])
+
+  // A click that fails must say so: a dead click reads as a broken plugin, while a
+  // named failure reads as a repository problem.
   const [openFailure, setOpenFailure] = useState<FailureInfo | undefined>(undefined)
-  const open = useCallback((address: string) => {
+  /** Hand one workspace path to the shell's own file view. */
+  const openFile = useCallback((path: string) => {
     try {
-      openResource(address)
+      openResource(fileAddress(sessionId, path), 'text')
       setOpenFailure(undefined)
     } catch (error: unknown) {
       setOpenFailure(failureInfoOf(error))
     }
-  }, [openResource])
+  }, [openResource, sessionId])
   const openChange = useCallback((entry: ChangeEntry) => {
-    // An unstaged change compares the index against the working tree; a staged
-    // one compares HEAD against the index.
-    open(diffAddress({
+    // An unstaged change compares the index against the working tree; a staged one
+    // compares HEAD against the index.
+    openDiff({
       sessionId,
       source: entry.stage === 'staged' ? 'index' : 'worktree',
       path: entry.path,
       origPath: entry.origPath,
-    }))
-  }, [open, sessionId])
-  // A commit's own tab is no longer offered: the log expands a commit into its
-  // files, and a click opens one of them. The address still resolves, so a tab
-  // restored from an older session keeps drawing.
+    })
+  }, [openDiff, sessionId])
   const openCommitFile = useCallback((rev: string, file: CommitFile) => {
-    open(diffAddress({
+    openDiff({
       sessionId,
       source: 'commit',
       rev,
       path: file.path,
       origPath: file.origPath,
-    }))
-  }, [open, sessionId])
+    })
+  }, [openDiff, sessionId])
+
+  const focusedPane = panes.find(pane => pane.key === focused)
+
+  // Escape closes the pane the reader is in, which is the only way a pane goes
+  // away: a pane is replaced by the next diff, not dismissed from over the code.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape' && focusedPane !== undefined) closeFocused()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('keydown', onKey) }
+  }, [closeFocused, focusedPane])
 
   const ready = status.phase === 'ready' ? status.value : undefined
   const repo = ready?.repo ?? null
   const grouped = groupChanges(ready?.entries ?? NO_ENTRIES)
   const tracking = repo === null ? undefined : trackingLabel(repo.branch, t)
+  // The header names the branch and nothing else; which repository it is lives in
+  // this tooltip, where it can be read without holding a slot on every screen.
+  const branchTitle = repo === null
+    ? ''
+    : [repo.root, branchLabel(repo.branch, t), tracking ?? ''].filter(part => part !== '').join(' · ')
 
   return (
     <div className={css.panel}>
       <header className={css.header}>
-        <span className={css.repoName} title={`${repo?.root ?? ''}\n${BUILD_STAMP}`}>{repo?.name ?? ''}</span>
         {repo !== null && (
-          <span className={css.branch}>
+          <span className={css.branch} title={branchTitle}>
             <IconBranchOutline16 size={12} className={css.branchIcon} />
             <span className={css.branchName}>{branchLabel(repo.branch, t)}</span>
           </span>
         )}
-        {tracking !== undefined && <span className={css.tracking}>{tracking}</span>}
         <span className={css.spacer} />
+        <button
+          type="button"
+          className={css.openFile}
+          title={t('diff.openFile')}
+          aria-label={t('diff.openFile')}
+          disabled={focusedPane === undefined}
+          onClick={() => {
+            if (focusedPane !== undefined) openFile(focusedPane.request.path)
+          }}
+        >
+          <OpenFileGlyph />
+        </button>
         <Button
           className={css.refresh}
           variant="ghost"
@@ -195,41 +285,44 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
           {t('panel.refresh')}
         </Button>
       </header>
-      <div
-        className={css.scroll}
-        ref={scroller}
-        onScroll={(event) => { logCache(sessionId).scrollTop = event.currentTarget.scrollTop }}
-      >
-        {status.phase === 'failed' && (
-          <FailureBlock code={status.code} message={status.message} t={t} onRetry={refresh} />
-        )}
-        {openFailure !== undefined && (
-          <FailureBlock code={openFailure.code} message={openFailure.message} t={t} onRetry={undefined} />
-        )}
-        {status.phase === 'loading' && <Note>{t('loading')}</Note>}
-        {status.phase === 'ready' && repo === null && <Note>{t('panel.noRepo')}</Note>}
-        {repo !== null && (
-          <>
-            <ChangeList
-              grouped={grouped}
-              truncated={ready?.truncated ?? false}
-              t={t}
-              onSelect={openChange}
-            />
-            {history.phase === 'failed'
-              ? <FailureBlock code={history.code} message={history.message} t={t} onRetry={refresh} />
-              : (
-                <HistoryList
-                  commits={history.phase === 'ready' ? history.value.commits : NO_COMMITS}
-                  hasMore={history.phase === 'ready' && history.value.hasMore}
-                  sessionId={sessionId}
-                  now={now}
-                  t={t}
-                  onSelectFile={openCommitFile}
-                />
-              )}
-          </>
-        )}
+      <div className={css.body}>
+        <div
+          className={css.list}
+          ref={scroller}
+          onScroll={(event) => { logCache(sessionId).scrollTop = event.currentTarget.scrollTop }}
+        >
+          {status.phase === 'failed' && (
+            <FailureBlock code={status.code} message={status.message} t={t} onRetry={refresh} />
+          )}
+          {openFailure !== undefined && (
+            <FailureBlock code={openFailure.code} message={openFailure.message} t={t} onRetry={undefined} />
+          )}
+          {status.phase === 'loading' && <Note>{t('loading')}</Note>}
+          {status.phase === 'ready' && repo === null && <Note>{t('panel.noRepo')}</Note>}
+          {repo !== null && (
+            <>
+              <ChangeList
+                grouped={grouped}
+                truncated={ready?.truncated ?? false}
+                t={t}
+                onSelect={openChange}
+              />
+              {history.phase === 'failed'
+                ? <FailureBlock code={history.code} message={history.message} t={t} onRetry={refresh} />
+                : (
+                  <HistoryList
+                    commits={history.phase === 'ready' ? history.value.commits : NO_COMMITS}
+                    hasMore={history.phase === 'ready' && history.value.hasMore}
+                    sessionId={sessionId}
+                    now={now}
+                    t={t}
+                    onSelectFile={openCommitFile}
+                  />
+                )}
+            </>
+          )}
+        </div>
+        <GitBoard panes={panes} focused={focused} t={t} onFocus={focusPane} />
       </div>
     </div>
   )

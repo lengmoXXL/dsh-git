@@ -7,14 +7,14 @@
  * unchanged run folds. Keeping them pure is what lets the browser half be
  * tested without a DOM, a server, or a React root.
  *
- * Which change a click opens is NOT here: that is an address, owned by
- * `git-address.ts`, because a tab's identity is its address.
+ * Which change a click opens is NOT here either: a diff is identified by the
+ * comparison it shows, which {@link diffKey} spells.
  *
  * @module dsh-git/client/state
  */
 
-import type { ChangeEntry, ChangeKind, ChangeStage, DiffPayload, DiffRow } from '../shared/wire.ts'
-import { GitRequestError } from './face.ts'
+import type { ChangeEntry, ChangeKind, ChangeStage, DiffPayload, DiffRow, DiffSource } from '../shared/wire.ts'
+import { GitRequestError, type DiffRequest } from './face.ts'
 
 /**
  * One read, as a view draws it: still coming, arrived, or the reason it did not.
@@ -210,6 +210,35 @@ export function diffText(diff: DiffPayload): string {
     }
   }
   return `${lines.join('\n')}\n`
+}
+
+/** One diff the board is showing: what it compares, and its identity. */
+export interface BoardPane {
+  /** The comparison's identity, from {@link diffKey}. */
+  readonly key: string
+  /** What to ask the host for. */
+  readonly request: DiffRequest
+}
+
+/**
+ * The identity of one diff, as a pane key.
+ *
+ * A diff is what it compares: the same file at two revisions is a different diff
+ * from the same file against the working tree, and each deserves its own pane —
+ * while opening the same comparison twice should land on the pane already there.
+ * The key is built from the request rather than from an address, because the page
+ * asks the host directly and has no resource address to name.
+ *
+ * @param request - the comparison one pane shows.
+ * @returns a key that is equal for equal comparisons.
+ */
+export function diffKey(request: {
+  readonly source: DiffSource
+  readonly path: string
+  readonly origPath?: string | undefined
+  readonly rev?: string | undefined
+}): string {
+  return [request.source, request.rev ?? '', request.origPath ?? '', request.path].join('\u0000')
 }
 
 /**

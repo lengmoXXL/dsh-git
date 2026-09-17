@@ -26,6 +26,8 @@ export const zh = {
 
   'log.title': 'Git',
   'log.guide': '浏览工作区改动与提交历史，点开即在新标签页看 diff',
+  'board.emptyTitle': '列表留在左边，diff 开在右边',
+  'board.empty': '点一条改动，或展开一个提交点它的文件；列表不会被替换掉。',
   'changes.title': '改动',
   'changes.empty': '工作区没有改动',
   'changes.truncated': '仅显示前 {n} 项改动',
@@ -55,6 +57,7 @@ export const zh = {
   'diff.approximate': '对齐超出时间预算，配对为近似结果',
   'diff.old': '旧',
   'diff.new': '新',
+  'diff.openFile': '在内置的文件窗口中打开这个文件',
   'diff.copy': '复制',
   'diff.copied': '已复制',
   'diff.inlineView': '切换到内联视图（单栏）',
@@ -96,6 +99,8 @@ export const en = {
 
   'log.title': 'Git',
   'log.guide': 'Working-tree changes and history; a click opens the diff in its own tab',
+  'board.emptyTitle': 'The list stays; the diff opens beside it',
+  'board.empty': 'Click a change, or expand a commit and click one of its files. The list is never replaced.',
   'changes.title': 'Changes',
   'changes.empty': 'No changes in the working tree',
   'changes.truncated': 'Showing the first {n} changes only',
@@ -125,6 +130,7 @@ export const en = {
   'diff.approximate': 'the diff computer hit its time budget; the pairing is approximate',
   'diff.old': 'old',
   'diff.new': 'new',
+  'diff.openFile': 'Open this file in the built-in file view',
   'diff.copy': 'Copy',
   'diff.copied': 'Copied',
   'diff.inlineView': 'Switch to inline view (one column)',

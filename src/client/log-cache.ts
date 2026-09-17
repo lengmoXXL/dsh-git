@@ -9,12 +9,15 @@
  * Session, for as long as the page does.
  *
  * A commit's file list is immutable, so it is read once and kept; the status
- * and history are not, so they are cached to paint with and re-read anyway.
+ * and history are not, so they are cached to paint with and re-read anyway. The
+ * board is kept too: which diffs the reader had open, and which one they were in,
+ * is the same kind of fact as where they had scrolled to.
  *
  * @module dsh-git/client/log-cache
  */
 
 import type { CommitFile, HistoryPayload, StatusPayload } from '../shared/wire.ts'
+import type { BoardPane } from './state.ts'
 
 /** One Session's remembered log. */
 export interface LogCache {
@@ -28,6 +31,10 @@ export interface LogCache {
   readonly commitFiles: Map<string, readonly CommitFile[]>
   /** Where the list was scrolled to, in pixels. */
   scrollTop: number
+  /** The diffs the board is showing, in order. */
+  panes: readonly BoardPane[]
+  /** The pane the next diff will land in, if any. */
+  focused: string | null
 }
 
 /** One cache per Session, for the life of the page. */
@@ -41,7 +48,7 @@ const caches = new Map<string, LogCache>()
 export function logCache(sessionId: string): LogCache {
   let cache = caches.get(sessionId)
   if (cache === undefined) {
-    cache = { commitFiles: new Map(), scrollTop: 0 }
+    cache = { commitFiles: new Map(), scrollTop: 0, panes: [], focused: null }
     caches.set(sessionId, cache)
   }
   return cache

@@ -27,7 +27,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { DiffPayload, DiffRow } from '../../src/shared/wire.ts'
-import { applied, render, tabInfo } from './harness.ts'
+import { loadBundle, render } from './harness.ts'
 
 /**
  * One cell or held band, as a token walk finds it. The class prefix is what the
@@ -157,18 +157,14 @@ function drawnRows(markup: string, inline: boolean): string[] {
 
 /** Render the payload in one layout combination, as markup. */
 async function markupOf(view: 'split' | 'inline', wrap: boolean): Promise<string> {
+  // The view reads its own settings from storage once per bundle evaluation, so
+  // each combination gets the bundle it was configured with.
   const store = new Map([
     ['dsh-git:diff-view-mode', view],
     ['dsh-git:diff-view-wrap', wrap ? 'wrap' : 'clip'],
   ])
-  const { registrations } = await applied(store)
-  const body = registrations.find(entry => entry.definition['key'] === 'dsh-git/diff')?.component
-  assert.notEqual(body, undefined, 'the diff body was not registered')
-  const address = 'dsh-resource://git/diff?session=s'
-  return await render(body, {
-    useTabInfo: tabInfo(address),
-    useResource: () => ({ status: 'live', value: { kind: 'diff', diff: payload() }, failure: undefined }),
-  })
+  const { exports } = await loadBundle(store)
+  return await render(exports['SideBySide'], { diff: payload() })
 }
 
 /** Render the payload in one layout combination and read back its rows. */

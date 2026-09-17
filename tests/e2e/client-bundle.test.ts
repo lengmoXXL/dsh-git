@@ -38,7 +38,8 @@ test('the built bundle registers itself under the plugin id', async () => {
 
 test('the loaded module exposes exactly the plugin surface', async () => {
   const { exports } = await loadBundle()
-  assert.deepEqual(Object.keys(exports).sort(), ['apply', 'inject', 'name'])
+  // `SideBySide` is exported for this suite; the shell reads only these three.
+  assert.deepEqual(Object.keys(exports).sort(), ['SideBySide', 'apply', 'inject', 'name'])
   assert.equal(exports['name'], 'dsh-git-ui')
   assert.deepEqual(exports['inject'], ['slots', 'locale', 'sidebarRightTabs', 'resources', 'sidebarRight'])
 })
@@ -60,20 +61,9 @@ test('declares a log page with a guide entry, so the add control can reach it', 
   assert.ok(typeof entry?.order === 'number')
 })
 
-test('declares a diff viewer claiming this plugin’s whole protocol', async () => {
-  const { definitions } = await applied()
-  const diff = definitions.find(definition => definition.kind === 'git')
-  assert.notEqual(diff, undefined, 'no git resource type was registered')
-  assert.equal(diff?.id, 'dsh-git/diff')
-  assert.deepEqual(diff?.patterns, ['dsh-resource://git/**'])
-  // The chip reads well without the content: a change is named by its file.
-  assert.equal(diff?.title('dsh-resource://git/diff?session=s&source=worktree&path=src/a.ts'), 'a.ts')
-  assert.equal(diff?.title('dsh-resource://git/commit?session=s&rev=deadbeefcafe'), 'deadbee')
-})
-
 test('registers one body per declared type, under the definition id', async () => {
   const { registrations, definitions } = await applied()
-  assert.equal(registrations.length, 2)
+  assert.equal(registrations.length, 1)
   for (const registration of registrations) {
     assert.equal(registration.definition['name'], 'sidebar.right.pane.tab')
     assert.equal(registration.definition['locale'], 'dsh-git')
@@ -83,11 +73,6 @@ test('registers one body per declared type, under the definition id', async () =
     registrations.map(entry => entry.definition['key']).sort(),
     definitions.map(definition => definition.id).sort(),
   )
-})
-
-test('registers the git resource provider', async () => {
-  const { providers } = await applied()
-  assert.deepEqual(providers.map(provider => provider.protocol), ['git'])
 })
 
 test('registers both dictionaries under one namespace, with the same keys', async () => {
@@ -114,100 +99,8 @@ test('the log body renders its frame while the reads are still in flight', async
   assert.match(markup, /loading/)
 })
 
-test('the diff body draws the reason when its resource is unavailable', async () => {
-  const { registrations } = await applied()
-  const diff = registrations.find(entry => entry.definition['key'] === 'dsh-git/diff')
-  const markup = await render(diff?.component, {
-    useTabInfo: tabInfo('dsh-resource://git/diff?session=s&source=worktree&path=a.ts'),
-    useResource: () => ({ status: 'none', value: undefined, failure: undefined }),
-  })
-  assert.match(markup, /loading/)
-})
-
-test('the diff body draws a host failure rather than an empty frame', async () => {
-  const { registrations } = await applied()
-  const diff = registrations.find(entry => entry.definition['key'] === 'dsh-git/diff')
-  const markup = await render(diff?.component, {
-    useTabInfo: tabInfo('dsh-resource://git/diff?session=s&source=worktree&path=a.ts'),
-    useResource: () => ({
-      status: 'live',
-      value: { kind: 'error', code: 'git/not-a-repository', message: 'nope' },
-      failure: undefined,
-    }),
-  })
-  assert.match(markup, /error\.title/)
-  assert.match(markup, /git\/not-a-repository/)
-})
-
-test('the diff body draws a single change as a side-by-side grid', async () => {
-  const { registrations } = await applied()
-  const diff = registrations.find(entry => entry.definition['key'] === 'dsh-git/diff')
-  const payload = {
-    path: 'src/a.ts',
-    source: 'worktree',
-    oldLabel: 'index',
-    newLabel: 'working tree',
-    binary: false,
-    truncated: false,
-    removed: 1,
-    added: 1,
-    rows: [{ kind: 'replace', left: { no: 1, text: 'old' }, right: { no: 1, text: 'new' } }],
-  }
-  const markup = await render(diff?.component, {
-    useTabInfo: tabInfo('dsh-resource://git/diff?session=s&source=worktree&path=src/a.ts'),
-    useResource: () => ({ status: 'live', value: { kind: 'diff', diff: payload }, failure: undefined }),
-  })
-  assert.match(markup, /data-dsh-git-diff/)
-  assert.match(markup, /old/)
-  assert.match(markup, /new/)
-})
-
-test('the diff body stacks every file of a commit inside one scroll region', async () => {
-  const { registrations } = await applied()
-  const diff = registrations.find(entry => entry.definition['key'] === 'dsh-git/diff')
-  const file = (path: string) => ({
-    path,
-    source: 'commit',
-    oldLabel: 'abc^',
-    newLabel: 'abc',
-    binary: false,
-    truncated: false,
-    removed: 0,
-    added: 1,
-    rows: [{ kind: 'insert', left: null, right: { no: 1, text: `line of ${path}` } }],
-  })
-  const markup = await render(diff?.component, {
-    useTabInfo: tabInfo('dsh-resource://git/commit?session=s&rev=deadbeefcafe'),
-    useResource: () => ({
-      status: 'live',
-      value: {
-        kind: 'commit',
-        commit: {
-          sha: 'deadbeefcafe',
-          shortSha: 'deadbee',
-          parents: [],
-          authorName: 'Ada',
-          authorEmail: 'ada@example.com',
-          authoredAt: 1_700_000_000,
-          refs: [],
-          subject: 'a commit subject',
-        },
-        files: [file('src/a.ts'), file('src/b.ts')],
-        truncated: false,
-      },
-      failure: undefined,
-    }),
-  })
-  assert.match(markup, /a commit subject/)
-  assert.match(markup, /src\/a\.ts/)
-  assert.match(markup, /src\/b\.ts/)
-  // Two embedded diffs, so the grid is drawn twice.
-  assert.equal(markup.match(/data-dsh-git-diff/g)?.length, 2)
-})
-
 test('the diff body highlights a line through the sheet the file view uses', async () => {
-  const { registrations } = await applied()
-  const diff = registrations.find(entry => entry.definition['key'] === 'dsh-git/diff')
+  const { exports } = await loadBundle()
   const payload = {
     path: 'src/a.ts',
     source: 'worktree',
@@ -219,18 +112,14 @@ test('the diff body highlights a line through the sheet the file view uses', asy
     added: 1,
     rows: [{ kind: 'insert', left: null, right: { no: 1, text: 'const answer: number = 42' } }],
   }
-  const markup = await render(diff?.component, {
-    useTabInfo: tabInfo('dsh-resource://git/diff?session=s&source=worktree&path=src/a.ts'),
-    useResource: () => ({ status: 'live', value: { kind: 'diff', diff: payload }, failure: undefined }),
-  })
+  const markup = await render(exports['SideBySide'], { diff: payload })
   // The path names a grammar, so the runs arrive colored through the shiki
   // token sheet — the same one the file view's code blocks read.
   assert.match(markup, /--shiki-token-keyword/)
 })
 
 test('the diff body states the rows the host left out', async () => {
-  const { registrations } = await applied()
-  const diff = registrations.find(entry => entry.definition['key'] === 'dsh-git/diff')
+  const { exports } = await loadBundle()
   const payload = {
     path: 'src/a.ts',
     source: 'commit',
@@ -246,10 +135,7 @@ test('the diff body states the rows the host left out', async () => {
       { kind: 'gap', left: null, right: null, skippedLeft: 1200, skippedRight: 1200 },
     ],
   }
-  const markup = await render(diff?.component, {
-    useTabInfo: tabInfo('dsh-resource://git/diff?session=s&source=commit&path=src/a.ts&rev=abc'),
-    useResource: () => ({ status: 'live', value: { kind: 'diff', diff: payload }, failure: undefined }),
-  })
+  const markup = await render(exports['SideBySide'], { diff: payload })
   // A view that is not contiguous has to say so, with the counts it skipped.
   assert.match(markup, /diff\.omitted/)
   assert.match(markup, /900/)

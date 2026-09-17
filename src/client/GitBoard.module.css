@@ -1,0 +1,53 @@
+/*
+ * The board and its panes: a column of diffs beside the list, told apart by the
+ * page's own surface showing between them rather than by frames.
+ */
+
+.board {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  background: var(--dsw-alias-bg-base);
+}
+
+.pane {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--dsw-alias-markdown-code-block);
+}
+
+.pane + .pane {
+  margin-left: 10px;
+}
+
+/*
+ * The focused pane is where the next diff lands. It is marked with a hairline on
+ * its leading edge and nothing else: a border around a diff competes with the code,
+ * and the reader who clicked it a moment ago does not need telling twice.
+ */
+.focused {
+  box-shadow: inset 2px 0 0 var(--dsw-alias-state-business-primary);
+}
+
+.empty {
+  margin: auto;
+  max-width: 380px;
+  padding: 24px;
+  text-align: center;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.emptyTitle {
+  margin: 0 0 6px;
+  font: var(--dsw-font-s-strong-14);
+  color: var(--dsw-alias-label-primary);
+}
+
+.emptyText {
+  margin: 0;
+  font: var(--dsw-font-xs-13);
+}
