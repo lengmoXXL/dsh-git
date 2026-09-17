@@ -48,15 +48,10 @@ import { ChangeList } from './ChangeList.tsx'
 import { FailureBlock, Note } from './Feedback.tsx'
 import { GitBoard } from './GitBoard.tsx'
 import { gitFace, type DiffRequest } from './face.ts'
-import {
-  ClipLinesGlyph,
-  InlineLayoutGlyph,
-  OpenFileGlyph,
-  SplitLayoutGlyph,
-  WrapLinesGlyph,
-} from './glyphs.tsx'
+import { OpenFileGlyph } from './glyphs.tsx'
 import { HistoryList } from './HistoryList.tsx'
 import { logCache } from './log-cache.ts'
+import { cx } from './format.ts'
 import type { GitKey, GitNamespace } from './locales.ts'
 import {
   diffViewSettings,
@@ -421,25 +416,48 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
           {copied ? t('diff.copied') : t('diff.copy')}
         </button>
         {/* The switches are the reader's, not a pane's: two panes showing two sets
-            of them is the same question asked twice. */}
-        <button
-          type="button"
-          className={css.control}
-          title={settings.mode === 'inline' ? t('diff.splitView') : t('diff.inlineView')}
-          aria-label={settings.mode === 'inline' ? t('diff.splitView') : t('diff.inlineView')}
-          onClick={() => { setDiffViewMode(settings.mode === 'inline' ? 'split' : 'inline') }}
-        >
-          {settings.mode === 'inline' ? <SplitLayoutGlyph /> : <InlineLayoutGlyph />}
-        </button>
-        <button
-          type="button"
-          className={css.control}
-          title={settings.wrap ? t('diff.clipView') : t('diff.wrapView')}
-          aria-label={settings.wrap ? t('diff.clipView') : t('diff.wrapView')}
-          onClick={() => { setDiffWrap(!settings.wrap) }}
-        >
-          {settings.wrap ? <ClipLinesGlyph /> : <WrapLinesGlyph />}
-        </button>
+            of them is the same question asked twice. Each pair names both of its
+            answers, so which one is in force is read rather than guessed at. */}
+        <span className={css.switch}>
+          <button
+            type="button"
+            className={cx(css.option, settings.mode === 'split' && css.optionOn)}
+            aria-pressed={settings.mode === 'split'}
+            aria-label={t('diff.splitView')}
+            onClick={() => { setDiffViewMode('split') }}
+          >
+            {t('diff.split')}
+          </button>
+          <button
+            type="button"
+            className={cx(css.option, settings.mode === 'inline' && css.optionOn)}
+            aria-pressed={settings.mode === 'inline'}
+            aria-label={t('diff.inlineView')}
+            onClick={() => { setDiffViewMode('inline') }}
+          >
+            {t('diff.inline')}
+          </button>
+        </span>
+        <span className={css.switch}>
+          <button
+            type="button"
+            className={cx(css.option, settings.wrap && css.optionOn)}
+            aria-pressed={settings.wrap}
+            aria-label={t('diff.wrapView')}
+            onClick={() => { setDiffWrap(true) }}
+          >
+            {t('diff.wrap')}
+          </button>
+          <button
+            type="button"
+            className={cx(css.option, !settings.wrap && css.optionOn)}
+            aria-pressed={!settings.wrap}
+            aria-label={t('diff.clipView')}
+            onClick={() => { setDiffWrap(false) }}
+          >
+            {t('diff.clip')}
+          </button>
+        </span>
         <Button
           className={css.refresh}
           variant="ghost"

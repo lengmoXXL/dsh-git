@@ -30,6 +30,8 @@ export interface MoreRowProps {
   readonly t: Translate<GitKey>
   /** Toggle. */
   readonly onToggle: () => void
+  /** What hovering it says, when that is more than the label. */
+  readonly title?: string | undefined
 }
 
 /**
@@ -37,13 +39,13 @@ export interface MoreRowProps {
  * @param props - see {@link MoreRowProps}.
  * @returns the row.
  */
-export function MoreRow({ label, open, t, onToggle }: MoreRowProps): ReactNode {
+export function MoreRow({ label, open, t, onToggle, title }: MoreRowProps): ReactNode {
   return (
     <button
       type="button"
       className={css.more}
       aria-expanded={open}
-      title={open ? t('section.collapse') : label}
+      title={open ? t('section.collapse') : title ?? label}
       onClick={onToggle}
     >
       <span className={css.moreGlyph}>{open ? '' : '⋯'}</span>

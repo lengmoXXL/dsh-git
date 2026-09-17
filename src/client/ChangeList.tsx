@@ -83,7 +83,7 @@ export function ChangeList({ grouped, truncated, t, onSelect, onOpenFile }: Chan
   return (
     <Section
       title={t('changes.title')}
-      count={total}
+      count={total === 0 ? undefined : total}
       open={open}
       onToggle={() => { setOpen(value => !value) }}
       t={t}

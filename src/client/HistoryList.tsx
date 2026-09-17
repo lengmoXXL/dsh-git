@@ -134,10 +134,6 @@ function CommitRow({ commit, sessionId, now, t, selected, onToggle, onSelectFile
           )}
           {files.phase === 'ready' && files.value.length > 0 && (
             <>
-              <h4 className={css.group}>
-                {t('commit.files')}
-                <span className={css.groupCount}>{files.value.length}</span>
-              </h4>
               {(openFiles ? files.value : files.value.slice(0, LIST_PREVIEW)).map(file => (
                 <FileRow
                   key={`${file.path}:${file.origPath ?? ''}`}
@@ -227,9 +223,12 @@ export function HistoryList({
           open={openCommits}
           t={t}
           onToggle={() => { setOpenCommits(value => !value) }}
+          // The row says there are older commits; whether the host has still more
+          // beyond the page in hand is a smaller fact, and it belongs in the
+          // tooltip rather than in a second line under the row.
+          title={hasMore ? t('history.more') : undefined}
         />
       )}
-      {hasMore && <p className={cx(css.note, css.noteMore)}>{t('history.more')}</p>}
     </Section>
   )
 }
