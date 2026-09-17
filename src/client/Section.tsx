@@ -1,7 +1,7 @@
 /**
- * The collapsible section both halves of the log tab are drawn in.
+ * The collapsible section the page's lists are drawn in.
  *
- * The header is sticky inside the tab's one scroll region, so the section a
+ * The header is sticky inside the list's one scroll region, so the section a
  * reader is looking at names itself while its rows pass underneath. Two
  * sections share the top edge, so the later one covers the earlier one as it
  * arrives: the heading always belongs to the rows below it.
@@ -23,8 +23,7 @@ import css from './List.module.css'
 export interface SectionProps {
   /** What the header names this section. */
   readonly title: string
-  /** How many rows it holds, drawn as a count badge. */
-  /** How many entries are under it, when that number is knowable and exact. */
+  /** How many rows it holds, when that number is knowable and exact. */
   readonly count?: number | undefined
   /** Whether the rows are drawn. */
   readonly open: boolean

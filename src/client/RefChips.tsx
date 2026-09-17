@@ -1,9 +1,8 @@
 /**
  * The refs a commit carries, drawn as chips.
  *
- * Both lists that name a commit — the log's history rows and a commit tab's
- * heading — show the same chips, so the tone that marks the checked-out branch
- * means the same thing in both places.
+ * The tone is what says which chip is the branch the reader is on, and which are
+ * merely names for the same commit.
  *
  * @module dsh-git/client/RefChips
  */
@@ -25,25 +24,23 @@ const REF_TONE: Record<RefKind, TagTone> = {
   tag: 'outline',
 }
 
-/** How many chips are drawn before the rest collapse into a count. */
-export const MAX_REF_CHIPS = 2
-
 /** Props of the ref chips. */
 export interface RefChipsProps {
   /** The commit's refs, already parsed. */
   readonly chips: readonly RefChip[]
-  /** How many to draw; the rest become a count. Defaults to {@link MAX_REF_CHIPS}. */
-  readonly max?: number
 }
+
+/** How many chips a row draws before the rest collapse into a count. */
+const MAX = 2
 
 /**
  * Draw a commit's refs.
  * @param props - see {@link RefChipsProps}.
  * @returns one chip per drawn ref, then a count for the ones left out.
  */
-export function RefChips({ chips, max = MAX_REF_CHIPS }: RefChipsProps): ReactNode {
-  const shown = chips.slice(0, max)
-  const hidden = chips.slice(max)
+export function RefChips({ chips }: RefChipsProps): ReactNode {
+  const shown = chips.slice(0, MAX)
+  const hidden = chips.slice(MAX)
   return (
     <>
       {shown.map(chip => (
