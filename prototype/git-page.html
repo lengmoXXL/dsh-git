@@ -29,7 +29,8 @@
     --gutter: 48px;
     --radius: 12px;
   }
-  body[data-theme='dark'] {
+  @media (prefers-color-scheme: dark) {
+    :root {
     --bg: #0d1117;
     --surface: #161b22;
     --banner: #1c2230;
@@ -45,6 +46,7 @@
     --blank: color-mix(in srgb, #0d1117 60%, var(--surface));
     --hover: #1b2230;
     color-scheme: dark;
+    }
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
@@ -106,6 +108,9 @@
   .row .name { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .row .dir { flex: 0 1 auto; overflow: hidden; color: var(--text-faint); font-size: 11px; }
   .row .grow { flex: 1; }
+  .row.more { color: var(--text-dim); }
+  .row.more .chev { flex: none; width: 10px; color: var(--text-faint); }
+  .row .chip { flex: none; }
   .row .letter { flex: none; font-weight: 600; font-size: 11px; }
   .letter[data-k='M'] { color: #b45309; }
   .letter[data-k='A'], .letter[data-k='U'] { color: #15803d; }
@@ -194,13 +199,15 @@
   .tok-comment { color: var(--text-faint); font-style: italic; }
   .tok-number { color: #b45309; }
   .tok-type { color: #1d4ed8; }
-  body[data-theme='dark'] .tok-keyword { color: #d2a8ff; }
-  body[data-theme='dark'] .tok-string { color: #7ee787; }
-  body[data-theme='dark'] .tok-number { color: #ffa657; }
-  body[data-theme='dark'] .tok-type { color: #79c0ff; }
+  @media (prefers-color-scheme: dark) {
+    .tok-keyword { color: #d2a8ff; }
+    .tok-string { color: #7ee787; }
+    .tok-number { color: #ffa657; }
+    .tok-type { color: #79c0ff; }
+  }
 </style>
 </head>
-<body data-theme="light">
+<body>
 
 <header class="top">
   <span class="repo" id="repo">dsh-git</span>
@@ -214,10 +221,6 @@
   <span class="toggle" role="group" aria-label="长行">
     <button id="w-wrap" aria-pressed="true">折行</button>
     <button id="w-clip" aria-pressed="false">不折行</button>
-  </span>
-  <span class="toggle" role="group" aria-label="主题">
-    <button id="t-light" aria-pressed="true">浅色</button>
-    <button id="t-dark" aria-pressed="false">深色</button>
   </span>
 </header>
 
@@ -262,10 +265,16 @@ const state = {
   query: '',
   split: true,
   wrap: true,
-  theme: 'light',
   open: new Set([DATA.commits[0].short]),
   collapsed: new Set(),
+  expandedGroups: new Set(),  // groups whose whole list the reader asked for
 }
+
+/* A list long enough to hide everything else below it is not a list any more.
+   Past a handful of files a group shows its first few and says how many are
+   behind them; the same rule serves the working tree's groups and one commit's
+   files, so a reader learns it once. */
+const PREVIEW = 8
 
 const refName = (ref) => ref.replace(/^HEAD -> /, '').replace(/^refs\/heads\//, '').replace(/^refs\/remotes\//, '').replace(/^tag: refs\/tags\//, '')
 const ageOf = (at) => {
@@ -289,6 +298,11 @@ function matches(text) {
   return state.query === '' || text.toLowerCase().includes(state.query.toLowerCase())
 }
 
+/** The files a group shows: all of them when asked, its first few otherwise. */
+function shown(files, owner) {
+  return state.expandedGroups.has(owner) ? files : files.slice(0, PREVIEW)
+}
+
 /** Every row the rail draws, in order; the cursor indexes this list. */
 function railRows() {
   const rows = []
@@ -297,7 +311,10 @@ function railRows() {
       const items = DATA.changes.filter((c) => c.stage === stage && matches(c.path))
       if (items.length === 0) continue
       rows.push({ kind: 'group', label, count: items.length })
-      for (const change of items) rows.push({ kind: 'change', key: changeAddress(change), change })
+      for (const change of shown(items, `stage:${stage}`)) {
+        rows.push({ kind: 'change', key: changeAddress(change), change })
+      }
+      if (items.length > PREVIEW) rows.push({ kind: 'more', owner: `stage:${stage}`, hidden: items.length - PREVIEW })
     }
   }
   if (state.filter !== 'changes') {
@@ -306,19 +323,22 @@ function railRows() {
     for (const commit of commits) {
       rows.push({ kind: 'commit', key: `commit:${commit.short}`, commit })
       if (!state.open.has(commit.short)) continue
-      for (const file of commit.files.filter((f) => matches(f.path))) {
+      const files = commit.files.filter((f) => matches(f.path))
+      for (const file of shown(files, commit.short)) {
         rows.push({ kind: 'file', key: commitDiffAddress(commit, file), commit, file })
       }
+      if (files.length > PREVIEW) rows.push({ kind: 'more', owner: commit.short, hidden: files.length - PREVIEW })
     }
   }
   return rows
 }
 
-function letterOf(status) { return status }
+const letterOf = (status) => status
 
 function describe(row) {
   if (row.kind === 'change') return `改动 · ${row.change.path}`
   if (row.kind === 'file') return `提交 ${row.commit.short} · ${row.file.path}`
+  if (row.kind === 'more') return `还有 ${row.hidden} 个文件`
   return `提交 ${row.commit.short}`
 }
 
@@ -331,6 +351,13 @@ function railMarkup() {
     if (row.kind === 'group') {
       return `<div class="group">${esc(row.label)} ${row.count}</div>`
     }
+    if (row.kind === 'more') {
+      const open = state.expandedGroups.has(row.owner)
+      return `<button class="row more" role="option"${selected} data-index="${index}" data-more="${esc(row.owner)}">
+        <span class="chev">${open ? '▴' : '▾'}</span>
+        <span class="name">${open ? '收起' : `还有 ${row.hidden} 个文件`}</span>
+      </button>`
+    }
     if (row.kind === 'change') {
       const [dir, base] = pathParts(row.change.path)
       return `<button class="row" role="option"${selected} data-index="${index}">
@@ -340,13 +367,16 @@ function railMarkup() {
       </button>`
     }
     if (row.kind === 'commit') {
-      const current = row.commit.refs.some((ref) => ref.includes('HEAD'))
-      const merge = row.commit.parents > 1
-      return `<button class="row ${state.open.has(row.commit.short) ? 'open' : ''}" role="option"${selected} data-index="${index}">
+      const commit = row.commit
+      const current = commit.refs.some((ref) => ref.includes('HEAD'))
+      const merge = commit.parents > 1
+      const count = commit.files.length > PREVIEW ? `<span class="chip">${commit.files.length} 个文件</span>` : ''
+      return `<button class="row ${state.open.has(commit.short) ? 'open' : ''}" role="option"${selected} data-index="${index}">
         <span class="node ${current ? 'current' : ''} ${merge ? 'merge' : ''}"></span>
-        <span class="subject">${esc(row.commit.subject)}</span>
-        <span class="meta">${esc(row.commit.author)} · ${esc(ageOf(row.commit.at))}</span>
-        ${row.commit.refs.slice(0, 2).map((ref, at) => `<span class="chip ${at === 0 && row.commit.refs.some((r) => r.includes('HEAD')) ? 'head' : ''}">${esc(refName(ref))}</span>`).join('')}
+        <span class="subject">${esc(commit.subject)}</span>
+        ${count}
+        <span class="meta">${esc(commit.author)} · ${esc(ageOf(commit.at))}</span>
+        ${commit.refs.slice(0, 2).map((ref, at) => `<span class="chip ${at === 0 && current ? 'head' : ''}">${esc(refName(ref))}</span>`).join('')}
       </button>`
     }
     const [dir, base] = pathParts(row.file.path)
@@ -554,6 +584,12 @@ function activate(index, beside) {
     render()
     return
   }
+  if (row.kind === 'more') {
+    if (state.expandedGroups.has(row.owner)) state.expandedGroups.delete(row.owner)
+    else state.expandedGroups.add(row.owner)
+    render()
+    return
+  }
   if (row.kind === 'group' || row.kind === 'section') return
   openAddress(row.key, beside)
 }
@@ -633,8 +669,6 @@ $('v-split').onclick = () => setSplit(true)
 $('v-inline').onclick = () => setSplit(false)
 $('w-wrap').onclick = () => setWrap(true)
 $('w-clip').onclick = () => setWrap(false)
-$('t-light').onclick = () => { state.theme = 'light'; document.body.dataset.theme = 'light'; $('t-light').setAttribute('aria-pressed', 'true'); $('t-dark').setAttribute('aria-pressed', 'false') }
-$('t-dark').onclick = () => { state.theme = 'dark'; document.body.dataset.theme = 'dark'; $('t-dark').setAttribute('aria-pressed', 'true'); $('t-light').setAttribute('aria-pressed', 'false') }
 document.querySelectorAll('[data-filter]').forEach((el) => {
   el.onclick = () => {
     state.filter = el.dataset.filter
