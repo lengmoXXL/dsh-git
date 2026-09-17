@@ -8,52 +8,99 @@
   /* The shell's own panel language: card surfaces, semantic aliases, 11px/19px
      code on 22px rows with a 48px number gutter. Tokens are spelled as the
      theme package spells them so this file can be diffed against the plugin. */
+  /* The shell's own tokens, with the values its theme package gives them.
+     Inside the harness the shell defines these on `body`, which is nearer than
+     `:root` and so wins; this block is what the file falls back to on its own. */
   :root {
-    --bg: #ffffff;
-    --surface: #f7f9fc;
-    --banner: #eef2f7;
-    --line: #e3e8ef;
-    --line-soft: #eef1f5;
-    --text: #1f2430;
-    --text-dim: #6b7280;
-    --text-faint: #98a1ae;
-    --accent: #3b82f6;
-    --accent-soft: #e8f0fe;
-    --add: color-mix(in srgb, #16a34a 14%, var(--surface));
-    --del: color-mix(in srgb, #dc2626 14%, var(--surface));
-    --blank: color-mix(in srgb, #ffffff 55%, var(--surface));
-    --hover: #f2f5f9;
-    --code-font: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-    --ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    --dsw-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+      'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --ds-font-family-code: 'SF Mono', 'JetBrains Mono', 'Fira Code', Consolas,
+      'Liberation Mono', Menlo, Courier, 'PingFang SC', 'Microsoft YaHei';
+    --dsw-font-markdown-code-block: 11px/19px var(--ds-font-family-code);
+    --dsw-font-xs-13: 13px/20px var(--dsw-font-family);
+    --dsw-font-xxxs-11: 11px/14px var(--dsw-font-family);
+    --dsw-alias-bg-base: rgb(255, 255, 255);
+    --dsw-alias-markdown-code-block: rgb(249, 250, 251);
+    --dsw-alias-markdown-code-block-banner: rgb(249, 250, 251);
+    --dsw-alias-border-l1: rgba(0, 0, 0, 0.04);
+    --dsw-alias-border-l2: rgba(0, 0, 0, 0.1);
+    --dsw-alias-label-primary: rgb(15, 17, 21);
+    --dsw-alias-label-secondary: rgb(97, 102, 107);
+    --dsw-alias-label-tertiary: rgb(129, 133, 140);
+    --dsw-alias-state-error-primary: rgb(236, 19, 19);
+    --dsw-alias-state-error-secondary: rgb(242, 90, 90);
+    --dsw-alias-state-success-primary: rgb(34, 197, 94);
+    --dsw-alias-state-success-secondary: rgb(78, 209, 126);
+    --dsw-alias-state-warn-label: rgb(221, 134, 41);
+    --dsw-alias-state-business-primary: rgb(65, 118, 230);
+    --dsw-alias-brand-primary: rgb(15, 17, 21);
+    --dsw-alias-interactive-bg-hover: rgba(38, 49, 72, 0.06);
+    --dsw-alias-interactive-bg-active: rgba(38, 49, 72, 0.1);
+    --shiki-token-comment: #868e96;
+    --shiki-token-keyword: #d6336c;
+    --shiki-token-string: #2f9e44;
+    --shiki-token-constant: #1c7ed6;
+    --shiki-token-function: #6741d9;
+    --shiki-token-parameter: #e8590c;
+  }
+
+  /* Opened on its own there is no shell to ask, so the system decides. */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --dsw-alias-bg-base: rgb(21, 21, 23);
+      --dsw-alias-markdown-code-block: rgb(27, 27, 28);
+      --dsw-alias-markdown-code-block-banner: rgb(44, 44, 46);
+      --dsw-alias-border-l1: rgba(255, 255, 255, 0.06);
+      --dsw-alias-border-l2: rgba(255, 255, 255, 0.12);
+      --dsw-alias-label-primary: rgb(249, 250, 251);
+      --dsw-alias-label-secondary: rgb(207, 211, 214);
+      --dsw-alias-label-tertiary: rgb(173, 178, 184);
+      --dsw-alias-state-error-primary: rgb(242, 90, 90);
+      --dsw-alias-state-error-secondary: rgb(242, 90, 90);
+      --dsw-alias-state-success-primary: rgb(34, 197, 94);
+      --dsw-alias-state-success-secondary: rgb(78, 209, 126);
+      --dsw-alias-state-warn-label: rgb(221, 134, 41);
+      --dsw-alias-state-business-primary: rgb(103, 158, 254);
+      --dsw-alias-brand-primary: rgb(249, 250, 251);
+      --dsw-alias-interactive-bg-hover: rgba(255, 255, 255, 0.08);
+      --dsw-alias-interactive-bg-active: rgba(255, 255, 255, 0.14);
+      --shiki-token-comment: #adb5bd;
+      --shiki-token-keyword: #faa2c1;
+      --shiki-token-string: #69db7c;
+      --shiki-token-constant: #4dabf7;
+      --shiki-token-function: #b197fc;
+      --shiki-token-parameter: #ffa94d;
+    }
+  }
+
+  /* What this panel calls its parts, in the shell's vocabulary. */
+  :root {
+    --bg: var(--dsw-alias-bg-base);
+    --surface: var(--dsw-alias-markdown-code-block);
+    --banner: var(--dsw-alias-markdown-code-block-banner);
+    --line: var(--dsw-alias-border-l2);
+    --line-soft: var(--dsw-alias-border-l1);
+    --text: var(--dsw-alias-label-primary);
+    --text-dim: var(--dsw-alias-label-secondary);
+    --text-faint: var(--dsw-alias-label-tertiary);
+    --accent: var(--dsw-alias-state-business-primary);
+    --accent-soft: var(--dsw-alias-interactive-bg-active);
+    --hover: var(--dsw-alias-interactive-bg-hover);
+    --focus: var(--dsw-alias-brand-primary);
+    --add: color-mix(in srgb, var(--dsw-alias-state-success-primary) 13%, var(--dsw-alias-markdown-code-block));
+    --del: color-mix(in srgb, var(--dsw-alias-state-error-primary) 13%, var(--dsw-alias-markdown-code-block));
+    --blank: color-mix(in srgb, var(--dsw-alias-bg-base) 45%, var(--dsw-alias-markdown-code-block));
     --row: 22px;
     --gutter: 48px;
     --radius: 12px;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-    --bg: #0d1117;
-    --surface: #161b22;
-    --banner: #1c2230;
-    --line: #2a313c;
-    --line-soft: #222833;
-    --text: #e6edf3;
-    --text-dim: #9aa4b2;
-    --text-faint: #6e7781;
-    --accent: #58a6ff;
-    --accent-soft: #17233a;
-    --add: color-mix(in srgb, #3fb950 18%, var(--surface));
-    --del: color-mix(in srgb, #f85149 18%, var(--surface));
-    --blank: color-mix(in srgb, #0d1117 60%, var(--surface));
-    --hover: #1b2230;
-    color-scheme: dark;
-    }
-  }
+
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body {
     display: flex; flex-direction: column;
     background: var(--bg); color: var(--text);
-    font: 13px/1.45 var(--ui-font);
+    font: var(--dsw-font-xs-13);
     overflow: hidden;
   }
   button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
@@ -112,10 +159,12 @@
   .row .chip { flex: none; white-space: nowrap; }
   .row .meta { flex: 0 1 auto; min-width: 0; overflow: hidden; }
   .row .letter { flex: none; font-weight: 600; font-size: 11px; }
-  .letter[data-k='M'] { color: #b45309; }
-  .letter[data-k='A'], .letter[data-k='U'] { color: #15803d; }
-  .letter[data-k='D'] { color: #b91c1c; }
-  .letter[data-k='R'], .letter[data-k='C'] { color: #1d4ed8; }
+  .letter[data-k='M'], .letter[data-k='T'] { color: var(--dsw-alias-state-warn-label); }
+  .letter[data-k='A'], .letter[data-k='U'] { color: var(--dsw-alias-state-success-primary); }
+  .letter[data-k='R'], .letter[data-k='C'] { color: var(--dsw-alias-state-success-secondary); }
+  .letter[data-k='D'] { color: var(--dsw-alias-state-error-primary); }
+  .letter[data-k='!'] { color: var(--dsw-alias-state-error-secondary); }
+  .letter[data-k='?'] { color: var(--dsw-alias-label-tertiary); }
   .row.file { padding-left: 26px; }
   .row.file .name { color: var(--text); }
   .node { flex: none; width: 6px; height: 6px; margin: 0 2px; border-radius: 50%; background: var(--text-faint); }
@@ -151,8 +200,8 @@
   .card-head .path .dir { color: var(--text-faint); }
   .card-head .revs { color: var(--text-dim); font: 11px var(--code-font); white-space: nowrap; }
   .card-head .stat { font: 11px var(--code-font); white-space: nowrap; }
-  .card-head .stat .a { color: #15803d; }
-  .card-head .stat .d { color: #b91c1c; }
+  .card-head .stat .a { color: var(--dsw-alias-state-success-primary); }
+  .card-head .stat .d { color: var(--dsw-alias-state-error-primary); }
   .card-head .actions { margin-left: auto; display: flex; gap: 2px; align-items: center; }
   .icon { padding: 2px 5px; border-radius: 6px; color: var(--text-dim); }
   .icon:hover { color: var(--text); background: var(--bg); }
@@ -162,7 +211,7 @@
   .note { margin: 0; padding: 10px 12px; color: var(--text-dim); font-size: 12px; }
 
   /* One aligned row per line pair, drawn exactly as the plugin draws it. */
-  .grid { font: 11px/19px var(--code-font); }
+  .grid { font: var(--dsw-font-markdown-code-block); }
   .grid .line { display: grid; grid-template-columns: var(--gutter) minmax(0, 1fr) var(--gutter) minmax(0, 1fr); min-height: var(--row); }
   .grid[data-view='inline'] .line { grid-template-columns: var(--gutter) var(--gutter) minmax(0, 1fr); }
   .grid .num { text-align: right; padding-right: 12px; color: var(--text-faint); background: var(--surface); user-select: none; }
@@ -173,7 +222,7 @@
   .blank { background: var(--blank); }
 
   /* Unwrapped: one lane per half, each its own scroller, numbers pinned. */
-  .lanes { display: flex; align-items: stretch; font: 11px/19px var(--code-font); }
+  .lanes { display: flex; align-items: stretch; font: var(--dsw-font-markdown-code-block); }
   .lane { flex: 1 1 0; min-width: 0; overflow: auto hidden; }
   .lane-rows { display: grid; grid-template-columns: 1fr; grid-auto-rows: var(--row); align-content: start; width: max-content; min-width: 100%; }
   .lane-row { display: grid; grid-template-columns: var(--gutter) max-content; --band: var(--surface); }
@@ -194,17 +243,11 @@
   }
   .status .addr { font-family: var(--code-font); color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .status .grow { flex: 1; }
-  .tok-keyword { color: #a626a4; }
-  .tok-string { color: #0a7d33; }
-  .tok-comment { color: var(--text-faint); font-style: italic; }
-  .tok-number { color: #b45309; }
-  .tok-type { color: #1d4ed8; }
-  @media (prefers-color-scheme: dark) {
-    .tok-keyword { color: #d2a8ff; }
-    .tok-string { color: #7ee787; }
-    .tok-number { color: #ffa657; }
-    .tok-type { color: #79c0ff; }
-  }
+  .tok-keyword { color: var(--shiki-token-keyword); }
+  .tok-string { color: var(--shiki-token-string); }
+  .tok-comment { color: var(--shiki-token-comment); font-style: italic; }
+  .tok-number { color: var(--shiki-token-constant); }
+  .tok-type { color: var(--shiki-token-function); }
 </style>
 </head>
 <body>
