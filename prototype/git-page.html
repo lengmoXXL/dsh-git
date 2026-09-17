@@ -36,7 +36,9 @@
       文件数超过 8 个时在时间前用小字写"N 个文件"。**行首不放展开箭头**（多一个图标只是
       噪音），点整行就是展开/收起，`aria-expanded` 跟着变；"后面还有"由文件列表末尾那条
       `⋯ N 个文件` 说出来。
-   8. [原型] 点提交就地展开它的文件列表；文件超过 8 个同样折叠。
+   8. [原型] 点提交就地展开它的文件列表；文件超过 8 个同样折叠。**提交的文件块整体
+      比提交缩进一级**：文件行与它下面那条 `⋯ N 个文件` 一起缩进，而 `⋯ N 个提交`
+      留在提交这一级——两条折叠行分属两级，不能长在同一列上。
    9. [原型] 历史超过 12 条折叠成同一形式的小号控制行（`▾ 24 个提交`）。落地：这一行不是展开已有的，
       而是向 host 要下一页（GET /dsh-git/history 已支持 skip）。
   10. [原型] 上游 ref 不在行里单独画胶囊。
@@ -305,7 +307,11 @@
   .letter[data-k='D'] { color: var(--dsw-alias-state-error-primary); }
   .letter[data-k='!'] { color: var(--dsw-alias-state-error-secondary); }
   .letter[data-k='?'] { color: var(--dsw-alias-label-tertiary); }
-  .row.file { padding-left: 26px; }
+  /* A commit's files are a level below the commits: the rows and the control that
+     says "there are more of them" are indented together, so the rail's two `⋯`
+     rows can never be mistaken for each other. */
+  .row.file { padding-left: 46px; }
+  .row.more[data-scope='files'] { padding-left: 46px; }
   .row.file .name { color: var(--text); }
   .node { flex: none; width: 6px; height: 6px; margin: 0 2px; border-radius: 50%; background: var(--text-faint); }
   .node.current { background: var(--accent); box-shadow: 0 0 0 1.5px var(--accent-soft); }
@@ -540,7 +546,7 @@ function railMarkup() {
       const open = state.expandedGroups.has(row.owner)
       const label = open ? `收起${row.unit === '提交' ? '历史' : '文件'}` : `还有 ${row.hidden} 个${row.unit}`
       return `<button class="row more" role="option"${selected} data-index="${index}" data-more="${esc(row.owner)}"
-        aria-expanded="${open}" title="${esc(label)}">
+        data-scope="${row.unit === '文件' ? 'files' : 'history'}" aria-expanded="${open}" title="${esc(label)}">
         <span class="chev">${open ? '▴' : '⋯'}</span>
         <span class="name">${open ? '' : row.hidden}${open ? '' : ` 个${row.unit}`}</span>
       </button>`
