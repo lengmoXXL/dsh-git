@@ -30,10 +30,11 @@ const GROUP_KEY: Record<ChangeStage, GitKey> = {
 }
 
 /** One changed path's row, opening that change in its own tab. */
-function ChangeRow({ entry, t, onSelect }: {
+function ChangeRow({ entry, t, onSelect, onOpenFile }: {
   readonly entry: ChangeEntry
   readonly t: Translate<GitKey>
-  readonly onSelect: (entry: ChangeEntry) => void
+  readonly onSelect: (entry: ChangeEntry, beside: boolean) => void
+  readonly onOpenFile?: ((path: string) => void) | undefined
 }): ReactNode {
   return (
     <FileRow
@@ -41,7 +42,8 @@ function ChangeRow({ entry, t, onSelect }: {
       origPath={entry.origPath}
       kind={entry.kind}
       t={t}
-      onSelect={() => { onSelect(entry) }}
+      onSelect={(beside) => { onSelect(entry, beside) }}
+      onOpenFile={onOpenFile === undefined ? undefined : () => { onOpenFile(entry.path) }}
     />
   )
 }
@@ -54,8 +56,10 @@ export interface ChangeListProps {
   readonly truncated: boolean
   /** The tab's translator. */
   readonly t: Translate<GitKey>
-  /** Open one changed path in its own tab. */
-  readonly onSelect: (entry: ChangeEntry) => void
+  /** Open one changed path's diff; `beside` asks for a second pane. */
+  readonly onSelect: (entry: ChangeEntry, beside: boolean) => void
+  /** Hand one changed path to the shell's own file view. */
+  readonly onOpenFile?: ((path: string) => void) | undefined
 }
 
 /**
@@ -63,7 +67,7 @@ export interface ChangeListProps {
  * @param props - see {@link ChangeListProps}.
  * @returns the changes section.
  */
-export function ChangeList({ grouped, truncated, t, onSelect }: ChangeListProps): ReactNode {
+export function ChangeList({ grouped, truncated, t, onSelect, onOpenFile }: ChangeListProps): ReactNode {
   const [open, setOpen] = useState(true)
   const [opened, setOpened] = useState<ReadonlySet<ChangeStage>>(() => new Set())
   const groups = nonEmptyGroups(grouped)
@@ -97,6 +101,7 @@ export function ChangeList({ grouped, truncated, t, onSelect }: ChangeListProps)
               entry={entry}
               t={t}
               onSelect={onSelect}
+              onOpenFile={onOpenFile}
             />
           ))}
           {entries.length > LIST_PREVIEW && (

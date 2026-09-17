@@ -42,19 +42,22 @@ export interface HistoryListProps {
   readonly now: number
   /** The tab's translator. */
   readonly t: Translate<GitKey>
-  /** Open one file of one commit in its own tab. */
-  readonly onSelectFile: (rev: string, file: CommitFile) => void
+  /** Open one file of one commit; `beside` asks for a second pane. */
+  readonly onSelectFile: (rev: string, file: CommitFile, beside: boolean) => void
+  /** Hand one file of a commit to the shell's own file view. */
+  readonly onOpenFile?: ((path: string) => void) | undefined
 }
 
 /** One commit's row, and the files it changed while it is open. */
-function CommitRow({ commit, sessionId, now, t, selected, onToggle, onSelectFile }: {
+function CommitRow({ commit, sessionId, now, t, selected, onToggle, onSelectFile, onOpenFile }: {
   readonly commit: CommitSummary
   readonly sessionId: string
   readonly now: number
   readonly t: Translate<GitKey>
   readonly selected: boolean
   readonly onToggle: (sha: string) => void
-  readonly onSelectFile: (rev: string, file: CommitFile) => void
+  readonly onSelectFile: (rev: string, file: CommitFile, beside: boolean) => void
+  readonly onOpenFile?: ((path: string) => void) | undefined
 }): ReactNode {
   // A commit's file list never changes, so a list already read is kept and
   // shown again as it was: reopening a row after a diff is not a new question.
@@ -143,7 +146,8 @@ function CommitRow({ commit, sessionId, now, t, selected, onToggle, onSelectFile
                   kind={file.kind}
                   t={t}
                   nested
-                  onSelect={() => { onSelectFile(commit.sha, file) }}
+                  onSelect={(beside) => { onSelectFile(commit.sha, file, beside) }}
+                  onOpenFile={onOpenFile === undefined ? undefined : () => { onOpenFile(file.path) }}
                 />
               ))}
               {files.value.length > LIST_PREVIEW && (
@@ -174,6 +178,7 @@ export function HistoryList({
   now,
   t,
   onSelectFile,
+  onOpenFile,
 }: HistoryListProps): ReactNode {
   const [open, setOpen] = useState(true)
   // A page of history is a page, not the whole log: the rail shows the newest
@@ -212,6 +217,7 @@ export function HistoryList({
           selected={opened === commit.sha}
           onToggle={toggle}
           onSelectFile={onSelectFile}
+          onOpenFile={onOpenFile}
         />
       ))}
       {commits.length > HISTORY_PREVIEW && (

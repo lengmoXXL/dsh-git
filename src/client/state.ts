@@ -212,6 +212,56 @@ export function diffText(diff: DiffPayload): string {
   return `${lines.join('\n')}\n`
 }
 
+/**
+ * How narrow and how wide the list may be dragged.
+ *
+ * The list may be a sliver or a generous column, but a diff needs room to be a
+ * diff: the width stops short of eating the page. On a window too narrow for both,
+ * the minimum wins rather than the reserve — a list nobody can read is worse than
+ * a diff that is cramped.
+ */
+export const RAIL_MIN_WIDTH = 220
+const RAIL_MAX_WIDTH = 760
+const DIFF_RESERVE = 420
+
+/**
+ * The width the list may take, given the window it sits in.
+ * @param width - the width asked for, in pixels.
+ * @param windowWidth - the width of the window, in pixels.
+ * @returns the width to use, in whole pixels.
+ */
+export function clampRailWidth(width: number, windowWidth: number): number {
+  const widest = Math.min(RAIL_MAX_WIDTH, Math.max(RAIL_MIN_WIDTH, windowWidth - DIFF_RESERVE))
+  return Math.max(RAIL_MIN_WIDTH, Math.min(widest, Math.round(width)))
+}
+
+/**
+ * Where a diff lands on the board.
+ *
+ * A comparison already on the board is only focused: opening the same thing twice
+ * would compare it with itself. Otherwise it takes the focused pane's place, which
+ * is what reading one diff after another wants — or opens beside the others, which
+ * is how two revisions are put next to each other. The first diff on an empty board
+ * has nowhere to replace, so it opens.
+ *
+ * @param panes - the panes now on the board, in order.
+ * @param pane - the pane to place.
+ * @param beside - whether the reader asked for a second pane.
+ * @param focused - the focused pane's key, if any.
+ * @returns the panes after the click, or the same array when nothing moved.
+ */
+export function placePane<Pane extends { readonly key: string }>(
+  panes: readonly Pane[],
+  pane: Pane,
+  beside: boolean,
+  focused: string | null,
+): readonly Pane[] {
+  if (panes.some(existing => existing.key === pane.key)) return panes
+  const at = panes.findIndex(existing => existing.key === focused)
+  if (beside || at < 0) return [...panes, pane]
+  return panes.map((existing, index) => (index === at ? pane : existing))
+}
+
 /** One diff the board is showing: what it compares, and its identity. */
 export interface BoardPane {
   /** The comparison's identity, from {@link diffKey}. */

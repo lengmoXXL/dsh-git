@@ -58,7 +58,6 @@ import { HistoryList } from './HistoryList.tsx'
 import { logCache } from './log-cache.ts'
 import type { GitKey, GitNamespace } from './locales.ts'
 import {
-  clampRailWidth,
   diffViewSettings,
   railSettings,
   setDiffViewMode,
@@ -71,10 +70,12 @@ import {
 } from './view-mode.ts'
 import {
   cached,
+  clampRailWidth,
   diffKey,
   diffText,
   failureInfoOf,
   groupChanges,
+  placePane,
   type BoardPane,
   type FailureInfo,
   type Load,
@@ -196,16 +197,19 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
     setEpoch(value => value + 1)
   }, [])
 
-  /** Show one comparison, replacing the focused pane or opening the first one. */
-  const openDiff = useCallback((request: DiffRequest) => {
+  /**
+   * Show one comparison.
+   *
+   * Without the modifier it takes the focused pane's place, which is what reading
+   * one diff after another wants; with it the diff opens beside the others, which
+   * is how two revisions are compared. A comparison already on the board is only
+   * focused, never opened twice.
+   */
+  const openDiff = useCallback((request: DiffRequest, beside: boolean) => {
     const key = diffKey(request)
     const cache = logCache(sessionId)
     setPanes((current) => {
-      if (current.some(pane => pane.key === key)) return current
-      const at = current.findIndex(pane => pane.key === cache.focused)
-      const next = at < 0
-        ? [...current, { key, request }]
-        : current.map((pane, index) => (index === at ? { key, request } : pane))
+      const next = placePane(current, { key, request }, beside, cache.focused)
       cache.panes = next
       return next
     })
@@ -241,7 +245,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
       setOpenFailure(failureInfoOf(error))
     }
   }, [openResource, sessionId])
-  const openChange = useCallback((entry: ChangeEntry) => {
+  const openChange = useCallback((entry: ChangeEntry, beside: boolean) => {
     // An unstaged change compares the index against the working tree; a staged one
     // compares HEAD against the index.
     openDiff({
@@ -249,16 +253,16 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
       source: entry.stage === 'staged' ? 'index' : 'worktree',
       path: entry.path,
       origPath: entry.origPath,
-    })
+    }, beside)
   }, [openDiff, sessionId])
-  const openCommitFile = useCallback((rev: string, file: CommitFile) => {
+  const openCommitFile = useCallback((rev: string, file: CommitFile, beside: boolean) => {
     openDiff({
       sessionId,
       source: 'commit',
       rev,
       path: file.path,
       origPath: file.origPath,
-    })
+    }, beside)
   }, [openDiff, sessionId])
 
   const focusedPane = panes.find(pane => pane.key === focused)
@@ -435,6 +439,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
                 truncated={ready?.truncated ?? false}
                 t={t}
                 onSelect={openChange}
+                onOpenFile={openFile}
               />
               {history.phase === 'failed'
                 ? <FailureBlock code={history.code} message={history.message} t={t} onRetry={refresh} />
@@ -446,6 +451,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
                     now={now}
                     t={t}
                     onSelectFile={openCommitFile}
+                    onOpenFile={openFile}
                   />
                 )}
             </>

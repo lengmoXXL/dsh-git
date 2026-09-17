@@ -184,12 +184,16 @@ test('shows eight changes per group and one control for the rest', async () => {
     grouped: { conflicted: [], staged: [], unstaged: entries, untracked: [] },
     truncated: false,
     onSelect: () => {},
+    onOpenFile: () => {},
   })
   assert.match(markup, /src\/file7\.ts/)
   assert.doesNotMatch(markup, /src\/file8\.ts/)
   // The control is a control: three dots, a count, and it says what it stands for.
   assert.match(markup, /⋯/)
   assert.match(markup, /list\.moreFiles/)
+  // And a row offers the file as well as its diff, in a span because a button
+  // inside a button is not a thing a browser will draw.
+  assert.match(markup, /_rowOpen/)
 })
 
 test('the bundle carries its stylesheets inlined under hashed local names', async () => {

@@ -13,7 +13,10 @@ import { GitRequestError } from '../../src/client/face.ts'
 import {
   collapseRows,
   diffText,
+  clampRailWidth,
   failureInfoOf,
+  placePane,
+  RAIL_MIN_WIDTH,
   groupChanges,
   inlineDisplayLines,
   inlineLines,
@@ -76,6 +79,44 @@ test('folds the middle of a long unchanged run and re-expands it on request', ()
 test('does not fold when a run is exactly at the limit', () => {
   const rows = Array.from({ length: 6 }, (_unused, index) => contextRow(index + 1))
   assert.equal(collapseRows(rows, 6).every(item => item.kind === 'diff'), true)
+})
+
+test('keeps the list between a sliver and a share of the page', () => {
+  assert.equal(clampRailWidth(336, 1440), 336)
+  // Nothing narrower than the minimum, however hard the pointer is pulled.
+  assert.equal(clampRailWidth(40, 1440), RAIL_MIN_WIDTH)
+  // On a wide page the absolute maximum binds first…
+  assert.equal(clampRailWidth(2000, 1440), 760)
+  // …and on a narrower one the diff's reserve binds before that.
+  assert.equal(clampRailWidth(2000, 800), 380)
+})
+
+test('gives up the reserve rather than the minimum on a narrow window', () => {
+  assert.equal(clampRailWidth(500, 500), RAIL_MIN_WIDTH)
+  assert.equal(clampRailWidth(500, 300), RAIL_MIN_WIDTH)
+})
+
+test('rounds to whole pixels, so a drag cannot leave fractional widths behind', () => {
+  assert.equal(clampRailWidth(336.4, 1440), 336)
+  assert.equal(clampRailWidth(336.6, 1440), 337)
+})
+
+test('lands a diff in the focused pane, or beside it when asked', () => {
+  const first = { key: 'a' }
+  const second = { key: 'b' }
+  const third = { key: 'c' }
+  const panes = [first, second]
+
+  // The first diff on an empty board has nowhere to replace, so it opens.
+  assert.deepEqual(placePane([], first, false, null), [first])
+  // Without the modifier the diff takes the focused pane's place…
+  assert.deepEqual(placePane(panes, third, false, 'a'), [third, second])
+  // …and with it, it opens beside the others.
+  assert.deepEqual(placePane(panes, third, true, 'a'), [first, second, third])
+  // A comparison already on the board is only focused: opening the same thing
+  // again would compare it with itself.
+  assert.equal(placePane(panes, second, false, 'a'), panes)
+  assert.equal(placePane(panes, second, true, 'a'), panes)
 })
 
 test('names a host failure by its code and a transport failure by its marker', () => {

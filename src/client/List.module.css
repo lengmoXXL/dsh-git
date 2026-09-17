@@ -134,6 +134,29 @@
   color: var(--dsw-alias-label-tertiary);
 }
 
+/* What a row offers when the pointer is on it: reading the file, which the row's
+   own click — opening the diff — cannot mean. It sits before the status letter,
+   because the letter is the row's last mark. */
+.rowOpen {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 2px;
+  border-radius: 4px;
+  color: var(--dsw-alias-label-tertiary);
+  opacity: 0;
+}
+
+.row:hover .rowOpen,
+.row:focus-visible .rowOpen {
+  opacity: 1;
+}
+
+.rowOpen:hover {
+  color: var(--dsw-alias-state-business-primary);
+  background: var(--dsw-alias-bg-base);
+}
+
 .rowSpacer {
   flex: 1 1 0;
   min-width: 8px;

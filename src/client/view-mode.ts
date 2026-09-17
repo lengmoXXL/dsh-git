@@ -128,13 +128,6 @@ export interface RailSettings {
 /** What a reader who has said nothing gets: a comfortable list on the left. */
 const RAIL_DEFAULTS: RailSettings = { side: 'left', width: 336, open: true }
 
-/** The narrowest the list may be dragged, and the widest. */
-export const RAIL_MIN_WIDTH = 220
-const RAIL_MAX_WIDTH = 760
-
-/** The room a diff keeps whatever the list does. */
-const DIFF_RESERVE = 420
-
 /** Where each choice is kept between page loads. */
 const SIDE_KEY = 'dsh-git:rail-side'
 const WIDTH_KEY = 'dsh-git:rail-width'
@@ -145,22 +138,6 @@ let currentRail: RailSettings | undefined
 
 /** Who to tell when the list's place changes. */
 const railListeners = new Set<() => void>()
-
-/**
- * How wide the list may be, given the window it sits in.
- *
- * The list may be dragged from a sliver to a generous column, but a diff needs
- * room to be a diff: the width stops short of eating the page, and on a window too
- * narrow for both the minimum wins rather than the reserve.
- *
- * @param width - the width asked for, in pixels.
- * @param windowWidth - the width of the window, in pixels.
- * @returns the width to use.
- */
-export function clampRailWidth(width: number, windowWidth: number): number {
-  const widest = Math.min(RAIL_MAX_WIDTH, Math.max(RAIL_MIN_WIDTH, windowWidth - DIFF_RESERVE))
-  return Math.max(RAIL_MIN_WIDTH, Math.min(widest, Math.round(width)))
-}
 
 /**
  * The remembered place of the list, or the defaults.
