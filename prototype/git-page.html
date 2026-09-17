@@ -33,8 +33,9 @@
       而是向 host 要下一页（GET /dsh-git/history 已支持 skip）。
   10. [原型] 上游 ref 不在行里单独画胶囊。
   11. [原型] 侧栏可抽屉收起（页头按钮或 b），可拖宽（最窄 220px，最宽
-      min(760, 窗口宽 − 420)，双击复位）。落地：宽度与 diff 偏好一起持久化
-      （view-mode.ts，localStorage）。
+      min(760, 窗口宽 − 420)，双击复位），**位置可选左或右**（页头 ◧/◨ 按钮）。
+      落地：宽度、位置与 diff 偏好一起持久化（view-mode.ts，localStorage）；
+      放到右边时注意抽屉箭头和边框要跟着镜像。
   12. [原型] 暂时不做过滤/搜索。
 
   三、diff
@@ -241,6 +242,13 @@
   .rail-inner { width: var(--rail); height: 100%; display: flex; flex-direction: column; min-height: 0; }
   body.rail-shut .rail { width: 0; border-right-width: 0; }
 
+  /* The list can sit on either side of the diff. Reversing the row is the whole
+     of it: the grip stays between them, so dragging and the collapse animation
+     keep working, and the border moves to the edge that now faces the diff. */
+  body[data-rail='right'] main { flex-direction: row-reverse; }
+  body[data-rail='right'] .rail { border-right: none; border-left: 1px solid var(--line); }
+  body[data-rail='right'].rail-shut .rail { border-left-width: 0; }
+
   /* The rail is a pane, so its edge is a handle: drag it to the width the list
      needs, double-click to come back to the default. */
   .grip {
@@ -365,6 +373,7 @@
 
 <header class="top">
   <button id="rail-toggle" class="icon" title="收起 / 展开列表（b）" aria-pressed="true">‹</button>
+  <button id="rail-side" class="icon" title="列表放到另一边">◧</button>
   <span class="repo" id="repo">dsh-git</span>
   <span class="chip head" id="branch">main</span>
   <span class="spacer"></span>
@@ -411,6 +420,7 @@ const state = {
   focused: null,
   cursor: 0,
   railOpen: true,
+  railSide: 'left',
   railWidth: 336,
   split: true,
   wrap: true,
@@ -759,8 +769,15 @@ function renderBoard() {
 
 function render() {
   document.body.classList.toggle('rail-shut', !state.railOpen)
-  $('rail-toggle').textContent = state.railOpen ? '‹' : '›'
+  document.body.dataset.rail = state.railSide
+  const onRight = state.railSide === 'right'
+  // The collapse control points at the edge the list is nearest: right when the
+  // list is on the right, left when it is on the left.
+  $('rail-toggle').textContent = state.railOpen === onRight ? '›' : '‹'
+  if (!state.railOpen) $('rail-toggle').textContent = onRight ? '‹' : '›'
   $('rail-toggle').setAttribute('aria-pressed', String(state.railOpen))
+  $('rail-side').textContent = onRight ? '◨' : '◧'
+  $('rail-side').title = onRight ? '列表放到左边' : '列表放到右边'
   renderRail()
   renderBoard()
   const row = railRows()[state.cursor]
@@ -925,6 +942,7 @@ function setWrap(wrap) {
   render()
 }
 $('rail-toggle').onclick = () => { state.railOpen = !state.railOpen; render() }
+$('rail-side').onclick = () => { state.railSide = state.railSide === 'left' ? 'right' : 'left'; render() }
 
 /* The rail keeps the room it was given, and the board keeps enough of its own:
    the width is held between a readable list and a diff that can still be read. */
