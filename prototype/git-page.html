@@ -55,9 +55,12 @@
       行号槽 48px 且不可选；色带铺满各自半栏（宽度写在滚动内容上，不是轨道上）；
       不折行时行号与折叠标签都钉在各自栏内。
   16. [原型] 改动行只染底、不改字色；空的一侧露出底色；省略行/折叠行带自己的计数。
-  16b. [原型] 未改动的一段比别处稍微突出（banner 底色 + 二级灰），并且**可点击展开**：
-      点一下把这一折叠换成它藏起来的行。折叠规则同插件（连续未改动 > 6 行才折，两端各留
-      3 行），折叠里带着自己的行，所以展开是真的；展开后不再折回（和插件一致）。
+  16b. [原型] 未改动的一段是一条**居中**的带子：`⋯ 16 行未改动`（图标 + 行数，hover 整条提亮），
+      点一下展开成它藏起来的行；展开后这一段**顶部出现一条细带 `↑`**（居中、只有图标、
+      tooltip 写"收起这一段"），点它折回去——即折叠是**可以来回切**的。
+      形态照 VS Code 的 diff：未改动区居中带 + 展开段上/下的箭头细带；GitHub 是居中的
+      "Expand N lines" 条。折叠规则同插件（连续未改动 > 6 行才折，两端各留 3 行），
+      折叠里带着自己的行，所以展开的是真实内容。
   17. [原型] 双栏复制只取起始栏：拖拽归属按下的那一栏（另一栏在拖拽期间不可选），
       键盘或其他方式产生的跨栏选区在 copy 时按起始栏重写。
   18. [原型] 语法高亮与文件视图同源（同一张 --shiki-token-* 色板）。
@@ -340,12 +343,17 @@
   .grid .text { padding: 0 12px 0 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
   /* The one part of the diff that is not finished: it says how much was left out
      and opens when clicked. */
+  /* The VS Code diff shape: an unchanged run is a centred band — three dots, then
+     how much is behind them — and once open, a thin band with an up arrow sits at
+     the top of the run so it can be folded again. */
   .grid .held {
     grid-column: 1 / -1; background: var(--banner); color: var(--text-dim);
-    padding-left: 12px; cursor: pointer; user-select: none;
+    text-align: center; cursor: pointer; user-select: none;
   }
-  .grid .held:hover { color: var(--text); }
-  .held .chev { padding-right: 6px; color: var(--text-faint); }
+  .grid .held:hover { color: var(--text); background: var(--hover); }
+  .held .glyph { color: var(--text-faint); padding-right: 6px; letter-spacing: 2px; }
+  .held.collapse { line-height: 12px; }
+  .held.collapse .glyph { padding: 0; }
   .del { background: var(--del); }
   .add { background: var(--add); }
   .blank { background: var(--blank); }
@@ -364,6 +372,7 @@
   .lane-held { background: var(--banner); cursor: pointer; user-select: none; }
   .lane-held > * { position: sticky; left: 0; color: var(--text-dim); padding-left: 12px; }
   .lane-held:hover > * { color: var(--text); }
+  .lane-held.collapse { line-height: 12px; }
 
   .empty kbd {
     padding: 0 4px; border: 1px solid var(--line); border-bottom-width: 2px;
@@ -532,7 +541,7 @@ function railMarkup() {
       const label = open ? `收起${row.unit === '提交' ? '历史' : '文件'}` : `还有 ${row.hidden} 个${row.unit}`
       return `<button class="row more" role="option"${selected} data-index="${index}" data-more="${esc(row.owner)}"
         aria-expanded="${open}" title="${esc(label)}">
-        <span class="chev">${open ? '▴' : '▾'}</span>
+        <span class="chev">${open ? '▴' : '⋯'}</span>
         <span class="name">${open ? '' : row.hidden}${open ? '' : ` 个${row.unit}`}</span>
       </button>`
     }
@@ -606,11 +615,14 @@ const langOf = (path) => (path.endsWith('.css') ? 'css' : path.endsWith('.md') |
 
 /* ── the diff, drawn the way the plugin draws it ─────────────────────── */
 const foldBand = (row, at) =>
-  `<div class="held" data-fold="${at}"><span class="chev">▸</span>⋯ ${row[1]} 行未改动</div>`
+  `<div class="held" data-fold="${at}" title="展开这 ${row[1]} 行未改动"><span class="glyph">⋯</span>${row[1]} 行未改动</div>`
+const collapseBand = (at) =>
+  `<div class="held collapse" data-fold="${at}" title="收起这一段"><span class="glyph">↑</span></div>`
 
 function cells(row, view, at) {
   const [kind, lno, ltext, rno, rtext] = row
   if (kind === 'fold') return foldBand(row, at)
+  if (kind === 'collapse') return collapseBand(at)
   const leftTone = lno === null ? 'blank' : kind === 'delete' || kind === 'replace' ? 'del' : ''
   const rightTone = rno === null ? 'blank' : kind === 'insert' || kind === 'replace' ? 'add' : ''
   return `<div class="line">
@@ -632,6 +644,7 @@ function inlineLine(number, tone, text, lang) {
 function inlineCells(row, view, at) {
   const [kind, lno, ltext, rno, rtext] = row
   if (kind === 'fold') return foldBand(row, at)
+  if (kind === 'collapse') return collapseBand(at)
   if (kind === 'context') return inlineLine(rno, '', ltext, view.lang)
   if (kind === 'replace') return inlineLine(lno, 'del', ltext, view.lang) + inlineLine(rno, 'add', rtext, view.lang)
   if (kind === 'delete') return inlineLine(lno, 'del', ltext, view.lang)
@@ -649,13 +662,15 @@ function laneMarkup(rows, view, side) {
     if (kind === 'insert') return side === 'right' ? 'add' : ''
     return ''
   }
-  return rows.map((row, at) => {
+  return rows.map(({ row, at }) => {
     const [kind, lno, ltext, rno, rtext] = row
-    if (kind === 'fold') {
-      const label = `<span class="chev">▸</span>⋯ ${lno} 行未改动`
-      return side === 'left'
-        ? `<div class="lane-row lane-held" data-band="" data-fold="${at}"><span class="b" style="grid-column:1">${label}</span></div>`
-        : '<div class="lane-row" data-band=""></div>'
+    if (kind === 'fold' || kind === 'collapse') {
+      if (side !== 'left') return '<div class="lane-row" data-band=""></div>'
+      const label = kind === 'fold'
+        ? `<span class="glyph">⋯</span>${lno} 行未改动`
+        : '<span class="glyph">↑</span>'
+      const cls = kind === 'fold' ? 'lane-held' : 'lane-held collapse'
+      return `<div class="lane-row ${cls}" data-band="" data-fold="${at}"><span class="b" style="grid-column:1">${label}</span></div>`
     }
     const no = side === 'left' ? lno : rno
     const text = side === 'left' ? ltext : rtext
@@ -673,24 +688,37 @@ function laneMarkup(rows, view, side) {
    alignment, so a truncated view still knows which kind of change it is. */
 const oneSided = (diff) => (diff.added > 0 && diff.removed === 0) || (diff.removed > 0 && diff.added === 0)
 
-/** The rows a column draws: a fold the reader opened is replaced by what it hid.
-    A run is either folded or drawn, never both — the same rule the plugin's
-    collapse uses, so an opened fold is the real run and not a longer stub. */
+/**
+ * The rows a column draws, each with the index of the source row it came from.
+ *
+ * A fold the reader opened is replaced by what it hid, headed by a thin band
+ * carrying the same index, so the band that folds it back and the band that
+ * opened it name the same run. A run is either folded or drawn, never both.
+ */
 function visibleRows(diff, address) {
-  return diff.rows.flatMap((row, at) => (state.expandedFolds.has(`${address}:${at}`) ? row[5] : [row]))
+  const out = []
+  diff.rows.forEach((row, at) => {
+    if (row[0] !== 'fold' || !state.expandedFolds.has(`${address}:${at}`)) {
+      out.push({ at, row })
+      return
+    }
+    out.push({ at, row: ['collapse', at, '', null, ''] })
+    for (const hidden of row[5]) out.push({ at, row: hidden })
+  })
+  return out
 }
 
 function diffMarkup(diff, view, address) {
-  const rows = visibleRows(diff, address)
+  const entries = visibleRows(diff, address)
   if (!view.split || oneSided(diff)) {
-    return `<div class="grid" data-view="inline">${rows.map((row, at) => inlineCells(row, view, at)).join('')}</div>`
+    return `<div class="grid" data-view="inline">${entries.map((e) => inlineCells(e.row, view, e.at)).join('')}</div>`
   }
   if (view.wrap) {
-    return `<div class="grid" data-view="split">${rows.map((row, at) => cells(row, view, at)).join('')}</div>`
+    return `<div class="grid" data-view="split">${entries.map((e) => cells(e.row, view, e.at)).join('')}</div>`
   }
   return `<div class="lanes" data-view="split">
-    <div class="lane"><div class="lane-rows">${laneMarkup(rows, view, 'left')}</div></div>
-    <div class="lane"><div class="lane-rows">${laneMarkup(rows, view, 'right')}</div></div>
+    <div class="lane"><div class="lane-rows">${laneMarkup(entries, view, 'left')}</div></div>
+    <div class="lane"><div class="lane-rows">${laneMarkup(entries, view, 'right')}</div></div>
   </div>`
 }
 
@@ -854,14 +882,11 @@ $('board').addEventListener('click', (event) => {
   const address = card.dataset.address
   const band = event.target.closest('[data-fold]')
   if (band !== null) {
-    // The index is the band's place among the rows this column drew, and the rows
-    // are rebuilt in the same order every render, so it names the same fold.
-    const drawn = visibleRows(DATA.diffs[address] ?? sampleDiff(address), address)
-    const at = Number(band.dataset.fold)
-    const rows = (DATA.diffs[address] ?? sampleDiff(address)).rows
-    // A drawn band is either one of the source rows or a row a fold put there.
-    const index = rows.findIndex((row) => row === drawn[at])
-    state.expandedFolds.add(`${address}:${index < 0 ? at : index}`)
+    // Every band carries the index of the run it stands for in the source rows,
+    // so opening and folding back address the same key.
+    const key = `${address}:${Number(band.dataset.fold)}`
+    if (state.expandedFolds.has(key)) state.expandedFolds.delete(key)
+    else state.expandedFolds.add(key)
     return render()
   }
   focusCard(address)
