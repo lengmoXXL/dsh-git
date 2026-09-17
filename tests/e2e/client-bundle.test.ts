@@ -172,6 +172,11 @@ test('marks each half, so a copy can take one side rather than both', async () =
   })
   assert.match(markup, /data-half="left"/)
   assert.match(markup, /data-half="right"/)
+  // A diff is a diff: no title bar of its own, so two panes cannot show two sets
+  // of switches, and the path and revisions are the pane's tooltip instead.
+  assert.doesNotMatch(markup, /_header/)
+  assert.doesNotMatch(markup, /diff\.copy/)
+  assert.doesNotMatch(markup, /diff\.splitView/)
 })
 
 test('the diff body highlights a line through the sheet the file view uses', async () => {
@@ -242,6 +247,9 @@ test('shows the newest twelve commits and one control for the rest', async () =>
   assert.doesNotMatch(markup, /commit 12/)
   assert.match(markup, /list\.moreCommits/)
   assert.doesNotMatch(markup, /list\.moreCommits[^<]*\d/)
+  // A commit row is a commit: the node, its subject, when and by whom. Nothing
+  // per-row says "expandable" — the whole row is the target.
+  assert.doesNotMatch(markup, /_disclosure/)
 })
 
 test('shows eight changes per group and one control for the rest', async () => {
