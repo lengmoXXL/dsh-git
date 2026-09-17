@@ -24,15 +24,6 @@
   margin-left: 10px;
 }
 
-/*
- * The focused pane is where the next diff lands. It is marked with a hairline on
- * its leading edge and nothing else: a border around a diff competes with the code,
- * and the reader who clicked it a moment ago does not need telling twice.
- */
-.focused {
-  box-shadow: inset 2px 0 0 var(--dsw-alias-state-business-primary);
-}
-
 .empty {
   margin: auto;
   max-width: 380px;

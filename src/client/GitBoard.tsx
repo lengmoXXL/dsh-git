@@ -12,7 +12,6 @@ import { useEffect, useState, type ReactNode } from 'react'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { DiffPayload } from '../shared/wire.ts'
 import { BUILD_STAMP } from './build.ts'
-import { cx } from './format.ts'
 import { FailureBlock, Note } from './Feedback.tsx'
 import { gitFace } from './face.ts'
 import type { GitKey } from './locales.ts'
@@ -73,8 +72,9 @@ function DiffPane({ pane, focused, t, onFocus }: {
     : `${ready.path} · ${ready.oldLabel} → ${ready.newLabel} · +${String(ready.added)} −${String(ready.removed)} · ${BUILD_STAMP}`
   return (
     <section
-      className={cx(css.pane, focused && css.focused)}
+      className={css.pane}
       data-pane={pane.key}
+      data-focused={focused ? '' : undefined}
       title={title}
       onMouseDown={() => { onFocus(pane.key) }}
     >

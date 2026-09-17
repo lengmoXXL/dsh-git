@@ -448,6 +448,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
                     t={t}
                     onSelectFile={openCommitFile}
                     onOpenFile={openFile}
+                    upstream={ready?.repo?.branch.upstream ?? undefined}
                   />
                 )}
             </>

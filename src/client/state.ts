@@ -146,7 +146,7 @@ const HEAD_MARK = ' -> '
  * @param refs - the decoration field, split the way `%D` writes it.
  * @returns one chip per ref, in git's own order.
  */
-export function parseRefs(refs: readonly string[]): RefChip[] {
+export function parseRefs(refs: readonly string[], upstream?: string | undefined): RefChip[] {
   const chips: RefChip[] = []
   for (const raw of refs) {
     const ref = raw.trim()
@@ -170,7 +170,11 @@ export function parseRefs(refs: readonly string[]): RefChip[] {
     }
     if (name.startsWith(REMOTES)) {
       const remote = unqualified(name, REMOTES)
-      if (!remote.endsWith('/HEAD')) chips.push({ kind: 'remote', name: remote })
+      // The branch's own upstream is the header's business: a second capsule saying
+      // `origin/main` beside `main` says the same thing twice.
+      if (!remote.endsWith('/HEAD') && remote !== upstream) {
+        chips.push({ kind: 'remote', name: remote })
+      }
       continue
     }
     chips.push({ kind: 'branch', name: unqualified(name, HEADS) })

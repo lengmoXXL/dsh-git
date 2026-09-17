@@ -6,6 +6,7 @@
 
 import type { ReactNode } from 'react'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
+import { cx } from './format.ts'
 import type { GitKey } from './locales.ts'
 import css from './List.module.css'
 
@@ -24,6 +25,8 @@ export interface MoreRowProps {
   readonly onToggle: () => void
   /** What hovering it says, when that is more than the label. */
   readonly title?: string | undefined
+  /** Draw it a level in, under the commit whose files it counts. */
+  readonly nested?: boolean | undefined
 }
 
 /**
@@ -31,11 +34,11 @@ export interface MoreRowProps {
  * @param props - see {@link MoreRowProps}.
  * @returns the row.
  */
-export function MoreRow({ label, open, t, onToggle, title }: MoreRowProps): ReactNode {
+export function MoreRow({ label, open, t, onToggle, title, nested = false }: MoreRowProps): ReactNode {
   return (
     <button
       type="button"
-      className={css.more}
+      className={cx(css.more, nested && css.moreNested)}
       aria-expanded={open}
       title={open ? t('section.collapse') : title ?? label}
       onClick={onToggle}

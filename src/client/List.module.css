@@ -343,17 +343,24 @@
   align-items: center;
   gap: 4px;
   width: 100%;
-  padding: 2px 4px 2px 8px;
+  padding: 1px 4px 1px 8px;
   border: none;
   background: none;
   color: var(--dsw-alias-label-tertiary);
   font: var(--dsw-font-xxxs-11);
+  line-height: 16px;
   text-align: left;
   cursor: pointer;
 }
 
 .more:hover {
   color: var(--dsw-alias-label-secondary);
+}
+
+/* A commit's files are a level in, and the control that counts them sits with
+   them; the rail's own control stays at the edge. */
+.moreNested {
+  padding-left: 30px;
 }
 
 .moreGlyph {
