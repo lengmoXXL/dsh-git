@@ -16,7 +16,6 @@ import {
   useState,
   useSyncExternalStore,
   type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react'
 import {
@@ -263,17 +262,48 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   // a second. The list can sit against either edge, so the pointer's distance from
   // that edge is the width.
   const [dragging, setDragging] = useState<number | undefined>(undefined)
+  const dragWidth = useRef<number | undefined>(undefined)
   const listOnRight = rail.side === 'right'
   // The drawer's arrow points at the edge the list is nearest, so the control means
   // "put it away" wherever the list has been moved to.
   const drawerGlyph = rail.open === listOnRight ? '›' : '‹'
-  const dragWidth = (event: ReactPointerEvent<HTMLDivElement>): void => {
-    setDragging(clampRailWidth(
-      listOnRight ? window.innerWidth - event.clientX : event.clientX,
-      window.innerWidth,
-    ))
-  }
   const railWidth = dragging ?? rail.width
+
+  /**
+   * Follow the pointer while the grip is held.
+   *
+   * The listeners are on the document, not on the grip: the grip is six pixels wide
+   * and the browser may decide the gesture is a scroll the moment the pointer leaves
+   * it, which cancels a pointer capture and ends the drag before it starts. The
+   * width is kept in a ref as well as in state because the release has to write what
+   * the last move settled on, and an effect closure would see the value it started
+   * with.
+   */
+  useEffect(() => {
+    if (dragging === undefined) return
+    const move = (event: PointerEvent): void => {
+      dragWidth.current = clampRailWidth(
+        listOnRight ? window.innerWidth - event.clientX : event.clientX,
+        window.innerWidth,
+      )
+      setDragging(dragWidth.current)
+    }
+    const finish = (commit: boolean): void => {
+      if (commit && dragWidth.current !== undefined) setRailWidth(dragWidth.current)
+      dragWidth.current = undefined
+      setDragging(undefined)
+    }
+    const up = (): void => { finish(true) }
+    const cancel = (): void => { finish(false) }
+    document.addEventListener('pointermove', move)
+    document.addEventListener('pointerup', up)
+    document.addEventListener('pointercancel', cancel)
+    return () => {
+      document.removeEventListener('pointermove', move)
+      document.removeEventListener('pointerup', up)
+      document.removeEventListener('pointercancel', cancel)
+    }
+  }, [dragging !== undefined, listOnRight])
 
   // Keys for what a reader does all day: a pane goes away with Escape, the list with
   // `b`, and the two switches with `w` and `i`.
@@ -462,16 +492,12 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
             aria-label={t('panel.resize')}
             title={t('panel.resize')}
             onPointerDown={(event) => {
-              event.currentTarget.setPointerCapture(event.pointerId)
+              // Without this the browser takes the drag as a scroll gesture and
+              // cancels the pointer sequence under us.
+              event.preventDefault()
+              dragWidth.current = rail.width
               setDragging(rail.width)
             }}
-            onPointerMove={(event) => { dragWidth(event) }}
-            onPointerUp={(event) => {
-              event.currentTarget.releasePointerCapture(event.pointerId)
-              if (dragging !== undefined) setRailWidth(dragging)
-              setDragging(undefined)
-            }}
-            onPointerCancel={() => { setDragging(undefined) }}
             onDoubleClick={() => { setRailWidth(RAIL_DEFAULT_WIDTH) }}
           />
         )}
