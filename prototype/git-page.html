@@ -197,7 +197,6 @@
     border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
   }
   .card:last-child { margin-right: 8px; }
-  .card.focused { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
   .card-head {
     flex: none; display: flex; align-items: center; gap: 8px;
     padding: 6px 10px; background: var(--banner); border-bottom: 1px solid var(--line);
@@ -211,7 +210,6 @@
   .card-head .actions { margin-left: auto; display: flex; gap: 2px; align-items: center; }
   .icon { padding: 2px 5px; border-radius: 6px; color: var(--text-dim); }
   .icon:hover { color: var(--text); background: var(--bg); }
-  .icon[aria-pressed='true'] { color: var(--accent); }
   .card-body { flex: 1; min-height: 0; overflow: auto; }
   .card.collapsed .card-body { display: none; }
   .note { margin: 0; padding: 10px 12px; color: var(--text-dim); font-size: 12px; }
