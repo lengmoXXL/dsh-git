@@ -28,12 +28,15 @@
       控件悬停时才浮出来；未抓到 diff 的"示例"标记留在左上角（它不能藏）。
 
   二、列表
-   6. [原型] 改动按 冲突/已暂存/未暂存/未跟踪 分组；一组超过 8 条折叠成
-      "还有 N 个文件"，可展开/收起。
-   7. [原型] 提交行 = 点点 + subject + 作者·时间 + ref 胶囊；点点 6px，HEAD 实心、
-      合并空心。
+   6. [原型] 改动按 冲突/已暂存/未暂存/未跟踪 分组；一组超过 8 条折叠成一行
+      **图标引导的小号控制行**（`▾ 8 个文件`，hover 才提示"还有 N 个文件"），
+      可展开/收起。展开行必须一眼看出是控件而不是又一条记录——用词、用同样字号，
+      就会被误读成一条提交。
+   7. [原型] 提交行 = **展开三角** + 点点 + subject + 作者·时间 + ref 胶囊；点点 6px，
+      HEAD 实心、合并空心；文件数超过 8 个时在时间前用小字写"N 个文件"。三角是展开
+      指示（▸/▾，`aria-expanded`），点整行仍然切换。
    8. [原型] 点提交就地展开它的文件列表；文件超过 8 个同样折叠。
-   9. [原型] 历史超过 12 条折叠成"还有 N 个提交"。落地：这一行不是展开已有的，
+   9. [原型] 历史超过 12 条折叠成同一形式的小号控制行（`▾ 24 个提交`）。落地：这一行不是展开已有的，
       而是向 host 要下一页（GET /dsh-git/history 已支持 skip）。
   10. [原型] 上游 ref 不在行里单独画胶囊。
   11. [原型] 侧栏可抽屉收起（页头按钮或 b），可拖宽（最窄 220px，最宽
@@ -284,8 +287,12 @@
   .row .name { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .row .dir { flex: 0 1 auto; overflow: hidden; color: var(--text-faint); font-size: 11px; }
   .row .grow { flex: 1; }
-  .row.more { color: var(--text-dim); }
-  .row.more .chev { flex: none; width: 10px; color: var(--text-faint); }
+  /* The expand rows are controls, not entries: smaller than a commit row, led by
+     an icon, and dimmer — a word in a commit row's clothing reads as a commit. */
+  .row.more { color: var(--text-faint); font-size: 11px; }
+  .row.more .chev { flex: none; width: 12px; text-align: center; }
+  .row.more:hover { color: var(--text-dim); }
+  .disclosure { flex: none; width: 12px; color: var(--text-faint); text-align: center; font-size: 10px; }
   .row .chip { flex: none; white-space: nowrap; }
   .row .meta { flex: 0 1 auto; min-width: 0; overflow: hidden; }
   .row .letter { flex: none; font-weight: 600; font-size: 11px; }
@@ -522,9 +529,11 @@ function railMarkup() {
     }
     if (row.kind === 'more') {
       const open = state.expandedGroups.has(row.owner)
-      return `<button class="row more" role="option"${selected} data-index="${index}" data-more="${esc(row.owner)}">
+      const label = open ? `收起${row.unit === '提交' ? '历史' : '文件'}` : `还有 ${row.hidden} 个${row.unit}`
+      return `<button class="row more" role="option"${selected} data-index="${index}" data-more="${esc(row.owner)}"
+        aria-expanded="${open}" title="${esc(label)}">
         <span class="chev">${open ? '▴' : '▾'}</span>
-        <span class="name">${open ? '收起' : `还有 ${row.hidden} 个${row.unit}`}</span>
+        <span class="name">${open ? '' : row.hidden}${open ? '' : ` 个${row.unit}`}</span>
       </button>`
     }
     if (row.kind === 'change') {
@@ -539,11 +548,13 @@ function railMarkup() {
       const commit = row.commit
       const current = commit.refs.some((ref) => ref.includes('HEAD'))
       const merge = commit.parents > 1
-      const count = commit.files.length > PREVIEW ? `<span class="chip">${commit.files.length} 个文件</span>` : ''
-      return `<button class="row ${state.open.has(commit.short) ? 'open' : ''}" role="option"${selected} data-index="${index}">
+      const files = commit.files.length
+      return `<button class="row ${state.open.has(commit.short) ? 'open' : ''}" role="option"${selected} data-index="${index}"
+        aria-expanded="${state.open.has(commit.short)}" title="${esc(commit.subject)}">
+        ${files === 0 ? '<span class="disclosure"></span>' : `<span class="disclosure">${state.open.has(commit.short) ? '▾' : '▸'}</span>`}
         <span class="node ${current ? 'current' : ''} ${merge ? 'merge' : ''}"></span>
         <span class="subject">${esc(commit.subject)}</span>
-        ${count}
+        ${files > PREVIEW ? `<span class="meta">${files} 个文件</span>` : ''}
         <span class="meta">${esc(commit.author)} · ${esc(ageOf(commit.at))}</span>
         ${rowRefs(commit).map((ref, at) => `<span class="chip ${at === 0 && current ? 'head' : ''}">${esc(refName(ref))}</span>`).join('')}
       </button>`
