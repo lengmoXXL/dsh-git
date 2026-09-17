@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dsh-git · 交互原型</title>
+<style>
+  /* The shell's own panel language: card surfaces, semantic aliases, 11px/19px
+     code on 22px rows with a 48px number gutter. Tokens are spelled as the
+     theme package spells them so this file can be diffed against the plugin. */
+  :root {
+    --bg: #ffffff;
+    --surface: #f7f9fc;
+    --banner: #eef2f7;
+    --line: #e3e8ef;
+    --line-soft: #eef1f5;
+    --text: #1f2430;
+    --text-dim: #6b7280;
+    --text-faint: #98a1ae;
+    --accent: #3b82f6;
+    --accent-soft: #e8f0fe;
+    --add: color-mix(in srgb, #16a34a 14%, var(--surface));
+    --del: color-mix(in srgb, #dc2626 14%, var(--surface));
+    --blank: color-mix(in srgb, #ffffff 55%, var(--surface));
+    --hover: #f2f5f9;
+    --code-font: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    --row: 22px;
+    --gutter: 48px;
+    --radius: 12px;
+  }
+  body[data-theme='dark'] {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --banner: #1c2230;
+    --line: #2a313c;
+    --line-soft: #222833;
+    --text: #e6edf3;
+    --text-dim: #9aa4b2;
+    --text-faint: #6e7781;
+    --accent: #58a6ff;
+    --accent-soft: #17233a;
+    --add: color-mix(in srgb, #3fb950 18%, var(--surface));
+    --del: color-mix(in srgb, #f85149 18%, var(--surface));
+    --blank: color-mix(in srgb, #0d1117 60%, var(--surface));
+    --hover: #1b2230;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex; flex-direction: column;
+    background: var(--bg); color: var(--text);
+    font: 13px/1.45 var(--ui-font);
+    overflow: hidden;
+  }
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+  input { font: inherit; color: inherit; }
+
+  /* ── header ─────────────────────────────────────────────────────────── */
+  .top {
+    flex: none; display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--banner);
+  }
+  .repo { font-weight: 600; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 1px 7px; border-radius: 999px; font-size: 11px;
+    color: var(--text-dim); border: 1px solid var(--line); background: var(--surface);
+  }
+  .chip.head { color: #fff; background: var(--accent); border-color: transparent; }
+  .spacer { flex: 1; }
+  .toggle {
+    display: inline-flex; padding: 1px; border: 1px solid var(--line);
+    border-radius: 8px; background: var(--surface);
+  }
+  .toggle button { padding: 2px 8px; border-radius: 6px; font-size: 11px; color: var(--text-dim); }
+  .toggle button[aria-pressed='true'] { background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgb(0 0 0 / 8%); }
+
+  /* ── split: rail + board ────────────────────────────────────────────── */
+  main { flex: 1; display: flex; min-height: 0; }
+  .rail {
+    flex: none; width: 336px; display: flex; flex-direction: column;
+    border-right: 1px solid var(--line); background: var(--bg); min-height: 0;
+  }
+  .rail-tools { flex: none; display: flex; gap: 6px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line-soft); }
+  .rail-tools input {
+    flex: 1; min-width: 0; padding: 4px 8px; border: 1px solid var(--line);
+    border-radius: 8px; background: var(--surface); outline: none;
+  }
+  .rail-tools input:focus { border-color: var(--accent); background: var(--bg); }
+  .rail-list { flex: 1; overflow: auto; padding: 4px 0 24px; outline: none; }
+  .section {
+    position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px; background: var(--bg); border-bottom: 1px solid var(--line-soft);
+    font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-faint);
+  }
+  .section .count { margin-left: auto; font-size: 11px; color: var(--text-faint); }
+  .group { padding: 8px 10px 2px; font-size: 11px; color: var(--text-faint); }
+  .row {
+    display: flex; align-items: center; gap: 6px; width: 100%;
+    padding: 3px 10px; text-align: left; line-height: 20px;
+  }
+  .row:hover { background: var(--hover); }
+  .row[aria-selected='true'] { background: var(--accent-soft); }
+  .row .name { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .dir { flex: 0 1 auto; overflow: hidden; color: var(--text-faint); font-size: 11px; }
+  .row .grow { flex: 1; }
+  .row .letter { flex: none; font-weight: 600; font-size: 11px; }
+  .letter[data-k='M'] { color: #b45309; }
+  .letter[data-k='A'], .letter[data-k='U'] { color: #15803d; }
+  .letter[data-k='D'] { color: #b91c1c; }
+  .letter[data-k='R'], .letter[data-k='C'] { color: #1d4ed8; }
+  .row.file { padding-left: 26px; }
+  .row.file .name { color: var(--text); }
+  .node { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--text-faint); }
+  .node.current { background: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .node.merge { background: transparent; border: 1.5px solid var(--text-faint); }
+  .subject { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row.open .subject { font-weight: 600; }
+  .meta { flex: none; margin-left: auto; color: var(--text-faint); font-size: 11px; white-space: nowrap; }
+  .beside { flex: none; padding: 0 4px; border-radius: 6px; color: var(--text-faint); opacity: 0; }
+  .row:hover .beside, .row[aria-selected='true'] .beside { opacity: 1; }
+  .beside:hover { color: var(--accent); background: var(--bg); }
+
+  /* ── the diff board ─────────────────────────────────────────────────── */
+  .board { flex: 1; display: flex; min-width: 0; min-height: 0; background: var(--surface); }
+  .empty { margin: auto; max-width: 380px; padding: 24px; text-align: center; color: var(--text-dim); }
+  .empty h2 { margin: 0 0 6px; font-size: 14px; color: var(--text); }
+  .empty kbd, .status kbd {
+    padding: 0 4px; border: 1px solid var(--line); border-bottom-width: 2px;
+    border-radius: 4px; background: var(--bg); font: 11px var(--code-font);
+  }
+  .card {
+    flex: 1 1 0; min-width: 0; display: flex; flex-direction: column;
+    margin: 8px 0 8px 8px; background: var(--bg);
+    border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
+  }
+  .card:last-child { margin-right: 8px; }
+  .card.focused { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .card-head {
+    flex: none; display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; background: var(--banner); border-bottom: 1px solid var(--line);
+  }
+  .card-head .path { font: 12px var(--code-font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-head .path .dir { color: var(--text-faint); }
+  .card-head .revs { color: var(--text-dim); font: 11px var(--code-font); white-space: nowrap; }
+  .card-head .stat { font: 11px var(--code-font); white-space: nowrap; }
+  .card-head .stat .a { color: #15803d; }
+  .card-head .stat .d { color: #b91c1c; }
+  .card-head .actions { margin-left: auto; display: flex; gap: 2px; align-items: center; }
+  .icon { padding: 2px 5px; border-radius: 6px; color: var(--text-dim); }
+  .icon:hover { color: var(--text); background: var(--bg); }
+  .icon[aria-pressed='true'] { color: var(--accent); }
+  .card-body { flex: 1; min-height: 0; overflow: auto; }
+  .card.collapsed .card-body { display: none; }
+  .note { margin: 0; padding: 10px 12px; color: var(--text-dim); font-size: 12px; }
+
+  /* One aligned row per line pair, drawn exactly as the plugin draws it. */
+  .grid { font: 11px/19px var(--code-font); }
+  .grid .line { display: grid; grid-template-columns: var(--gutter) minmax(0, 1fr) var(--gutter) minmax(0, 1fr); min-height: var(--row); }
+  .grid[data-view='inline'] .line { grid-template-columns: var(--gutter) var(--gutter) minmax(0, 1fr); }
+  .grid .num { text-align: right; padding-right: 12px; color: var(--text-faint); background: var(--surface); user-select: none; }
+  .grid .text { padding: 0 12px 0 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .grid .held { grid-column: 1 / -1; background: var(--surface); color: var(--text-faint); padding-left: 12px; }
+  .del { background: var(--del); }
+  .add { background: var(--add); }
+  .blank { background: var(--blank); }
+
+  /* Unwrapped: one lane per half, each its own scroller, numbers pinned. */
+  .lanes { display: flex; align-items: stretch; font: 11px/19px var(--code-font); }
+  .lane { flex: 1 1 0; min-width: 0; overflow: auto hidden; }
+  .lane-rows { display: grid; grid-template-columns: 1fr; grid-auto-rows: var(--row); align-content: start; width: max-content; min-width: 100%; }
+  .lane-row { display: grid; grid-template-columns: var(--gutter) max-content; --band: var(--surface); }
+  .lane-row[data-band='del'] { --band: var(--del); }
+  .lane-row[data-band='add'] { --band: var(--add); }
+  .lane-row[data-band='blank'] { --band: var(--blank); }
+  .lane-row .b { background: var(--band); }
+  .lane-num { position: sticky; left: 0; z-index: 1; background: var(--band); text-align: right; padding-right: 12px; color: var(--text-faint); user-select: none; }
+  .lane-text { background: var(--band); padding: 0 14px 0 6px; white-space: pre; }
+  .lane-held { background: var(--surface); }
+  .lane-held > * { position: sticky; left: 0; color: var(--text-faint); padding-left: 12px; }
+
+  /* ── status bar ─────────────────────────────────────────────────────── */
+  .status {
+    flex: none; display: flex; align-items: center; gap: 10px;
+    padding: 5px 12px; border-top: 1px solid var(--line); background: var(--banner);
+    font-size: 11px; color: var(--text-dim);
+  }
+  .status .addr { font-family: var(--code-font); color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .status .grow { flex: 1; }
+  .tok-keyword { color: #a626a4; }
+  .tok-string { color: #0a7d33; }
+  .tok-comment { color: var(--text-faint); font-style: italic; }
+  .tok-number { color: #b45309; }
+  .tok-type { color: #1d4ed8; }
+  body[data-theme='dark'] .tok-keyword { color: #d2a8ff; }
+  body[data-theme='dark'] .tok-string { color: #7ee787; }
+  body[data-theme='dark'] .tok-number { color: #ffa657; }
+  body[data-theme='dark'] .tok-type { color: #79c0ff; }
+</style>
+</head>
+<body data-theme="light">
+
+<header class="top">
+  <span class="repo" id="repo">dsh-git</span>
+  <span class="chip head" id="branch">main</span>
+  <span class="chip" id="upstream">origin/main</span>
+  <span class="spacer"></span>
+  <span class="toggle" role="group" aria-label="布局">
+    <button id="v-split" aria-pressed="true">双栏</button>
+    <button id="v-inline" aria-pressed="false">单栏</button>
+  </span>
+  <span class="toggle" role="group" aria-label="长行">
+    <button id="w-wrap" aria-pressed="true">折行</button>
+    <button id="w-clip" aria-pressed="false">不折行</button>
+  </span>
+  <span class="toggle" role="group" aria-label="主题">
+    <button id="t-light" aria-pressed="true">浅色</button>
+    <button id="t-dark" aria-pressed="false">深色</button>
+  </span>
+</header>
+
+<main>
+  <aside class="rail">
+    <div class="rail-tools">
+      <input id="search" type="search" placeholder="过滤路径或提交信息…" autocomplete="off">
+      <span class="toggle" role="group" aria-label="范围">
+        <button data-filter="all" aria-pressed="true">全部</button>
+        <button data-filter="changes" aria-pressed="false">改动</button>
+        <button data-filter="commits" aria-pressed="false">提交</button>
+      </span>
+    </div>
+    <div class="rail-list" id="list" tabindex="0" role="listbox" aria-label="改动与提交"></div>
+  </aside>
+  <section class="board" id="board"></section>
+</main>
+
+<footer class="status">
+  <span id="status-text">选中一条改动或提交里的文件</span>
+  <span class="addr" id="status-addr"></span>
+  <span class="grow"></span>
+  <span><kbd>↑</kbd><kbd>↓</kbd> 移动 · <kbd>Enter</kbd> 打开 · <kbd>⌥Enter</kbd> 并排打开 · <kbd>Esc</kbd> 关掉 · <kbd>w</kbd>/<kbd>i</kbd> 切换</span>
+</footer>
+
+<script type="application/json" id="data">{"repo":{"name":"dsh-git","branch":"main","upstream":"origin/main","ahead":0,"behind":0},"changes":[{"path":"prototype/git-page.html","stage":"untracked","status":"U"},{"path":"src/client/locales.ts","stage":"unstaged","status":"M"},{"path":"README.md","stage":"staged","status":"M"}],"commits":[{"sha":"ef7c6aa232f5b6ebf32871b0ce9d44b6b519d528","short":"ef7c6aa","subject":"Call the tab Git","author":"lengmoXXL","at":1789477973,"refs":["HEAD -> refs/heads/main","refs/remotes/origin/main"],"files":[{"path":"README.md","status":"M"},{"path":"README.zh.md","status":"M"},{"path":"src/client/locales.ts","status":"M"}],"parents":1},{"sha":"8a39c366dcdff3455c2c65d6fa3bc6a72538d733","short":"8a39c36","subject":"End each screenshot on a row's bottom edge","author":"lengmoXXL","at":1789316023,"refs":[],"files":[{"path":"docs/screenshots/en/01-log.png","status":"M"},{"path":"docs/screenshots/en/02-diff-split.png","status":"M"},{"path":"docs/screenshots/en/03-diff-unwrapped.png","status":"M"},{"path":"docs/screenshots/en/04-diff-inline.png","status":"M"},{"path":"docs/screenshots/zh/01-log.png","status":"M"},{"path":"docs/screenshots/zh/02-diff-split.png","status":"M"},{"path":"docs/screenshots/zh/03-diff-unwrapped.png","status":"M"},{"path":"docs/screenshots/zh/04-diff-inline.png","status":"M"}],"parents":1},{"sha":"a7a13a859a7b50f234e74cf562bb5d7f6892fd0e","short":"a7a13a8","subject":"Re-shoot the screenshots against the repository as it is now","author":"lengmoXXL","at":1789315930,"refs":[],"files":[{"path":"docs/screenshots/en/01-log.png","status":"M"},{"path":"docs/screenshots/en/02-diff-split.png","status":"M"},{"path":"docs/screenshots/en/03-diff-unwrapped.png","status":"M"},{"path":"docs/screenshots/en/04-diff-inline.png","status":"M"},{"path":"docs/screenshots/zh/01-log.png","status":"M"},{"path":"docs/screenshots/zh/02-diff-split.png","status":"M"},{"path":"docs/screenshots/zh/03-diff-unwrapped.png","status":"M"},{"path":"docs/screenshots/zh/04-diff-inline.png","status":"M"}],"parents":1},{"sha":"ffdba4684563f9397839c3594bf8c23814178ba5","short":"ffdba46","subject":"Keep the README to what it is and what it looks like","author":"lengmoXXL","at":1789314900,"refs":[],"files":[{"path":"README.md","status":"M"},{"path":"README.zh.md","status":"M"},{"path":"src/client/LogBody.tsx","status":"M"},{"path":"src/client/highlight.ts","status":"M"},{"path":"tsdown.config.ts","status":"M"}],"parents":1},{"sha":"be6b17d755ed591fa25c15d80083a27bfd654b2f","short":"be6b17d","subject":"Say what an update costs, now that it has been tried","author":"lengmoXXL","at":1789314784,"refs":[],"files":[{"path":"README.md","status":"M"},{"path":"README.zh.md","status":"M"}],"parents":1},{"sha":"c000160de2548501a9e934a11747e9fbe86b3958","short":"c000160","subject":"Rewrite the README around what the plugin looks like","author":"lengmoXXL","at":1789314695,"refs":[],"files":[{"path":"README.md","status":"M"},{"path":"README.zh.md","status":"A"},{"path":"docs/screenshots/en/01-log.png","status":"A"},{"path":"docs/screenshots/en/02-diff-split.png","status":"A"},{"path":"docs/screenshots/en/03-diff-unwrapped.png","status":"A"},{"path":"docs/screenshots/en/04-diff-inline.png","status":"A"},{"path":"docs/screenshots/zh/01-log.png","status":"A"},{"path":"docs/screenshots/zh/02-diff-split.png","status":"A"},{"path":"docs/screenshots/zh/03-diff-unwrapped.png","status":"A"},{"path":"docs/screenshots/zh/04-diff-inline.png","status":"A"},{"path":"package.json","status":"M"},{"path":"src/client/SideBySide.module.css","status":"M"},{"path":"src/client/SideBySide.tsx","status":"M"},{"path":"tests/e2e/client-bundle.test.ts","status":"M"}],"parents":1},{"sha":"8fa2dd24e4dd9ec0d3c0accbe4b991bfe91e4dcd","short":"8fa2dd2","subject":"Finish the style pass over the tests","author":"lengmoXXL","at":1789313969,"refs":[],"files":[{"path":"tests/e2e/diff-rows.test.ts","status":"M"},{"path":"tests/unit/porcelain.test.ts","status":"M"}],"parents":1},{"sha":"37527d1b9f393575aa81c5b455a10e48ca4c2074","short":"37527d1","subject":"Answer the style review of the plugin","author":"lengmoXXL","at":1789313916,"refs":[],"files":[{"path":"README.md","status":"M"},{"path":"src/api/handler.ts","status":"M"},{"path":"src/client/DiffBody.tsx","status":"M"},{"path":"src/client/HistoryList.tsx","status":"M"},{"path":"src/client/LogBody.tsx","status":"M"},{"path":"src/client/SideBySide.tsx","status":"M"},{"path":"src/client/git-address.ts","status":"M"},{"path":"src/client/index.ts","status":"M"},{"path":"src/client/provider.ts","status":"M"},{"path":"src/client/state.ts","status":"M"},{"path":"src/client/view-mode.ts","status":"M"},{"path":"src/git/commit.ts","status":"M"},{"path":"src/git/history.ts","status":"M"},{"path":"src/git/revision.ts","status":"M"},{"path":"src/git/sidediff.ts","status":"M"},{"path":"src/git/status.ts","status":"M"}],"parents":1}],"diffs":{"dsh-resource://git/diff?source=commit&rev=37527d1&path=src/client/SideBySide.tsx":{"path":"src/client/SideBySide.tsx","oldLabel":"37527d1^","newLabel":"37527d1","added":31,"removed":26,"rows":[["context",65,"  readonly text: string",65,"  readonly text: string"],["context",66,"}): ReactNode {",66,"}): ReactNode {"],["context",67,"  if (line === undefined || line.length === 0) return text",67,"  if (line === undefined || line.length === 0) return text"],["context",68,"  return line.map((span, index) => \u003cspan key={index} style={span.style}>{span.text}\u003c/span>)",68,"  return line.map((span, index) => \u003cspan key={index} style={span.style}>{span.text}\u003c/span>)"],["context",69,"}",69,"}"],["context",70,"",70,""],["replace",71,"/** The band a row carries. Opaque, because an unwrapped lane pins numbers over it. */",71,"/** The wrapped body's cells stay in step because every row is a grid row. */"],["replace",72,"function toneOf(kind: string | undefined): string | undefined {",72,"function toneOf(kind: InlineLine['kind'] | undefined): string | undefined {"],["context",73,"  if (kind === 'delete') return css.del",73,"  if (kind === 'delete') return css.del"],["context",74,"  if (kind === 'insert') return css.add",74,"  if (kind === 'insert') return css.add"],["delete",75,"  if (kind === 'blank') return css.blank",null,null],["context",76,"  return undefined",75,"  return undefined"],["context",77,"}",76,"}"],["insert",null,null,77,""],["insert",null,null,78,"/**"],["insert",null,null,79," * One side of the rows as the highlighter reads it: every line that side draws,"],["insert",null,null,80," * in order, with an empty line where it has none."],["insert",null,null,81," * @param rows - the display rows."],["insert",null,null,82," * @param pick - the side's text for one diff row."],["insert",null,null,83," * @returns the side's text, one line per drawn row."],["insert",null,null,84," */"],["insert",null,null,85,"function columnText(rows: readonly DisplayRow[], pick: (row: DiffRow) => string | undefined): string {"],["insert",null,null,86,"  return rows.map(row => (row.kind === 'fold' ? '' : pick(row.row) ?? '')).join('\\n')"],["insert",null,null,87,"}"],["context",78,"",88,""],["context",79,"/** The four cells one aligned row occupies in the wrapped grid. */",89,"/** The four cells one aligned row occupies in the wrapped grid. */"],["context",80,"function Cells({ row, left, right }: {",90,"function Cells({ row, left, right }: {"],["context",81,"  readonly row: DiffRow",91,"  readonly row: DiffRow"],["context",82,"  readonly left: HighlightedLine",92,"  readonly left: HighlightedLine"],["context",83,"  readonly right: HighlightedLine",93,"  readonly right: HighlightedLine"],["context",84,"}): ReactNode {",94,"}): ReactNode {"],["context",85,"  const removed = row.kind === 'delete' || row.kind === 'replace'",95,"  const removed = row.kind === 'delete' || row.kind === 'replace'"],["context",86,"  const added = row.kind === 'insert' || row.kind === 'replace'",96,"  const added = row.kind === 'insert' || row.kind === 'replace'"],["context",87,"  const leftTone = row.left === null ? css.blank : removed ? css.del : undefined",97,"  const leftTone = row.left === null ? css.blank : removed ? css.del : undefined"],["context",88,"  const rightTone = row.right === null ? css.blank : added ? css.add : undefined",98,"  const rightTone = row.right === null ? css.blank : added ? css.add : undefined"],["context",89,"  return (",99,"  return ("],["context",90,"    \u003c>",100,"    \u003c>"],["context",91,"      \u003cspan className={cx(css.num, leftTone)}>{row.left?.no ?? ''}\u003c/span>",101,"      \u003cspan className={cx(css.num, leftTone)}>{row.left?.no ?? ''}\u003c/span>"],["context",92,"      \u003cspan className={cx(css.text, leftTone)}>",102,"      \u003cspan className={cx(css.text, leftTone)}>"],["context",93,"        \u003cLineText line={left} text={row.left?.text ?? ''} />",103,"        \u003cLineText line={left} text={row.left?.text ?? ''} />"],["fold",277,"",null,""]]},"dsh-resource://git/diff?source=commit&rev=c000160&path=src/client/SideBySide.module.css":{"path":"src/client/SideBySide.module.css","oldLabel":"c000160^","newLabel":"c000160","added":10,"removed":7,"rows":[["context",316,"   control does not scroll away with the line it interrupts. */",316,"   control does not scroll away with the line it interrupts. */"],["context",317,".held {",317,".held {"],["context",318,"  grid-column: 1 / -1;",318,"  grid-column: 1 / -1;"],["context",319,"}",319,"}"],["context",320,"",320,""],["context",321,".laneRows .held {",321,".laneRows .held {"],["delete",322,"  position: sticky;",null,null],["delete",323,"  left: 0;",null,null],["delete",324,"  width: max-content;",null,null],["delete",325,"  min-width: 100%;",null,null],["context",326,"  line-height: var(--dsh-git-diff-row);",322,"  line-height: var(--dsh-git-diff-row);"],["context",327,"}",323,"}"],["context",328,"",324,""],["replace",329,".heldSpacer {",325,"/* What is pinned is the control, not the band: a band is as wide as the widest"],["replace",330,"  display: block;",326,"   line in the half, and a sticky box with no slack between its own width and the"],["replace",331,"  height: var(--dsh-git-diff-row);",327,"   scrollport cannot be pinned at all — the folded run's label would scroll out of"],["insert",null,null,328,"   view with the lines it stands for. The control is narrower than the half by"],["insert",null,null,329,"   construction, so it sticks. */"],["insert",null,null,330,".laneRows .held > * {"],["insert",null,null,331,"  position: sticky;"],["insert",null,null,332,"  left: 0;"],["context",332,"}",333,"}"],["context",333,"",334,""],["context",334,"/* Where rows were left out: stated, never silently skipped. */",335,"/* Where rows were left out: stated, never silently skipped. */"],["context",335,".gap {",336,".gap {"],["context",336,"  grid-column: 1 / -1;",337,"  grid-column: 1 / -1;"],["insert",null,null,338,"  display: inline-block;"],["context",337,"  padding: 0 16px 0 var(--dsh-git-diff-indent);",339,"  padding: 0 16px 0 var(--dsh-git-diff-indent);"],["context",338,"  color: var(--dsw-alias-label-tertiary);",340,"  color: var(--dsw-alias-label-tertiary);"],["context",339,"  line-height: var(--dsh-git-diff-row);",341,"  line-height: var(--dsh-git-diff-row);"],["context",340,"  user-select: none;",342,"  user-select: none;"],["context",341,"}",343,"}"],["context",342,"",344,""],["context",343,".fold {",345,".fold {"],["context",344,"  grid-column: 1 / -1;",346,"  grid-column: 1 / -1;"],["context",345,"  display: block;",347,"  display: block;"],["insert",null,null,348,"  width: fit-content;"],["context",346,"  padding: 0 16px 0 var(--dsh-git-diff-indent);",349,"  padding: 0 16px 0 var(--dsh-git-diff-indent);"],["context",347,"  border: none;",350,"  border: none;"],["context",348,"  background: transparent;",351,"  background: transparent;"],["fold",25,"",null,""]]}}}</script>
+<script>
+'use strict'
+const DATA = JSON.parse(document.getElementById('data').textContent)
+const $ = (id) => document.getElementById(id)
+const esc = (text) => String(text).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])
+
+/* ── state ─────────────────────────────────────────────────────────────
+   `cards` is the board, in order. Opening an address that is already on the
+   board focuses it instead of adding a duplicate: the identity of a diff is what
+   it shows, which is also what keeps a keyboard walk from piling up tabs. */
+const state = {
+  cards: [],
+  focused: null,
+  cursor: 0,
+  filter: 'all',
+  query: '',
+  split: true,
+  wrap: true,
+  theme: 'light',
+  open: new Set([DATA.commits[0].short]),
+  collapsed: new Set(),
+}
+
+const refName = (ref) => ref.replace(/^HEAD -> /, '').replace(/^refs\/heads\//, '').replace(/^refs\/remotes\//, '').replace(/^tag: refs\/tags\//, '')
+const ageOf = (at) => {
+  const minutes = Math.max(1, Math.round((Date.now() / 1000 - at) / 60))
+  if (minutes < 60) return `${minutes} 分钟前`
+  const hours = Math.round(minutes / 60)
+  return hours < 24 ? `${hours} 小时前` : `${Math.round(hours / 24)} 天前`
+}
+
+const pathParts = (path) => {
+  const at = path.lastIndexOf('/')
+  return at < 0 ? ['', path] : [path.slice(0, at + 1), path.slice(at + 1)]
+}
+const changeAddress = (change) => `dsh-resource://git/diff?source=worktree&path=${change.path}`
+const commitDiffAddress = (commit, file) => `dsh-resource://git/diff?source=commit&rev=${commit.short}&path=${file.path}`
+
+/* ── the list ────────────────────────────────────────────────────────── */
+const GROUPS = [['conflicted', '冲突'], ['staged', '已暂存'], ['unstaged', '未暂存'], ['untracked', '未跟踪']]
+
+function matches(text) {
+  return state.query === '' || text.toLowerCase().includes(state.query.toLowerCase())
+}
+
+/** Every row the rail draws, in order; the cursor indexes this list. */
+function railRows() {
+  const rows = []
+  if (state.filter !== 'commits') {
+    for (const [stage, label] of GROUPS) {
+      const items = DATA.changes.filter((c) => c.stage === stage && matches(c.path))
+      if (items.length === 0) continue
+      rows.push({ kind: 'group', label, count: items.length })
+      for (const change of items) rows.push({ kind: 'change', key: changeAddress(change), change })
+    }
+  }
+  if (state.filter !== 'changes') {
+    const commits = DATA.commits.filter((c) => matches(c.subject))
+    if (commits.length > 0) rows.push({ kind: 'section', label: '历史', count: commits.length })
+    for (const commit of commits) {
+      rows.push({ kind: 'commit', key: `commit:${commit.short}`, commit })
+      if (!state.open.has(commit.short)) continue
+      for (const file of commit.files.filter((f) => matches(f.path))) {
+        rows.push({ kind: 'file', key: commitDiffAddress(commit, file), commit, file })
+      }
+    }
+  }
+  return rows
+}
+
+function letterOf(status) { return status }
+
+function describe(row) {
+  if (row.kind === 'change') return `改动 · ${row.change.path}`
+  if (row.kind === 'file') return `提交 ${row.commit.short} · ${row.file.path}`
+  return `提交 ${row.commit.short}`
+}
+
+function railMarkup() {
+  return railRows().map((row, index) => {
+    const selected = index === state.cursor ? ' aria-selected="true"' : ''
+    if (row.kind === 'section') {
+      return `<div class="section">${esc(row.label)}<span class="count">${row.count}</span></div>`
+    }
+    if (row.kind === 'group') {
+      return `<div class="group">${esc(row.label)} ${row.count}</div>`
+    }
+    if (row.kind === 'change') {
+      const [dir, base] = pathParts(row.change.path)
+      return `<button class="row" role="option"${selected} data-index="${index}">
+        <span class="name">${esc(base)}</span>${dir ? `<span class="dir">${esc(dir)}</span>` : ''}
+        <span class="grow"></span><span class="letter" data-k="${letterOf(row.change.status)}">${esc(letterOf(row.change.status))}</span>
+        <span class="beside" data-beside="${index}" title="并排打开">↗</span>
+      </button>`
+    }
+    if (row.kind === 'commit') {
+      const current = row.commit.refs.some((ref) => ref.includes('HEAD'))
+      const merge = row.commit.parents > 1
+      return `<button class="row ${state.open.has(row.commit.short) ? 'open' : ''}" role="option"${selected} data-index="${index}">
+        <span class="node ${current ? 'current' : ''} ${merge ? 'merge' : ''}"></span>
+        <span class="subject">${esc(row.commit.subject)}</span>
+        <span class="meta">${esc(row.commit.author)} · ${esc(ageOf(row.commit.at))}</span>
+        ${row.commit.refs.slice(0, 2).map((ref, at) => `<span class="chip ${at === 0 && row.commit.refs.some((r) => r.includes('HEAD')) ? 'head' : ''}">${esc(refName(ref))}</span>`).join('')}
+      </button>`
+    }
+    const [dir, base] = pathParts(row.file.path)
+    return `<button class="row file" role="option"${selected} data-index="${index}">
+      <span class="name">${esc(base)}</span>${dir ? `<span class="dir">${esc(dir)}</span>` : ''}
+      <span class="grow"></span><span class="letter" data-k="${letterOf(row.file.status)}">${esc(letterOf(row.file.status))}</span>
+      <span class="beside" data-beside="${index}" title="并排打开">↗</span>
+    </button>`
+  }).join('')
+}
+
+function renderRail() {
+  $('list').innerHTML = railMarkup()
+}
+
+/* ── highlighting, small enough for a prototype ──────────────────────── */
+/* One pass over the line: a later pass would match the markup an earlier one
+   just inserted, which is how a highlighter ends up printing its own tags. */
+const TOKEN = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|('[^']*'|"[^"]*")|\b(const|let|var|function|return|if|else|for|of|in|while|new|class|extends|import|from|export|default|type|interface|await|async|throw|try|catch|switch|case|break|continue|null|undefined|true|false|this|as|satisfies)\b|\b(string|number|boolean|void|unknown|never|readonly|ReactNode|Record|Map|Set|Array)\b|\b(\d+)\b/g
+
+function highlight(text, lang) {
+  if (lang === 'css') {
+    let out = ''
+    let last = 0
+    for (const match of text.matchAll(/(\/\*[\s\S]*?\*\/)|(--[\w-]+)|(#[0-9a-fA-F]{3,8})/g)) {
+      const cls = match[1] !== undefined ? 'tok-comment' : match[2] !== undefined ? 'tok-keyword' : 'tok-number'
+      out += esc(text.slice(last, match.index)) + `<span class="${cls}">${esc(match[0])}</span>`
+      last = match.index + match[0].length
+    }
+    return out + esc(text.slice(last))
+  }
+  let out = ''
+  let last = 0
+  for (const match of text.matchAll(TOKEN)) {
+    const cls = match[1] !== undefined ? 'tok-comment' : match[2] !== undefined ? 'tok-string'
+      : match[3] !== undefined ? 'tok-keyword' : match[4] !== undefined ? 'tok-type' : 'tok-number'
+    out += esc(text.slice(last, match.index)) + `<span class="${cls}">${esc(match[0])}</span>`
+    last = match.index + match[0].length
+  }
+  return out + esc(text.slice(last))
+}
+
+const langOf = (path) => (path.endsWith('.css') ? 'css' : 'ts')
+
+/* ── the diff, drawn the way the plugin draws it ─────────────────────── */
+function cells(row, view) {
+  const [kind, lno, ltext, rno, rtext] = row
+  if (kind === 'fold') return `<div class="held" style="grid-column:1/-1">⋯ ${lno} 行未改动</div>`
+  const leftTone = lno === null ? 'blank' : kind === 'delete' || kind === 'replace' ? 'del' : ''
+  const rightTone = rno === null ? 'blank' : kind === 'insert' || kind === 'replace' ? 'add' : ''
+  return `<div class="line">
+    <span class="num ${leftTone}">${lno === null ? '' : lno}</span>
+    <span class="text ${leftTone}">${lno === null ? '' : highlight(ltext, view.lang)}</span>
+    <span class="num ${rightTone}">${rno === null ? '' : rno}</span>
+    <span class="text ${rightTone}">${rno === null ? '' : highlight(rtext, view.lang)}</span>
+  </div>`
+}
+
+function inlineLine(no, other, tone, text, lang) {
+  return `<div class="line"><span class="num ${tone}">${no === null ? '' : no}</span><span class="num ${tone}">${other === null ? '' : other}</span><span class="text ${tone}">${text === null ? '' : highlight(text, lang)}</span></div>`
+}
+
+function inlineCells(row, view) {
+  const [kind, lno, ltext, rno, rtext] = row
+  if (kind === 'fold') return `<div class="held" style="grid-column:1/-1">⋯ ${lno} 行未改动</div>`
+  if (kind === 'context') return inlineLine(lno, rno, '', ltext, view.lang)
+  if (kind === 'replace') return inlineLine(lno, null, 'del', ltext, view.lang) + inlineLine(null, rno, 'add', rtext, view.lang)
+  if (kind === 'delete') return inlineLine(lno, null, 'del', ltext, view.lang)
+  return inlineLine(null, rno, 'add', rtext, view.lang)
+}
+
+function laneMarkup(rows, view, side) {
+  const band = (row) => {
+    const [kind, lno, , rno] = row
+    if (kind === 'fold') return ''
+    const missing = side === 'left' ? lno === null : rno === null
+    if (missing) return 'blank'
+    if (kind === 'replace') return side === 'left' ? 'del' : 'add'
+    if (kind === 'delete') return side === 'left' ? 'del' : ''
+    if (kind === 'insert') return side === 'right' ? 'add' : ''
+    return ''
+  }
+  return rows.map((row) => {
+    const [kind, lno, ltext, rno, rtext] = row
+    if (kind === 'fold') {
+      return side === 'left'
+        ? `<div class="lane-row lane-held" data-band=""><span class="b" style="grid-column:1">⋯ ${lno} 行未改动</span></div>`
+        : '<div class="lane-row" data-band=""></div>'
+    }
+    const no = side === 'left' ? lno : rno
+    const text = side === 'left' ? ltext : rtext
+    return `<div class="lane-row" data-band="${band(row)}">
+      <span class="b lane-num">${no === null ? '' : no}</span>
+      <span class="b lane-text">${no === null ? '' : highlight(text, view.lang)}</span>
+    </div>`
+  }).join('')
+}
+
+function diffMarkup(diff, view) {
+  const rows = diff.rows
+  if (!view.split) {
+    return `<div class="grid" data-view="inline">${rows.map((row) => inlineCells(row, view)).join('')}</div>`
+  }
+  if (view.wrap) {
+    return `<div class="grid" data-view="split">${rows.map((row) => cells(row, view)).join('')}</div>`
+  }
+  return `<div class="lanes" data-view="split">
+    <div class="lane"><div class="lane-rows">${laneMarkup(rows, view, 'left')}</div></div>
+    <div class="lane"><div class="lane-rows">${laneMarkup(rows, view, 'right')}</div></div>
+  </div>`
+}
+
+function cardMarkup(address, index) {
+  const diff = DATA.diffs[address]
+  const focused = state.focused === address ? ' focused' : ''
+  const collapsed = state.collapsed.has(address) ? ' collapsed' : ''
+  if (diff === undefined) {
+    const [dir, base] = pathParts(decodeURIComponent((address.match(/path=([^&]*)/) || [, ''])[1]))
+    return `<article class="card${focused}${collapsed}" data-address="${esc(address)}">
+      <header class="card-head">
+        <span class="path"><span class="dir">${esc(dir)}</span>${esc(base)}</span>
+        <span class="actions">
+          <button class="icon" data-act="collapse" title="折叠">▾</button>
+          <button class="icon" data-act="close" title="关闭">✕</button>
+        </span>
+      </header>
+      <div class="card-body"><p class="note">原型里只内嵌了两个真实 diff。这一条会在插件里向 host 请求 <span style="font-family:var(--code-font)">${esc(address)}</span>，然后照同样的方式画出来。</p></div>
+    </article>`
+  }
+  const [dir, base] = pathParts(diff.path)
+  return `<article class="card${focused}${collapsed}" data-address="${esc(address)}">
+    <header class="card-head">
+      <span class="path" title="${esc(address)}"><span class="dir">${esc(dir)}</span>${esc(base)}</span>
+      <span class="revs" title="${esc(address)}">${esc(diff.oldLabel)} → ${esc(diff.newLabel)}</span>
+      <span class="stat"><span class="a">+${diff.added}</span> <span class="d">−${diff.removed}</span></span>
+      <span class="actions">
+        <button class="icon" data-act="collapse" title="折叠 / 展开">▾</button>
+        <button class="icon" data-act="close" title="关闭">✕</button>
+      </span>
+    </header>
+    <div class="card-body">${diffMarkup(diff, { ...state, lang: langOf(diff.path) })}</div>
+  </article>`
+}
+
+function renderBoard() {
+  const board = $('board')
+  if (state.cards.length === 0) {
+    board.innerHTML = `<div class="empty">
+      <h2>列表留在左边，diff 开在右边</h2>
+      <p>点一条改动、或展开一个提交点它的文件。列表不会再被替换掉，所以没有"回来时还得恢复现场"这回事。</p>
+      <p>行尾的 <strong>↗</strong>（或按住 <kbd>⌥</kbd> 回车）把 diff <strong>并排</strong>开在已有卡片旁边；同一条 diff 已经在板上时只聚焦，不会重复开。</p>
+    </div>`
+    return
+  }
+  board.innerHTML = state.cards.map(cardMarkup).join('')
+}
+
+function render() {
+  renderRail()
+  renderBoard()
+  const row = railRows()[state.cursor]
+  $('status-text').textContent = row === undefined ? '没有可选的条目' : describe(row)
+  const focused = state.focused
+  $('status-addr').textContent = focused === null ? '' : focused
+  document.querySelectorAll('#list .row').forEach((el) => {
+    if (Number(el.dataset.index) === state.cursor) el.scrollIntoView({ block: 'nearest' })
+  })
+}
+
+/* ── opening ─────────────────────────────────────────────────────────── */
+function focusCard(address) {
+  state.focused = address
+  render()
+}
+
+/** Open one address: focus it when it is already on the board, else add it. */
+function openAddress(address, beside) {
+  if (state.cards.includes(address)) {
+    if (beside) { /* already there; focusing is the honest answer */ }
+    state.focused = address
+  } else if (beside || state.cards.length === 0) {
+    state.cards.push(address)
+    state.focused = address
+  } else {
+    const at = state.cards.indexOf(state.focused)
+    state.cards[at < 0 ? state.cards.length - 1 : at] = address
+    state.focused = address
+  }
+  render()
+}
+
+function closeCard(address) {
+  state.cards = state.cards.filter((card) => card !== address)
+  state.collapsed.delete(address)
+  if (state.focused === address) state.focused = state.cards[state.cards.length - 1] ?? null
+  render()
+}
+
+function activate(index, beside) {
+  const row = railRows()[index]
+  if (row === undefined) return
+  if (row.kind === 'commit') {
+    if (state.open.has(row.commit.short)) state.open.delete(row.commit.short)
+    else state.open.add(row.commit.short)
+    render()
+    return
+  }
+  if (row.kind === 'group' || row.kind === 'section') return
+  openAddress(row.key, beside)
+}
+
+/* ── wiring ──────────────────────────────────────────────────────────── */
+$('list').addEventListener('click', (event) => {
+  const beside = event.target.closest('[data-beside]')
+  const row = event.target.closest('.row')
+  if (row === null) return
+  const index = Number(row.dataset.index)
+  state.cursor = index
+  activate(index, beside !== null)
+})
+$('list').addEventListener('mousemove', (event) => {
+  const row = event.target.closest('.row')
+  if (row === null) return
+  const index = Number(row.dataset.index)
+  if (index === state.cursor) return
+  state.cursor = index
+  renderRail()
+})
+$('board').addEventListener('click', (event) => {
+  const card = event.target.closest('.card')
+  if (card === null) return
+  const address = card.dataset.address
+  const act = event.target.closest('[data-act]')?.dataset.act
+  if (act === 'close') return closeCard(address)
+  if (act === 'collapse') {
+    if (state.collapsed.has(address)) state.collapsed.delete(address)
+    else state.collapsed.add(address)
+    return render()
+  }
+  focusCard(address)
+})
+
+document.addEventListener('keydown', (event) => {
+  const typing = event.target.tagName === 'INPUT'
+  if (typing && event.key !== 'Escape') return
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault()
+    const count = railRows().length
+    state.cursor = Math.max(0, Math.min(count - 1, state.cursor + (event.key === 'ArrowDown' ? 1 : -1)))
+    return render()
+  }
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    return activate(state.cursor, event.altKey)
+  }
+  if (event.key === 'Escape') {
+    if (typing) { $('search').value = ''; state.query = ''; $('search').blur(); return render() }
+    if (state.focused !== null) return closeCard(state.focused)
+  }
+  if (typing) return
+  if (event.key === 'w') return setWrap(!state.wrap)
+  if (event.key === 'i') return setSplit(!state.split)
+})
+
+$('search').addEventListener('input', (event) => {
+  state.query = event.target.value.trim()
+  state.cursor = 0
+  render()
+})
+
+function setSplit(split) {
+  state.split = split
+  $('v-split').setAttribute('aria-pressed', String(split))
+  $('v-inline').setAttribute('aria-pressed', String(!split))
+  render()
+}
+function setWrap(wrap) {
+  state.wrap = wrap
+  $('w-wrap').setAttribute('aria-pressed', String(wrap))
+  $('w-clip').setAttribute('aria-pressed', String(!wrap))
+  render()
+}
+$('v-split').onclick = () => setSplit(true)
+$('v-inline').onclick = () => setSplit(false)
+$('w-wrap').onclick = () => setWrap(true)
+$('w-clip').onclick = () => setWrap(false)
+$('t-light').onclick = () => { state.theme = 'light'; document.body.dataset.theme = 'light'; $('t-light').setAttribute('aria-pressed', 'true'); $('t-dark').setAttribute('aria-pressed', 'false') }
+$('t-dark').onclick = () => { state.theme = 'dark'; document.body.dataset.theme = 'dark'; $('t-dark').setAttribute('aria-pressed', 'true'); $('t-light').setAttribute('aria-pressed', 'false') }
+document.querySelectorAll('[data-filter]').forEach((el) => {
+  el.onclick = () => {
+    state.filter = el.dataset.filter
+    state.cursor = 0
+    document.querySelectorAll('[data-filter]').forEach((chip) => { chip.setAttribute('aria-pressed', String(chip === el)) })
+    render()
+  }
+})
+
+$('repo').textContent = DATA.repo.name
+$('branch').textContent = DATA.repo.branch
+$('upstream').textContent = DATA.repo.upstream
+setSplit(true)
+setWrap(true)
+render()
+</script>
+</body>
+</html>
