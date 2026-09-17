@@ -79,9 +79,9 @@
       `kind: 'text'`（该类型声明 `dsh-resource://file/**`，见 ui-sidebar-documentpreview）。
       原型里没有外壳，所以它只飘一条提示说明这一步交给谁。
   18c. [原型] 同一条 diff 已在板上时只聚焦、不重复开（地址即身份）；同一个文件在**不同
-      来源**下（工作区 / 某个提交）是两条不同的 diff，会并排出现——这是有意的。示例数据
-      因此必须把"在比什么"写在示例标记上（`示例 · index → working tree`），否则两条会
-      长得一模一样，看起来像 bug。
+      来源**下（工作区 / 某个提交）是两条不同的 diff，会并排出现——这是有意的。示例数据的
+      标记只写两个字"示例"（画面上不再重复"在比什么"），完整的路径与两侧 rev 放在它的
+      tooltip 里：两条示例并排时，悬停即可分辨。
 
   四、外观
   19. [原型] 颜色一律用外壳 token（--dsw-alias-*），不自造色板；主题跟随外壳，
@@ -835,7 +835,7 @@ function cardMarkup(address, index) {
   const title = `${diff.path} · ${diff.oldLabel} → ${diff.newLabel}${stat}`
   return `<article class="card${focused}" data-address="${esc(address)}" title="${esc(title)}">
     ${captured === undefined
-      ? `<span class="chip card-mark" title="${esc(title)}">示例 · ${esc(diff.oldLabel)} → ${esc(diff.newLabel)}</span>`
+      ? `<span class="chip card-mark" title="${esc(title)}">示例</span>`
       : ''}
     <div class="card-body">${diffMarkup(diff, { ...state, lang: langOf(diff.path) }, address)}</div>
   </article>`
