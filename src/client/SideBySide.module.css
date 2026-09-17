@@ -171,14 +171,11 @@
   font: var(--dsw-font-markdown-code-block);
 }
 
-/* One column, read in order: the old number, the new one, then the line. The
-   two gutters stay, so a line's numbers are the same ones the two-column layout
-   puts beside it. */
+/* One column, read in order: the number the line has on its own side, then the
+   line. Two gutters belong to the two-column reading, where there really are two
+   sides to line up; over one line of code a second number repeated the first. */
 .grid[data-view='inline'] {
-  --dsh-git-diff-indent: calc(2 * var(--dsh-git-diff-gutter));
-
-  grid-template-columns:
-    var(--dsh-git-diff-gutter) var(--dsh-git-diff-gutter) minmax(0, 1fr);
+  grid-template-columns: var(--dsh-git-diff-gutter) minmax(0, 1fr);
 }
 
 .num {
@@ -243,6 +240,13 @@
 }
 
 /* The scrollport: exactly the half's width, whatever its lines are. */
+/* A drag belongs to the half it began in: the other half is not selectable while
+   it lasts, so a copy is one side's text rather than both sides interleaved. */
+[data-dsh-git-diff][data-selecting='left'] [data-half='right'],
+[data-dsh-git-diff][data-selecting='right'] [data-half='left'] {
+  user-select: none;
+}
+
 .lane {
   flex: 1 1 0;
   min-width: 0;
@@ -284,10 +288,6 @@
   line-height: var(--dsh-git-diff-row);
 }
 
-.laneRow[data-numbers='2'] {
-  grid-template-columns: var(--dsh-git-diff-gutter) var(--dsh-git-diff-gutter) max-content;
-}
-
 /* The number stays where the reader left it while the line scrolls past, and it
    is opaque: it draws the row's band (or the card's surface when the row has
    none), so the line goes under the number rather than through it. */
@@ -315,6 +315,7 @@
 /* A fold or a gap, stated once per row: in the lanes its band is pinned so the
    control does not scroll away with the line it interrupts. */
 .held {
+  cursor: pointer;
   grid-column: 1 / -1;
 }
 
@@ -340,6 +341,22 @@
   color: var(--dsw-alias-label-tertiary);
   line-height: var(--dsh-git-diff-row);
   user-select: none;
+}
+
+/* An unchanged run: the one part of the diff that is not finished being read. It
+   stands out a little and opens on click; opened, a thin band with an up arrow
+   heads the run and folds it back. */
+.foldGlyph {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.grid .fold {
+  width: 100%;
+  text-align: center;
+}
+
+.heldBack .fold {
+  line-height: 12px;
 }
 
 .fold {

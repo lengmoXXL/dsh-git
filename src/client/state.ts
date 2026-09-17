@@ -221,6 +221,38 @@ export interface BoardPane {
 }
 
 /**
+ * The one number a line carries in a one-column reading.
+ *
+ * A line has a number on its own side: a removal keeps the old one, an addition
+ * takes the new one, and a context line has the same number on both. Two numbers
+ * over one line of code said the same thing twice, and the second was always the
+ * one worth reading.
+ *
+ * @param line - one line of the one-column reading.
+ * @returns the number to draw, or undefined when the line has none.
+ */
+export function lineNumber(
+  line: { readonly oldNo?: number | undefined; readonly newNo?: number | undefined },
+): number | undefined {
+  return line.newNo ?? line.oldNo
+}
+
+/**
+ * Whether a diff has only one side to show.
+ *
+ * A file that is wholly new or wholly gone has one side and nothing on the other,
+ * so two columns would be one column of code beside a column of blanks. The counts
+ * are the host's, from the whole alignment, so a truncated view still knows which
+ * kind of change it is.
+ *
+ * @param diff - the payload, for its added and removed counts.
+ * @returns true when there is nothing on one of the sides.
+ */
+export function oneSided(diff: { readonly added: number; readonly removed: number }): boolean {
+  return (diff.added > 0 && diff.removed === 0) || (diff.removed > 0 && diff.added === 0)
+}
+
+/**
  * The identity of one diff, as a pane key.
  *
  * A diff is what it compares: the same file at two revisions is a different diff
@@ -258,8 +290,11 @@ export function revLabel(label: string): string {
 
 /** One line of a diff read in one column instead of two. */
 export interface InlineLine {
-  /** What this line is. `fold` is a run the reader closed; `gap` is one the host left out. */
-  readonly kind: 'context' | 'delete' | 'insert' | 'gap' | 'fold'
+  /**
+   * What this line is. `fold` is a run the reader closed, `collapse` the band at
+   * the top of one they opened, and `gap` is a run the host left out.
+   */
+  readonly kind: 'context' | 'delete' | 'insert' | 'gap' | 'fold' | 'collapse'
   /** Stable identity, for keys and for a fold's expansion set. */
   readonly key: string
   /** The old-side line number, when this line is on the old side. */
@@ -326,9 +361,12 @@ export function inlineLines(rows: readonly DiffRow[]): InlineLine[] {
  * @returns every line, in reading order, with each fold in place.
  */
 export function inlineDisplayLines(rows: readonly DisplayRow[]): InlineLine[] {
-  return rows.flatMap((row, at): InlineLine[] => row.kind === 'fold'
-    ? [{ kind: 'fold', key: row.key, hidden: row.hidden }]
-    : linesOfRow(row.row, at))
+  return rows.flatMap((row, at): InlineLine[] => {
+    if (row.kind === 'diff') return linesOfRow(row.row, at)
+    return [row.kind === 'fold'
+      ? { kind: 'fold', key: row.key, hidden: row.hidden }
+      : { kind: 'collapse', key: row.key }]
+  })
 }
 
 /**
@@ -365,6 +403,8 @@ const CONTEXT_RUN_LIMIT = 6
 export type DisplayRow =
   | { readonly kind: 'diff'; readonly key: string; readonly row: DiffRow }
   | { readonly kind: 'fold'; readonly key: string; readonly hidden: number }
+  /** The top of a run the reader opened: the band that folds it back. */
+  | { readonly kind: 'collapse'; readonly key: string }
 
 /**
  * Fold long unchanged runs so a small change in a large file reads at a glance.
@@ -409,10 +449,17 @@ export function collapseRows(
       push(index, end)
     } else {
       const foldKey = `f${String(index)}:${String(run)}`
-      push(index, index + head)
-      if (expanded.has(foldKey)) push(index + head, end - tail)
-      else out.push({ kind: 'fold', key: foldKey, hidden: run - limit })
-      push(end - tail, end)
+      // Opened, the run is drawn whole and headed by the band that folds it back;
+      // folded, it keeps a few lines at each end and states what it hid. A run is
+      // one or the other, never both.
+      if (expanded.has(foldKey)) {
+        out.push({ kind: 'collapse', key: foldKey })
+        push(index, end)
+      } else {
+        push(index, index + head)
+        out.push({ kind: 'fold', key: foldKey, hidden: run - limit })
+        push(end - tail, end)
+      }
     }
     index = end
   }

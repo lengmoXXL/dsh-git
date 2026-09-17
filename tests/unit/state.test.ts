@@ -65,9 +65,12 @@ test('folds the middle of a long unchanged run and re-expands it on request', ()
   const fold = folded.find(item => item.kind === 'fold')
   assert.equal(fold?.kind === 'fold' ? fold.hidden : 0, 14)
 
+  // Opened, the run is drawn whole, headed by the band that folds it back — so a
+  // reader can close it again, which is more than the first version allowed.
   const expanded = collapseRows(rows, 6, new Set(fold === undefined ? [] : [fold.key]))
-  assert.equal(expanded.length, 20)
-  assert.equal(expanded.every(item => item.kind === 'diff'), true)
+  assert.equal(expanded[0]?.kind, 'collapse')
+  assert.equal(expanded.length, 21)
+  assert.equal(expanded.slice(1).every(item => item.kind === 'diff'), true)
 })
 
 test('does not fold when a run is exactly at the limit', () => {

@@ -137,20 +137,20 @@ function drawnRows(markup: string, inline: boolean): string[] {
     // One lane per half, each holding its own rows; a one-column body is a
     // single lane whose rows carry both numbers.
     const halves = lanes.map((at, index) => markup.slice(at, lanes[index + 1] ?? markup.length))
-    const groups = halves.map(half => rowsOfTokens(tokens(half), inline ? 3 : 2))
+    const groups = halves.map(half => rowsOfTokens(tokens(half), 2))
     return (groups[0] ?? []).map((row, index) => {
       if (row[0]?.kind === 'held') return row[0].value
       const other = groups[1]?.[index] ?? []
       return inline
-        ? `${cell(row[0])} ${cell(row[1])} ${cell(row[2])}`
+        ? `${cell(row[0])} ${cell(row[1])}`
         : `${cell(row[0])} ${cell(row[1])} | ${cell(other[0])} ${cell(other[1])}`
     })
   }
   // The wrapped body: one grid, whose cells arrive in a fixed run per row.
-  return rowsOfTokens(tokens(markup), inline ? 3 : 4).map((row) => {
+  return rowsOfTokens(tokens(markup), inline ? 2 : 4).map((row) => {
     if (row[0]?.kind === 'held') return row[0].value
     return inline
-      ? `${cell(row[0])} ${cell(row[1])} ${cell(row[2])}`
+      ? `${cell(row[0])} ${cell(row[1])}`
       : `${cell(row[0])} ${cell(row[1])} | ${cell(row[2])} ${cell(row[3])}`
   })
 }
@@ -232,22 +232,24 @@ test('draws the same rows in one column, wrapped and unwrapped', async () => {
   // A replaced line is two lines here — its removal, then its insertion — and a
   // context line carries both numbers.
   assert.deepEqual(wrapped.slice(0, 6), [
-    '1 1 "head 1"',
-    '2 2 "head 2"',
-    '3 3 "head 3"',
+    '1 "head 1"',
+    '2 "head 2"',
+    '3 "head 3"',
     '⋯ 3 diff.unchanged',
-    '7 7 "head 7"',
-    '8 8 "head 8"',
+    '7 "head 7"',
+    '8 "head 8"',
   ])
+  // One number per line, and it is the line's own: a removal keeps the old one, an
+  // addition takes the new one.
   assert.deepEqual(wrapped.slice(6, 15), [
-    '9 9 "head 9"',
-    '10  "old ten"',
-    ' 10 "new ten"',
-    '11  "gone"',
-    ' 11 "added"',
+    '9 "head 9"',
+    '10 "old ten"',
+    '10 "new ten"',
+    '11 "gone"',
+    '11 "added"',
     '⋯ 1200 / 1203 diff.omitted',
-    '40 40 "tail 40"',
-    '41 41 "tail 41"',
-    '42 42 "tail 42"',
+    '40 "tail 40"',
+    '41 "tail 41"',
+    '42 "tail 42"',
   ])
 })
