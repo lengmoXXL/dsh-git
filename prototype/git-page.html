@@ -1,10 +1,73 @@
 <!doctype html>
+<!-- 需求清单在下面 <style> 的开头：每一条都写着它在插件里对应改哪里。 -->
 <html lang="zh">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>dsh-git · 交互原型</title>
 <style>
+/*
+  ── 需求清单 ────────────────────────────────────────────────────────────
+  这一节是需求本身，不是说明。落地到插件时，按每一条去改它指到的文件；
+  [原型] 表示这份文件已经做到，[落地] 是插件里对应要做的事。
+
+  一、页面形态
+   1. [原型] 一个页面。Git 只贡献一个页面类型；不再有单独的 diff 页面／
+      资源类型（dsh-resource://git/**）。落地：删掉资源类型声明、provider.ts、
+      DiffBody.tsx，地址缩成卡片的 key。
+   2. [原型] 列表常驻。点 diff 不会替换列表，所以"点完再回来要恢复现场"这件事
+      不存在了。落地：LogBody 拆成 rail + board；log-cache 只服务"切到别的标签页
+      再回来"。
+   3. [原型] diff 开在右侧卡片里；同一条 diff 已经在板上时只聚焦，不重复开
+      （地址即身份）。落地：直接复用 SideBySide。
+   4. [原型] 行尾 ↗（或 ⌥Enter）把 diff 并排开在已有卡片旁边。
+   5. [原型] 卡片可关闭、可折叠；点卡片聚焦。
+
+  二、列表
+   6. [原型] 改动按 冲突/已暂存/未暂存/未跟踪 分组；一组超过 8 条折叠成
+      "还有 N 个文件"，可展开/收起。
+   7. [原型] 提交行 = 点点 + subject + 作者·时间 + ref 胶囊；点点 6px，HEAD 实心、
+      合并空心。
+   8. [原型] 点提交就地展开它的文件列表；文件超过 8 个同样折叠。
+   9. [原型] 历史超过 12 条折叠成"还有 N 个提交"。落地：这一行不是展开已有的，
+      而是向 host 要下一页（GET /dsh-git/history 已支持 skip）。
+  10. [原型] 上游 ref 不在行里单独画胶囊。
+  11. [原型] 侧栏可抽屉收起（页头按钮或 b），可拖宽（最窄 220px，最宽
+      min(760, 窗口宽 − 420)，双击复位）。落地：宽度与 diff 偏好一起持久化
+      （view-mode.ts，localStorage）。
+  12. [原型] 暂时不做过滤/搜索。
+
+  三、diff
+  13. [原型] 只是查看器：不 stage、不 commit、不 discard（插件本身只读）。
+  14. [原型] 四个控件：双栏/单栏、折行/不折行、复制（统一 diff 文本）；它们是
+      读者的偏好，全局生效并持久化。
+  15. [原型] 行高固定 22px，不能由内容撑（否则空半边那一行会塌，两栏逐行错开）；
+      行号槽 48px 且不可选；色带铺满各自半栏（宽度写在滚动内容上，不是轨道上）；
+      不折行时行号与折叠标签都钉在各自栏内。
+  16. [原型] 改动行只染底、不改字色；空的一侧露出底色；省略行/折叠行带自己的计数。
+  17. [原型] 双栏复制只取起始栏：拖拽归属按下的那一栏（另一栏在拖拽期间不可选），
+      键盘或其他方式产生的跨栏选区在 copy 时按起始栏重写。
+  18. [原型] 语法高亮与文件视图同源（同一张 --shiki-token-* 色板）。
+
+  四、外观
+  19. [原型] 颜色一律用外壳 token（--dsw-alias-*），不自造色板；主题跟随外壳，
+      不做自己的深浅色开关。兜底值挂在 :root，外壳把同一批 token 定义在 body 上，
+      因此内嵌时外壳的取值赢。
+  20. [原型] 页头只显示一个分支胶囊；只有分叉时才在同一个胶囊上写 ↑n / ↓n，
+      上游名字放进 tooltip。
+  21. [原型] 不要蓝色描边：聚焦的卡片不画边框（class 留着给 Esc / 关闭用）。
+  22. [原型] 滚动条要细：沿用外壳那套滚动条做法（--dsh-scrollbar-width 与
+      --dsw-alias-scrollbar-*），并把宽度重绑为 6px。落地：在 SideBySide.module.css
+      里重绑同一个变量即可，不要另写一套。
+
+  五、键盘
+  23. [原型] ↑↓ 移动、Enter 打开、⌥Enter 并排、Esc 关卡片、b 收列表、w/i 切换布局。
+
+  六、这份文件的数据边界
+  24. [原型] 内嵌 36 条真实提交（含各自真实的文件列表）与 5 份真实 diff；没有抓到
+      diff 的文件画一份该类型的"示例"并在卡片上标注，且不显示编造的 +/−。
+*/
+
   /* The shell's own panel language: card surfaces, semantic aliases, 11px/19px
      code on 22px rows with a 48px number gutter. Tokens are spelled as the
      theme package spells them so this file can be diffed against the plugin. */
@@ -36,6 +99,8 @@
     --dsw-alias-brand-primary: rgb(15, 17, 21);
     --dsw-alias-interactive-bg-hover: rgba(38, 49, 72, 0.06);
     --dsw-alias-interactive-bg-active: rgba(38, 49, 72, 0.1);
+    --dsw-alias-scrollbar-bg-l1: rgb(229, 229, 229);
+    --dsw-alias-scrollbar-hover-l1: rgb(212, 212, 212);
     --shiki-token-comment: #868e96;
     --shiki-token-keyword: #d6336c;
     --shiki-token-string: #2f9e44;
@@ -64,6 +129,8 @@
       --dsw-alias-brand-primary: rgb(249, 250, 251);
       --dsw-alias-interactive-bg-hover: rgba(255, 255, 255, 0.08);
       --dsw-alias-interactive-bg-active: rgba(255, 255, 255, 0.14);
+    --dsw-alias-scrollbar-bg-l1: rgb(60, 60, 61);
+    --dsw-alias-scrollbar-hover-l1: rgb(84, 85, 87);
       --shiki-token-comment: #adb5bd;
       --shiki-token-keyword: #faa2c1;
       --shiki-token-string: #69db7c;
@@ -95,6 +162,28 @@
     --gutter: 48px;
     --radius: 12px;
   }
+
+
+  /* Scrollbars: the shell's own treatment, with the width rebound thinner. The
+     two paths are mutually exclusive — a non-auto `scrollbar-width` makes
+     Chromium drop every ::-webkit-scrollbar rule — so the standard properties
+     are kept behind the support query that only Firefox answers. */
+  @supports not selector(::-webkit-scrollbar) {
+    body, body * { scrollbar-width: thin; scrollbar-color: var(--dsh-scrollbar-thumb) transparent; }
+  }
+  :root {
+    --dsh-scrollbar-width: 6px;
+    --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l1, rgb(229, 229, 229));
+    --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l1, rgb(212, 212, 212));
+  }
+  ::-webkit-scrollbar { width: var(--dsh-scrollbar-width); height: var(--dsh-scrollbar-width); }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--dsh-scrollbar-thumb);
+    border-radius: calc(var(--dsh-scrollbar-width) / 2);
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--dsh-scrollbar-thumb-hover); }
+  ::-webkit-scrollbar-corner { background: transparent; }
 
   * { box-sizing: border-box; }
 
