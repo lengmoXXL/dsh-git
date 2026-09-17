@@ -1,23 +1,18 @@
 /**
  * The browser half of dsh-git.
  *
- * It contributes two tab types to the right Sidebar, and one resource protocol
- * they share:
+ * It contributes one page type to the right Sidebar, reached from the strip's add
+ * control: pressing `+` opens the guide, and this type's entry is one of its
+ * capsules. Diffs are not tabs at all — one opens in a pane inside that page, beside
+ * the list it came from, so reading one never takes the list away.
  *
- * - the LOG PAGE, a page type reached from the strip's add control: pressing
- *   `+` opens the guide, and this type's entry is one of its capsules. Picking
- *   it replaces the guide with the log.
- * - and the DIFFS, which are not tabs at all: a diff opens in a pane inside this
- *   page, beside the list it came from, so reading one never takes the list away.
- *
- * The page asks the host directly — the same routes the rest of the plugin uses —
- * and hands a file to the shell's file view when the reader asks for the file
+ * The page asks the host directly, on the same routes the rest of the plugin uses,
+ * and hands a file to the shell's own file view when the reader asks for the file
  * rather than the diff.
  *
- * Every Harness import here is `import type` except the glyph: the browser
- * bundle shares exactly one runtime module with the shell (the primitives
- * package), and a value import from anything else would need a module it cannot
- * reach.
+ * Every Harness import here is `import type` except the primitives package: the
+ * browser bundle shares exactly that one runtime module with the shell, and a value
+ * import from anything else would need a module it cannot reach.
  *
  * @module dsh-git/client
  */
@@ -35,7 +30,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type { SidebarRightTabDefinition } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
-import { GitGlyph } from './glyphs.tsx'
+import { IconBranchOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { LogBody } from './LogBody.tsx'
 import { en, NS, zh, type GitKey } from './locales.ts'
 
@@ -62,7 +57,7 @@ function logDefinition(t: Translate<GitKey>): SidebarRightTabDefinition {
       order: 20,
       title: () => t('log.title'),
       description: () => t('log.guide'),
-      icon: GitGlyph,
+      icon: IconBranchOutline16,
     }],
   }
 }
@@ -93,19 +88,20 @@ export function apply(ctx: Context): void {
 
   ctx.effect(() => ctx.sidebarRightTabs.register(logDefinition(t)), 'dsh-git: log type')
 
-  // Stage two of the type: the body registers under the definition's id.
-  //
-  // The page opens files, not diffs: a diff lives in the board beside the list,
-  // while a file belongs to the shell's own file view, whose type claims
+  // A file belongs to the shell's own file view, whose type claims
   // `dsh-resource://file/**`. That call goes through the controller rather than a
   // per-tab action, because the per-tab path silently does nothing for a session
-  // whose surface store is not adopted, and it names the kind rather than leaving
-  // it to the registry's claim ranking, so a wrong claim is a named failure.
-  const openResource = (address: string, kind: string): void => {
-    ctx.sidebarRight.openResource(address, { kind })
-  }
+  // whose surface store is not adopted, and it names the kind rather than leaving it
+  // to the registry's claim ranking, so a wrong claim is a named failure.
   ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register(
-    { name: 'sidebar.right.pane.tab', key: GIT_LOG_ID, locale: NS, inject: () => ({ openResource }) },
+    {
+      name: 'sidebar.right.pane.tab',
+      key: GIT_LOG_ID,
+      locale: NS,
+      inject: () => ({
+        openResource: (address: string, kind: string) => { ctx.sidebarRight.openResource(address, { kind }) },
+      }),
+    },
     LogBody,
   )), 'dsh-git: log body')
 }

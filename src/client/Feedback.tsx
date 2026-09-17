@@ -11,7 +11,6 @@ import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { GitKey } from './locales.ts'
 import css from './Feedback.module.css'
 
-/** A failed read, with the way to try it again. */
 export function FailureBlock({ code, message, t, onRetry }: {
   readonly code: string
   readonly message: string

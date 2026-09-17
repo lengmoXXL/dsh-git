@@ -123,10 +123,6 @@ const LANG_ALIASES = new Map<string, string>([
   ['lua', 'lua'],
 ])
 
-/**
- * The extension hints the read tool derives, mirrored so a diff highlights the
- * file the file view would highlight, with the same grammar.
- */
 const LANG_BY_EXTENSION: Readonly<Record<string, string>> = {
   ts: 'ts', tsx: 'tsx', mts: 'ts', cts: 'ts',
   js: 'js', jsx: 'jsx', mjs: 'js', cjs: 'js',
@@ -141,7 +137,6 @@ const LANG_BY_EXTENSION: Readonly<Record<string, string>> = {
   sql: 'sql', xml: 'xml', lua: 'lua',
 }
 
-/** All token colors resolve through `--shiki-*` custom properties (theme package sheets). */
 const cssVariablesTheme = createCssVariablesTheme({
   name: 'css-variables',
   variablePrefix: '--shiki-',
@@ -165,7 +160,6 @@ const regexEngine = createJavaScriptRegexEngine({
 /** The one highlighter per document, built on first use so an unhighlighted page pays nothing. */
 let singleton: HighlighterCore | undefined
 
-/** Build the highlighter, or return the one already built. */
 function highlighter(): HighlighterCore {
   singleton ??= createHighlighterCoreSync({
     themes: [cssVariablesTheme],
@@ -185,7 +179,7 @@ function highlighter(): HighlighterCore {
  * @returns the grammar hint, or `undefined` for an unknown extension.
  */
 export function langFromPath(path: string): string | undefined {
-  const base = path.slice(Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')) + 1)
+  const base = path.slice(path.lastIndexOf('/') + 1)
   const dot = base.lastIndexOf('.')
   // A leading dot is a dotfile (no extension), not an empty extension.
   if (dot <= 0) return undefined
@@ -224,8 +218,6 @@ export function highlightLines(code: string, lang: string | undefined): Highligh
   const resolved = lang === undefined ? undefined : LANG_ALIASES.get(lang.toLowerCase())
   if (resolved === undefined) return undefined
   const { tokens } = highlighter().codeToTokens(code, { lang: resolved, theme: 'css-variables' })
-  // shiki tokenizes `a\nb` into two lines; a trailing newline (`a\n`) adds a
-  // third, empty line the caller's own lines do not carry.
   const last = tokens[tokens.length - 1]
   const lines = tokens.length > 1 && last !== undefined && last.length === 0
     ? tokens.slice(0, -1)

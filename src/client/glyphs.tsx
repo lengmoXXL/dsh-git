@@ -1,31 +1,14 @@
 /**
- * The glyphs this plugin draws itself.
- *
- * The guide's entry takes a component rather than an element, so the branch
- * outline is wrapped in something with the `IconProps` shape. The two layout
- * glyphs are drawn here because the shared icon set has no split/inline pair:
- * the diff's view toggle is the one control whose icon has to say which layout
- * it offers, and borrowing an unrelated outline would say nothing.
+ * The glyph this plugin draws itself.
  *
  * @module dsh-git/client/glyphs
  */
 
 import type { ReactNode } from 'react'
-import { IconBranchOutline16, type IconProps } from '@deepseek-ai/dsh-client-ui-primitives'
-
-/**
- * Draw the git glyph at the size the guide asks for.
- * @param props - the guide's icon seat: size and an optional class.
- * @returns the branch outline.
- */
-export function GitGlyph({ size, className }: IconProps): ReactNode {
-  return <IconBranchOutline16 size={size} className={className} />
-}
 
 /**
  * Open the file this diff is about in the shell's own file view: a page with an
  * arrow leaving it, which is the shape every editor uses for the same action.
- * @returns the glyph.
  */
 export function OpenFileGlyph(): ReactNode {
   return (

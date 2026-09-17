@@ -14,7 +14,6 @@
  */
 
 import type {
-  CommitDiffPayload,
   CommitPayload,
   DiffPayload,
   DiffSource,
@@ -74,7 +73,6 @@ export interface GitFace {
   /** Read one change's aligned sides. */
   diff(request: DiffRequest, signal: AbortSignal): Promise<DiffPayload>
   /** Read one commit's whole change set, already aligned. */
-  commitDiff(sessionId: string, rev: string, signal: AbortSignal): Promise<CommitDiffPayload>
 }
 
 /**
@@ -152,14 +150,6 @@ export function createGitFace(
       if (request.origPath !== undefined) params.set('origPath', request.origPath)
       if (request.rev !== undefined) params.set('rev', request.rev)
       return await call<DiffPayload>(fetchImpl, '/diff', params, signal)
-    },
-    async commitDiff(sessionId, rev, signal) {
-      return await call<CommitDiffPayload>(
-        fetchImpl,
-        '/commit-diff',
-        new URLSearchParams({ sessionId, rev }),
-        signal,
-      )
     },
   }
 }
