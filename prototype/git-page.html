@@ -70,6 +70,9 @@
       diff 的文件画一份该类型的"示例"并在卡片上标注，且不显示编造的 +/−。
   25. [原型] 单栏目前只按折行渲染（不折行的单栏在这个原型里没做）；插件里单栏也有
       折行/不折行两种，落地时按 15/15b 的同一条几何处理。
+  26. [原型] 整文件新增或整文件删除的 diff，即使在双栏模式下也只用单栏渲染——一侧
+      全空，两栏就是"一列代码 + 一列空白"，而空白不是信息。判定用 host 给的
+      added / removed（它们来自完整对齐，所以截断过的视图也判得准）。
 */
 
   /* The shell's own panel language: card surfaces, semantic aliases, 11px/19px
@@ -651,9 +654,16 @@ function laneMarkup(rows, view, side) {
   }).join('')
 }
 
+/* A file that is wholly new or wholly gone has one side and nothing on the
+   other: two columns would be one column of code beside a column of blanks, and
+   the blank half is not information. Those are drawn as the one-column reading
+   whatever the layout switch says. The counts are the host's, from the whole
+   alignment, so a truncated view still knows which kind of change it is. */
+const oneSided = (diff) => (diff.added > 0 && diff.removed === 0) || (diff.removed > 0 && diff.added === 0)
+
 function diffMarkup(diff, view) {
   const rows = diff.rows
-  if (!view.split) {
+  if (!view.split || oneSided(diff)) {
     return `<div class="grid" data-view="inline">${rows.map((row) => inlineCells(row, view)).join('')}</div>`
   }
   if (view.wrap) {
