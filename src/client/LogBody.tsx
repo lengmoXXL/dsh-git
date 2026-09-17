@@ -1,18 +1,9 @@
 /**
- * The git page: the Session's changes and history on the left, the diffs they open
- * on the right.
+ * The git page: the Session's changes and history beside the diffs they open.
  *
- * It is a page type, so it takes no address and holds no selection of its own. The
- * list is a way in, not a thing that gets replaced: clicking a change or a file
- * loads that comparison into a pane beside it, which is why a reader can leave the
- * list where it is and stack two diffs to compare.
- *
- * The workspace is resolved on the host from the Session identity this seat
- * supplies; nothing here sends a path the host did not already report.
- *
- * The list is a snapshot, not a subscription: a repository that changes underneath
- * it is re-read by the refresh control, or by mounting the tab again. Watching the
- * filesystem is the host's to offer, and this plugin does not ask.
+ * It is a page type, so it takes no address and holds no selection of its own, and
+ * it holds the reader's own arrangements — which diffs are open, where the list
+ * sits, how the diffs are drawn — because none of that is the host's business.
  *
  * @module dsh-git/client/LogBody
  */
@@ -53,6 +44,7 @@ import { cx } from './format.ts'
 import type { GitKey, GitNamespace } from './locales.ts'
 import {
   diffViewSettings,
+  RAIL_DEFAULT_WIDTH,
   railSettings,
   setDiffViewMode,
   setDiffWrap,
@@ -101,8 +93,7 @@ function trackingLabel(branch: BranchStatus, t: Translate<GitKey>): string | und
  * the address its own type claims (`dsh-resource://file/session/<sessionId>/<path>`),
  * with each path segment percent-encoded. The plugin cannot import that package to
  * borrow the builder — the client module table seeds package names, not subpaths —
- * so the shape is written out here, and the kind is named rather than left to the
- * registry's claim ranking.
+ * so the shape is written out here.
  * @param sessionId - the Session whose workspace resolves the path.
  * @param path - a repository-relative path, as git reported it.
  * @returns the address the file view opens.
@@ -127,16 +118,14 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   useTabInfo()
   const [epoch, setEpoch] = useState(0)
   const [now, setNow] = useState(() => Date.now())
-  // Mount starts from what was read last time, so a tab that was unmounted for
-  // another one comes back drawn rather than blank.
+  // Mount starts from what was read last time — the page, the diffs, and the reader's
+  // place in the list — so a tab unmounted for another one comes back as it was.
   const [status, setStatus] = useState<Load<StatusPayload>>(
     () => cached(logCache(sessionId).status),
   )
   const [history, setHistory] = useState<Load<HistoryPayload>>(
     () => cached(logCache(sessionId).history),
   )
-  // The panes live as long as the page does: switching to another tab and back
-  // finds the comparison the reader had set up.
   const [panes, setPanes] = useState<readonly BoardPane[]>(() => logCache(sessionId).panes)
   const [focused, setFocused] = useState<string | null>(() => logCache(sessionId).focused)
   const scroller = useRef<HTMLDivElement>(null)
@@ -190,14 +179,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
     setEpoch(value => value + 1)
   }, [])
 
-  /**
-   * Show one comparison.
-   *
-   * Without the modifier it takes the focused pane's place, which is what reading
-   * one diff after another wants; with it the diff opens beside the others, which
-   * is how two revisions are compared. A comparison already on the board is only
-   * focused, never opened twice.
-   */
+  /** Show one comparison, replacing or joining the panes as {@link placePane} decides. */
   const openDiff = useCallback((request: DiffRequest, beside: boolean) => {
     const key = diffKey(request)
     const cache = logCache(sessionId)
@@ -276,38 +258,15 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
     diffViewSettings,
   )
   const rail = useSyncExternalStore(subscribeRailSettings, railSettings, railSettings)
-  // While the grip is held the width follows the pointer locally, and one write
-  // goes to storage when it is let go: a drag is not a reason to touch storage
-  // sixty times a second.
+  // While the grip is held the width follows the pointer locally, and one write goes
+  // to storage when it is let go: a drag is not a reason to touch storage sixty times
+  // a second. The list can sit against either edge, so the pointer's distance from
+  // that edge is the width.
   const [dragging, setDragging] = useState<number | undefined>(undefined)
-
-  // Escape closes the pane the reader is in, which is the only way a pane goes
-  // away: a pane is replaced by the next diff, not dismissed from over the code.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent): void => {
-      // A page that eats keystrokes while someone is typing is a page that cannot
-      // be typed in; the composer may be elsewhere, but the rule costs nothing.
-      // Asked by shape rather than by `instanceof`: an environment that lacks the
-      // constructor would otherwise throw on every key pressed.
-      const target = event.target as { tagName?: string; isContentEditable?: boolean } | null
-      if (target?.isContentEditable === true || target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return
-      if (event.key === 'Escape' && focusedPane !== undefined) closeFocused()
-      if (event.key === 'b') setRailOpen(!railSettings().open)
-      // The two switches have keys as well as buttons, because a reader who reads
-      // diffs all day should not have to aim at a glyph to change how they read.
-      if (event.key === 'w') setDiffWrap(!diffViewSettings().wrap)
-      if (event.key === 'i') setDiffViewMode(diffViewSettings().mode === 'inline' ? 'split' : 'inline')
-    }
-    document.addEventListener('keydown', onKey)
-    return () => { document.removeEventListener('keydown', onKey) }
-  }, [closeFocused, focusedPane])
-
-  // Which way the drawer's arrow points: at the edge the list is nearest, so the
-  // same control means "put it away" wherever the list has been moved to.
   const listOnRight = rail.side === 'right'
+  // The drawer's arrow points at the edge the list is nearest, so the control means
+  // "put it away" wherever the list has been moved to.
   const drawerGlyph = rail.open === listOnRight ? '›' : '‹'
-
-  /** Follow the pointer while the grip is held, clamped to what a diff can spare. */
   const dragWidth = (event: ReactPointerEvent<HTMLDivElement>): void => {
     setDragging(clampRailWidth(
       listOnRight ? window.innerWidth - event.clientX : event.clientX,
@@ -316,14 +275,25 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   }
   const railWidth = dragging ?? rail.width
 
-  /**
-   * Move down the list with the arrow keys.
-   *
-   * A rail of twenty rows is twenty tabs to a keyboard reader. The rows are buttons
-   * already, so the arrows only have to hand focus from one to the next — and the
-   * one they hand it to is scrolled into view, because a focused row off-screen is
-   * a row nobody is reading.
-   */
+  // Keys for what a reader does all day: a pane goes away with Escape, the list with
+  // `b`, and the two switches with `w` and `i`.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      // Asked by shape rather than by `instanceof`: an environment without that
+      // constructor would otherwise throw on every key pressed.
+      const target = event.target as { tagName?: string; isContentEditable?: boolean } | null
+      if (target?.isContentEditable === true || target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return
+      if (event.key === 'Escape' && focusedPane !== undefined) closeFocused()
+      if (event.key === 'b') setRailOpen(!railSettings().open)
+      if (event.key === 'w') setDiffWrap(!diffViewSettings().wrap)
+      if (event.key === 'i') setDiffViewMode(diffViewSettings().mode === 'inline' ? 'split' : 'inline')
+    }
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('keydown', onKey) }
+  }, [closeFocused, focusedPane])
+
+
+  /** Move down the list with the arrows: a rail of twenty rows is twenty tabs. */
   const onRailKey = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
     const rows = [...event.currentTarget.querySelectorAll<HTMLElement>('button')]
@@ -501,7 +471,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
               setDragging(undefined)
             }}
             onPointerCancel={() => { setDragging(undefined) }}
-            onDoubleClick={() => { setRailWidth(336) }}
+            onDoubleClick={() => { setRailWidth(RAIL_DEFAULT_WIDTH) }}
           />
         )}
         <GitBoard panes={panes} focused={focused} t={t} onFocus={focusPane} />

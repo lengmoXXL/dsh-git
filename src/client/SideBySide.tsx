@@ -101,16 +101,6 @@ function Cells({ row, left, right }: {
 }
 
 /**
- * Which half a node belongs to, if any.
- * @param node - a node inside the diff, or null.
- * @returns the half it sits in, or null when it sits in none.
- */
-function halfAt(node: Node | null): string | null {
-  const element = node === null ? null : node.nodeType === Node.ELEMENT_NODE ? node as Element : node.parentElement
-  return element?.closest('[data-half]')?.getAttribute('data-half') ?? null
-}
-
-/**
  * The two cells one line of a one-column reading occupies: the number it has on
  * its own side, and the text. Two numbers belong to the two-column reading, where
  * there really are two sides to line up.
@@ -241,13 +231,12 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
       const selection = window.getSelection()
       if (selection === null || selection.isCollapsed || event.clipboardData === null) return
       const range = selection.getRangeAt(0)
-      // A copy handler that throws is worse than one that steps aside: whatever
-      // cannot answer "did the selection touch this" leaves the copy to the browser.
-      if (typeof range.intersectsNode !== 'function') return
       const covered = [...document.querySelectorAll('[data-half]')]
         .filter(node => range.intersectsNode(node))
       if (covered.length === 0) return
-      const from = halfAt(selection.anchorNode) ?? covered[0]?.getAttribute('data-half') ?? null
+      const anchor = selection.anchorNode?.parentElement ?? null
+      const from = anchor?.closest('[data-half]')?.getAttribute('data-half')
+        ?? covered[0]?.getAttribute('data-half') ?? null
       const lines = covered
         .filter(node => node.getAttribute('data-half') === from)
         .map(node => node.textContent ?? '')
@@ -258,7 +247,14 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
     document.addEventListener('copy', onCopy)
     return () => { document.removeEventListener('copy', onCopy) }
   }, [])
-  const notice = diff.binary ? t('diff.binary') : diff.truncated ? t('diff.truncated') : undefined
+  // Three independent things the host can say about what it sent, and a reader who
+  // is shown one of them still needs the others: no text, an approximate pairing, a
+  // diff that stops short.
+  const notices = [
+    diff.binary ? t('diff.binary') : undefined,
+    diff.approximate === true ? t('diff.approximate') : undefined,
+    diff.truncated ? t('diff.truncated') : undefined,
+  ].filter((notice): notice is string => notice !== undefined)
   const toggleFold = useCallback((key: string) => {
     setExpanded((current) => {
       const next = new Set(current)
@@ -267,11 +263,7 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
       return next
     })
   }, [])
-  /**
-   * The control for a run of unchanged lines: three dots and how many are behind
-   * them, centred, opening the run. Opened, the run is headed by the band that
-   * folds it back — the shape the editor's own diff uses.
-   */
+  /** The control for a run of unchanged lines: three dots and how many are behind them. */
   const foldControl = (key: string, hidden: number | undefined): ReactNode => (
     <button type="button" className={css.fold} onClick={() => { toggleFold(key) }}>
       <span className={css.foldGlyph}>{'⋯ '}</span>
@@ -393,7 +385,7 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
 
   return (
     <div className={root}>
-      {notice !== undefined && <p className={css.notice}>{notice}</p>}
+      {notices.map(notice => <p key={notice} className={css.notice}>{notice}</p>)}
       {embedded
         ? <div className={css.gridScroll} data-dsh-git-diff="" ref={scrollRef}>{body}</div>
         : <div className={css.scroll} data-dsh-git-diff="" ref={scrollRef}>{body}</div>}

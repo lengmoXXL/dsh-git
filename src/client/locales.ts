@@ -17,8 +17,6 @@ export type GitNamespace = typeof NS
 
 /** Simplified Chinese dictionary and key source. */
 export const zh = {
-  'panel.label': 'Git',
-  'panel.noSession': '没有活动的会话',
   'panel.noRepo': '当前工作区不在 git 仓库中',
   'panel.refresh': '刷新',
   'panel.retry': '重试',
@@ -54,7 +52,6 @@ export const zh = {
   'history.ahead': '领先 {n}',
   'history.behind': '落后 {n}',
 
-  'commit.files': '文件',
   'commit.empty': '这个提交没有改动文件',
 
   'diff.binary': '二进制文件，不显示文本 diff',
@@ -62,8 +59,6 @@ export const zh = {
   'diff.unchanged': '行未改动',
   'diff.omitted': '行未显示',
   'diff.approximate': '对齐超出时间预算，配对为近似结果',
-  'diff.old': '旧',
-  'diff.new': '新',
   'diff.openFile': '在内置的文件窗口中打开这个文件',
   'diff.split': '双栏',
   'diff.inline': '单栏',
@@ -99,8 +94,6 @@ export type GitKey = keyof typeof zh
 
 /** English dictionary, checked against the Chinese key set. */
 export const en = {
-  'panel.label': 'Git',
-  'panel.noSession': 'No active session',
   'panel.noRepo': 'This workspace is not inside a git repository',
   'panel.refresh': 'Refresh',
   'panel.retry': 'Retry',
@@ -136,7 +129,6 @@ export const en = {
   'history.ahead': '{n} ahead',
   'history.behind': '{n} behind',
 
-  'commit.files': 'Files',
   'commit.empty': 'This commit changes no files',
 
   'diff.binary': 'Binary file — no text diff',
@@ -144,8 +136,6 @@ export const en = {
   'diff.unchanged': 'unchanged lines',
   'diff.omitted': 'lines not shown',
   'diff.approximate': 'the diff computer hit its time budget; the pairing is approximate',
-  'diff.old': 'old',
-  'diff.new': 'new',
   'diff.openFile': 'Open this file in the built-in file view',
   'diff.split': 'Two columns',
   'diff.inline': 'One column',

@@ -62,7 +62,6 @@ export function FileRow({
       title={title}
       onClick={(event) => { onSelect(event.altKey) }}
       onKeyDown={(event) => {
-        // A row opens a diff; holding the modifier asks for the second pane.
         if (event.key === 'Enter' && event.altKey) {
           event.preventDefault()
           onSelect(true)

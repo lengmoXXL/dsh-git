@@ -88,6 +88,16 @@ test('registers both dictionaries under one namespace, with the same keys', asyn
     Object.keys(dictionaries['en'] as object).sort(),
     Object.keys(dictionaries['zh'] as object).sort(),
   )
+  // And every key is asked for somewhere: copy that no component reads is copy that
+  // rots, and the dictionaries are the one place a dead string can hide.
+  const clientDir = join(dirname(fileURLToPath(import.meta.url)), '../../src/client')
+  const asked = (await readdir(clientDir))
+    .filter(name => name.endsWith('.ts') || name.endsWith('.tsx'))
+    .filter(name => name !== 'locales.ts')
+  const sources = (await Promise.all(asked.map(async name => readFile(join(clientDir, name), 'utf8')))).join('\n')
+  for (const key of Object.keys(dictionaries['zh'] as object)) {
+    assert.ok(sources.includes(`'${key}'`), `"${key}" is not asked for by any component`)
+  }
 })
 
 test('the log body renders its frame while the reads are still in flight', async () => {

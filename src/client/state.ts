@@ -1,20 +1,24 @@
 /**
- * The list's derived state, as pure functions.
+ * The decisions the page makes about data it already has, as pure functions.
  *
- * Everything here is a decision a tab makes about data it already has: which
- * groups the changed paths belong to, the letter a change is marked with, the
- * chips a commit's refs become, how a failure is described, and how a long
- * unchanged run folds. Keeping them pure is what lets the browser half be
- * tested without a DOM, a server, or a React root.
- *
- * Which change a click opens is NOT here either: a diff is identified by the
- * comparison it shows, which {@link diffKey} spells.
+ * Keeping them pure is what lets the browser half be tested without a DOM, a
+ * server, or a React root.
  *
  * @module dsh-git/client/state
  */
 
 import type { ChangeEntry, ChangeKind, ChangeStage, DiffRow, DiffSource } from '../shared/wire.ts'
 import { GitRequestError, type DiffRequest } from './face.ts'
+
+/**
+ * One diff the board is showing: what it compares, and its identity.
+ */
+export interface BoardPane {
+  /** The comparison's identity, from {@link diffKey}. */
+  readonly key: string
+  /** What to ask the host for. */
+  readonly request: DiffRequest
+}
 
 /**
  * One read, as a view draws it: still coming, arrived, or the reason it did not.
@@ -210,11 +214,10 @@ export function clampRailWidth(width: number, windowWidth: number): number {
 /**
  * Where a diff lands on the board.
  *
- * A comparison already on the board is only focused: opening the same thing twice
- * would compare it with itself. Otherwise it takes the focused pane's place, which
- * is what reading one diff after another wants — or opens beside the others, which
- * is how two revisions are put next to each other. The first diff on an empty board
- * has nowhere to replace, so it opens.
+ * Reading one diff after another is the common case, so a new one takes the focused
+ * pane's place; comparing two is the deliberate one, so the modifier opens beside.
+ * Opening the same comparison twice would compare it with itself, which is why one
+ * already on the board is only focused.
  *
  * @param panes - the panes now on the board, in order.
  * @param pane - the pane to place.
@@ -234,21 +237,12 @@ export function placePane<Pane extends { readonly key: string }>(
   return panes.map((existing, index) => (index === at ? pane : existing))
 }
 
-/** One diff the board is showing: what it compares, and its identity. */
-export interface BoardPane {
-  /** The comparison's identity, from {@link diffKey}. */
-  readonly key: string
-  /** What to ask the host for. */
-  readonly request: DiffRequest
-}
-
 /**
  * The one number a line carries in a one-column reading.
  *
- * A line has a number on its own side: a removal keeps the old one, an addition
- * takes the new one, and a context line has the same number on both. Two numbers
- * over one line of code said the same thing twice, and the second was always the
- * one worth reading.
+ * A line has a number on its own side: a removal keeps the old one, an addition takes
+ * the new one, and a context line has the same number on both. Two numbers over one
+ * line of code would say the same thing twice.
  *
  * @param line - one line of the one-column reading.
  * @returns the number to draw, or undefined when the line has none.
@@ -280,9 +274,7 @@ export function oneSided(diff: { readonly added: number; readonly removed: numbe
  * A diff is what it compares: the same file at two revisions is a different diff
  * from the same file against the working tree, and each deserves its own pane —
  * while opening the same comparison twice should land on the pane already there.
- * The key is built from the request rather than from an address, because the page
- * asks the host directly and has no resource address to name.
- *
+
  * @param request - the comparison one pane shows.
  * @returns a key that is equal for equal comparisons.
  */
@@ -294,7 +286,6 @@ export function diffKey(request: {
 }): string {
   return [request.source, request.rev ?? '', request.origPath ?? '', request.path].join('\u0000')
 }
-
 
 /** One line of a diff read in one column instead of two. */
 export interface InlineLine {

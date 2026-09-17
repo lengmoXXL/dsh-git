@@ -1,11 +1,6 @@
 /**
  * The control that stands in for the rows a list is not showing.
  *
- * A list long enough to hide everything below it is not a list any more: past a
- * handful of entries the rail shows the first few and one row saying how many are
- * behind them. The row is deliberately smaller than an entry and led by its glyph,
- * because a word in a commit row's clothing reads as a commit.
- *
  * @module dsh-git/client/MoreRow
  */
 
@@ -16,9 +11,6 @@ import css from './List.module.css'
 
 /** How many entries a list shows before it says there are more. */
 export const LIST_PREVIEW = 8
-
-/** How many commits the rail shows before it says there are older ones. */
-export const HISTORY_PREVIEW = 12
 
 /** Props of the control. */
 export interface MoreRowProps {

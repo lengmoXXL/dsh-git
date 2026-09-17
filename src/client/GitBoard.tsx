@@ -1,11 +1,6 @@
 /**
  * The diff board: one pane per open diff, side by side.
  *
- * The page used to open each diff as its own tab, which meant the list it came
- * from was unmounted and every click minted a tab. Here the board sits beside the
- * list instead: a pane is a diff, two of them are a comparison, and the list is
- * still there when the reader looks back.
- *
  * A pane owns its read — its request, its cancellation, its failure — so two panes
  * for two revisions of one file cannot show each other's answer, and the board
  * itself knows nothing about git.
@@ -17,6 +12,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { DiffPayload } from '../shared/wire.ts'
 import { BUILD_STAMP } from './build.ts'
+import { cx } from './format.ts'
 import { FailureBlock, Note } from './Feedback.tsx'
 import { gitFace } from './face.ts'
 import type { GitKey } from './locales.ts'
@@ -49,8 +45,8 @@ function DiffPane({ pane, focused, t, onFocus }: {
 }): ReactNode {
   const [load, setLoad] = useState<Load<DiffPayload>>({ phase: 'loading' })
 
-  // One read per comparison: a pane that is already showing the thing it was
-  // asked for is not asked again, and a pane that is replaced reads the new one.
+  // Keyed by the comparison, not by the pane: a pane already showing what it was
+  // asked for is not asked again.
   useEffect(() => {
     const controller = new AbortController()
     setLoad({ phase: 'loading' })
@@ -68,17 +64,16 @@ function DiffPane({ pane, focused, t, onFocus }: {
     return () => { controller.abort() }
   }, [pane.key])
 
-  // What the pane compares lives in its tooltip: with no title bar over the code,
-  // this is where "which file, at which revisions, how much changed" can be read.
+  // With no title bar over the code, the tooltip is where "which file, at which
+  // revisions, how much changed" can be read — and which build is drawing it, since a
+  // page can be running an older bundle while the diff's content is current.
   const ready = load.phase === 'ready' ? load.value : undefined
-  // The tooltip also names the bundle drawing this: a page can be running an older
-  // one while the diff's content is current.
   const title = ready === undefined
     ? pane.request.path
     : `${ready.path} · ${ready.oldLabel} → ${ready.newLabel} · +${String(ready.added)} −${String(ready.removed)} · ${BUILD_STAMP}`
   return (
     <section
-      className={focused ? `${css.pane} ${css.focused}` : css.pane}
+      className={cx(css.pane, focused && css.focused)}
       data-pane={pane.key}
       title={title}
       onMouseDown={() => { onFocus(pane.key) }}

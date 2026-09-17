@@ -2,7 +2,10 @@
  * How the page is arranged, and the one place that remembers it.
  *
  * Two kinds of choice live here, and both are the reader's rather than the
- * change's. How a diff is drawn — two aligned columns or one in reading order,
+ * change's. They are kept in two stores rather than one because
+ * `useSyncExternalStore` compares snapshots by identity: a snapshot that carried both
+ * groups would be a new object whenever either changed, and would redraw every diff
+ * when the list was dragged a pixel. How a diff is drawn — two aligned columns or one in reading order,
  * whole lines or wrapped ones — so every diff follows the same answer. And where
  * the list sits — which side, how wide, whether it is put away — so the page opens
  * the way it was left. None of it is the host's business, so the browser holds it.
@@ -125,8 +128,11 @@ export interface RailSettings {
   readonly open: boolean
 }
 
+/** The width the list falls back to, and what double-clicking its grip restores. */
+export const RAIL_DEFAULT_WIDTH = 336
+
 /** What a reader who has said nothing gets: a comfortable list on the left. */
-const RAIL_DEFAULTS: RailSettings = { side: 'left', width: 336, open: true }
+const RAIL_DEFAULTS: RailSettings = { side: 'left', width: RAIL_DEFAULT_WIDTH, open: true }
 
 /** Where each choice is kept between page loads. */
 const SIDE_KEY = 'dsh-git:rail-side'

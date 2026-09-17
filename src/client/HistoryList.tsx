@@ -21,7 +21,7 @@ import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { CommitFile, CommitSummary } from '../shared/wire.ts'
 import { gitFace } from './face.ts'
 import { FileRow } from './FileRow.tsx'
-import { HISTORY_PREVIEW, LIST_PREVIEW, MoreRow } from './MoreRow.tsx'
+import { LIST_PREVIEW, MoreRow } from './MoreRow.tsx'
 import { cx, timeLabel } from './format.ts'
 import { logCache } from './log-cache.ts'
 import type { GitKey } from './locales.ts'
@@ -47,6 +47,9 @@ export interface HistoryListProps {
   /** Hand one file of a commit to the shell's own file view. */
   readonly onOpenFile?: ((path: string) => void) | undefined
 }
+
+/** How many commits the rail shows before it says there are older ones. */
+const HISTORY_PREVIEW = 12
 
 /** One commit's row, and the files it changed while it is open. */
 function CommitRow({ commit, sessionId, now, t, selected, onToggle, onSelectFile, onOpenFile }: {
