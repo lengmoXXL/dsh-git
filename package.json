@@ -1,6 +1,6 @@
 {
   "name": "dsh-git",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "description": "A read-only git browser for the DeepSeek Harness Web GUI: a right-Sidebar tab with the session's commit history and working-tree changes, where every click opens its own side-by-side diff tab. The host half reads the repository through ctx.fs and ctx.subprocess, so a routed (remote) execution world works unchanged.",
   "type": "module",
