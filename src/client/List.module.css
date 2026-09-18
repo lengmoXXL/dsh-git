@@ -212,7 +212,7 @@
   flex: none;
   position: relative;
   align-self: stretch;
-  width: 16px;
+  width: 13px;
 }
 
 .node::before,
@@ -227,15 +227,15 @@
 }
 
 .node::before {
-  width: 10px;
-  height: 10px;
+  width: 7px;
+  height: 7px;
   background: var(--dsw-alias-label-tertiary);
 }
 
 .nodeMerge::before,
 .nodeCurrent::before {
-  width: 13px;
-  height: 13px;
+  width: 10px;
+  height: 10px;
   background: transparent;
   border: 2px solid var(--dsw-alias-label-tertiary);
 }
@@ -247,8 +247,8 @@
 /* The dot inside the accent ring, which is what marks the checked-out commit
  * apart from a merge that has no such dot. */
 .nodeCurrent::after {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
   background: var(--dsw-alias-state-business-primary);
 }
 
