@@ -478,7 +478,10 @@ const PREVIEW = 8
 /* The history is a page of the log, and a page is longer than a rail: show the
    most recent few and say how many are behind them. In the plugin the row asks
    the host for the next page instead of revealing what is already there. */
-const LOG_PREVIEW = 12
+const HISTORY_MIN = 12
+/* One commit row's height, to work out how many fill the rail. */
+const ROW_HEIGHT = 24
+const historyPreview = () => Math.max(HISTORY_MIN, Math.floor(($('list')?.clientHeight ?? 0) / ROW_HEIGHT))
 
 /** The "open this file in the shell's viewer" glyph, shared by the row and the header. */
 /* Both carry their own size: a glyph with a viewBox alone measures nothing. */
@@ -550,7 +553,7 @@ function railRows() {
     // either side without walking the history, and a number that only counts the
     // page in hand would be read as the repository's total.
     if (commits.length > 0) rows.push({ kind: 'section', label: '历史' })
-    for (const commit of shown(commits, 'history', LOG_PREVIEW)) {
+    for (const commit of shown(commits, 'history', historyPreview())) {
       rows.push({ kind: 'commit', key: `commit:${commit.short}`, commit })
       if (!state.open.has(commit.short)) continue
       const files = commit.files
@@ -561,8 +564,8 @@ function railRows() {
         rows.push({ kind: 'more', owner: commit.short, hidden: files.length - PREVIEW, unit: '文件' })
       }
     }
-    if (commits.length > LOG_PREVIEW) {
-      rows.push({ kind: 'more', owner: 'history', hidden: commits.length - LOG_PREVIEW, unit: '提交' })
+    if (commits.length > historyPreview()) {
+      rows.push({ kind: 'more', owner: 'history', hidden: commits.length - historyPreview(), unit: '提交' })
     }
   }
   return rows
@@ -839,11 +842,7 @@ function cardMarkup(address, index) {
 function renderBoard() {
   const board = $('board')
   if (state.cards.length === 0) {
-    board.innerHTML = `<div class="empty">
-      <h2>列表留在左边，diff 开在右边</h2>
-      <p>点一条改动、或展开一个提交点它的文件。列表不会再被替换掉，所以没有"回来时还得恢复现场"这回事。</p>
-      <p>行尾的 <strong>↗</strong>（或按住 <kbd>⌥</kbd> 回车）把 diff <strong>并排</strong>开在已有卡片旁边；同一条 diff 已经在板上时只聚焦，不会重复开。</p>
-    </div>`
+    board.innerHTML = '<p class="empty">diff view</p>'
     return
   }
   board.innerHTML = state.cards.map(cardMarkup).join('')
@@ -1061,9 +1060,13 @@ $('rail-side').onclick = () => { state.railSide = state.railSide === 'left' ? 'r
 /* The rail keeps the room it was given, and the board keeps enough of its own:
    the width is held between a readable list and a diff that can still be read. */
 const RAIL_MIN = 220
-const railLimit = () => Math.min(760, Math.max(RAIL_MIN, window.innerWidth - 420))
+/* No ceiling: the list may have the whole pane but the room a diff needs, and the
+   pane is the box it shares with the diff, not the window. */
+const DIFF_MIN = 420
+const railLimit = () => Math.max(RAIL_MIN, (document.querySelector('.board')?.clientWidth ?? 0) + state.railWidth - DIFF_MIN)
 const setRailWidth = (width) => {
-  state.railWidth = Math.round(Math.min(railLimit(), Math.max(RAIL_MIN, width)))
+  const pane = document.querySelector('main')?.clientWidth ?? window.innerWidth
+  state.railWidth = Math.round(Math.max(RAIL_MIN, Math.min(pane - DIFF_MIN, width)))
   document.documentElement.style.setProperty('--rail', `${state.railWidth}px`)
 }
 
