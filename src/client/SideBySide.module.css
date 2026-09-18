@@ -248,8 +248,8 @@
   width: 0;
 }
 
-.band .fold,
-.heldBack .fold {
+.held.band .fold,
+.held.heldBack .fold {
   position: absolute;
   left: 0;
   /* The number's own column, measured the number's way: the control keeps its own
@@ -269,7 +269,7 @@
 
 /* The fold stands for the rows above it; the band that opens one stands for the run
    below it. Each sits against the line it belongs to. */
-.band .fold {
+.held.band .fold {
   top: calc(-1 * var(--dsh-git-diff-row));
 }
 
