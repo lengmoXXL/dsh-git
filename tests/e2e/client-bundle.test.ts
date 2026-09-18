@@ -73,6 +73,18 @@ test('gives every stylesheet its own tag', async () => {
   )
 })
 
+test('carries the editor features and the font its icons are drawn with', async () => {
+  const source = await readArtifact(bundlePath)
+  // Both go missing silently when a bundler takes this package at its word that nothing here
+  // has side effects: the editor's features are imported for their effects alone, and so is
+  // the stylesheet that names the icon font. A diff without them loses its find widget, its
+  // folding, and every icon the editor draws — a box in the icon's place.
+  for (const marker of ['find-widget', 'fold-unchanged', 'anchorSelect']) {
+    assert.ok(source.includes(marker), `the bundle carries ${marker}`)
+  }
+  assert.match(source, /@font-face\{font-family:codicon[^}]*data:font\/ttf;base64,/)
+})
+
 test('carries the build it came from', async () => {
   const source = await readArtifact(bundlePath)
   // Substituted at build time, so a page can be asked which build it is

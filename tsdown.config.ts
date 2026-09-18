@@ -33,7 +33,7 @@
  */
 
 import { readFile } from 'node:fs/promises'
-import { dirname, relative, resolve as resolvePath } from 'node:path'
+import { dirname, extname, relative, resolve as resolvePath } from 'node:path'
 import { defineConfig } from 'tsdown'
 import { transform } from 'lightningcss'
 
@@ -108,6 +108,29 @@ function buildStamp() {
   }
 }
 
+/** The file types a stylesheet in this bundle names, and the media type each travels as. */
+const ASSETS: Readonly<Record<string, string>> = { '.ttf': 'font/ttf' }
+
+/**
+ * Carry the files a stylesheet names inside the stylesheet.
+ *
+ * The editor draws its icons with a font it names as a file beside one of its stylesheets,
+ * and a dynamic bundle has no file beside it — nor does the page it runs in serve one — so
+ * the bytes travel with the stylesheet as a data URI. A named file this build does not know
+ * is left as it is, and the browser suite fails on the request it then makes.
+ */
+async function inlineAssets(css: string, from: string): Promise<string> {
+  let out = css
+  for (const [whole, , named] of css.matchAll(/url\((['"]?)([^'")]+)\1\)/g)) {
+    const file = resolvePath(from, String(named))
+    const media = ASSETS[extname(file).toLowerCase()]
+    if (media === undefined) continue
+    const bytes = await readFile(file)
+    out = out.replace(String(whole), `url("data:${media};base64,${bytes.toString('base64')}")`)
+  }
+  return out
+}
+
 /** Compile every stylesheet import into an injecting module. */
 function cssModulesInline() {
   return {
@@ -139,7 +162,7 @@ function cssModulesInline() {
           classMap[local] = exported.name
         }
       }
-      return styleInjectionModule(fileId, code.toString(), classMap)
+      return styleInjectionModule(fileId, await inlineAssets(code.toString(), dirname(fileId)), classMap)
     },
   }
 }

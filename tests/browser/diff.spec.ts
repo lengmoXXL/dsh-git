@@ -2,25 +2,19 @@ import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
 /**
- * The page asks for the icon font its own stylesheet names and the page serves no
- * fonts, so that one request is expected to fail. Everything else the page says or
- * does is a failure.
+ * Everything the page did that no test should tolerate. The page fetches nothing but its
+ * own files — the editor's font and its stylesheets travel inside the bundle — so a request
+ * that fails is a request the bundle should not have made.
  */
-const EXPECTED = [/\.ttf$/]
-
-/** Everything the page did that no test should tolerate. */
 function watch(page: Page): string[] {
   const errors: string[] = []
-  const allowed = (text: string): boolean => EXPECTED.some(pattern => pattern.test(text))
   page.on('response', (response) => {
-    if (response.status() >= 400 && !allowed(response.url())) {
-      errors.push(`${String(response.status())} ${response.url()}`)
-    }
+    if (response.status() >= 400) errors.push(`${String(response.status())} ${response.url()}`)
   })
   const keep = (text: string): void => {
-    // The console says only "404" for the same request; the response above names it.
+    // The console says only "404" for a response the listener above already named.
     if (text.startsWith('Failed to load resource')) return
-    if (!allowed(text)) errors.push(text)
+    errors.push(text)
   }
   page.on('console', (message) => { if (message.type() === 'error') keep(message.text()) })
   page.on('pageerror', (error) => { keep(String(error)) })
@@ -64,8 +58,24 @@ interface Marks {
   readonly removedText: string | undefined
 }
 
+/** What the page says about the editor's icon font and the glyph it draws with it. */
+interface Icons {
+  readonly font: boolean
+  readonly content: string
+}
+
+/** The columns the band's unfold control and the glyph margin sit in. */
+interface Columns {
+  readonly unfold: number | null
+  readonly glyph: number | null
+}
+
 /** Every question the page can answer, and what each answers with. */
 interface Probes {
+  /** Whether the editor's icon font is loaded, and the glyph the band draws with it. */
+  readonly icons: () => Promise<Icons>
+  /** The columns the unfold control and the glyph margin sit in. */
+  readonly columns: () => Columns
   /** Forty frames of the editor's box, and the pane's own width and overflow. */
   readonly settle: () => Promise<Settled>
   /** The colours the editor painted the fixture's own line with. */
@@ -159,6 +169,26 @@ test('numbers each side by the file it came from', async ({ page }) => {
     'const answer = 41@3',
     'const answer = 42@3',
   ])
+})
+
+test('draws the unfold control with the editor icon, in the glyph column', async ({ page }) => {
+  const errors = watch(page)
+  await page.goto('/index.html')
+  await expect(page.locator('.monaco-diff-editor')).toBeVisible({ timeout: 20_000 })
+  const icons = await probe(page, 'icons')
+  // The editor draws its icons with a font it names as a file beside one of its own
+  // stylesheets: a page that cannot reach that file draws a box in the icon's place.
+  expect(icons.font, "the editor's icon font is in the bundle").toBe(true)
+  expect(icons.content, 'the band draws an icon').not.toBe('none')
+  // Expanding a run and folding it back are one control to a reader, and the editor draws
+  // them in different places unless the band's slot takes the glyph margin's width.
+  // The band is drawn once the editor has computed the diff, a frame or two after the box.
+  await expect.poll(async () => (await probe(page, 'columns')).unfold).not.toBeNull()
+  const columns = await probe(page, 'columns')
+  expect(columns.unfold, 'the band has an unfold control').not.toBeNull()
+  expect(columns.glyph, 'the editor has a glyph margin').not.toBeNull()
+  expect(columns.unfold, 'the unfold control sits in the glyph column').toBe(columns.glyph)
+  expect(errors, 'the page logged errors').toEqual([])
 })
 
 test('holds its box while it settles, however narrow the pane', async ({ page }) => {

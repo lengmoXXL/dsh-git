@@ -149,6 +149,30 @@ const page = `<!doctype html>
         removedText: background('.char-delete'),
       }
     },
+    /** Whether the editor's icon font is loaded, and whether the band draws a glyph with it. */
+    icons: async () => {
+      await document.fonts.load('16px codicon')
+      const glyph = document.querySelector('.diff-hidden-lines .center > div:first-child a .codicon')
+      const content = glyph === null ? 'none' : getComputedStyle(glyph, '::before').content
+      return { font: document.fonts.check('16px codicon'), content: String(content) }
+    },
+    /**
+     * The columns one side's unfold control and its glyph margin sit in. Both are asked of
+     * the same editor, so the two answers belong to one column and can be compared.
+     */
+    columns: () => {
+      const centre = (element) => {
+        if (element === null) return null
+        const box = element.getBoundingClientRect()
+        return box.width === 0 ? null : Math.round(box.x + box.width / 2)
+      }
+      for (const editor of document.querySelectorAll('.monaco-editor')) {
+        const unfold = centre(editor.querySelector('.diff-hidden-lines .center > div:first-child a'))
+        if (unfold === null) continue
+        return { unfold, glyph: centre(editor.querySelector('.glyph-margin')) }
+      }
+      return { unfold: null, glyph: null }
+    },
     /**
      * Which number the gutter gives the changed line on each side, joined as text and
      * number. The number is drawn in its own column beside the line, so the two are matched

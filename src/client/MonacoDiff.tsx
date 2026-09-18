@@ -85,6 +85,16 @@ export function MonacoDiff({ diff, split, wrap, t, onCounts }: MonacoDiffProps):
     if (element === null) return
     let created: monaco.editor.IStandaloneDiffEditor | undefined
     let updated: monaco.IDisposable | undefined
+    let laid: monaco.IDisposable | undefined
+    // The editor centres the band's unfold control over the whole left margin and draws the
+    // fold control in the glyph margin, so the two do not share a column until the band's
+    // slot is told how wide that margin is. The margin's own width is read off the document,
+    // because it is no part of the editor's own layout figures until it has been drawn.
+    const measure = (): void => {
+      const margin = element.querySelector('.monaco-editor .glyph-margin')
+      if (margin === null) return
+      element.style.setProperty('--dsh-git-glyph-margin', `${String(margin.clientWidth)}px`)
+    }
     try {
       installSyntax()
       const built = monaco.editor.createDiffEditor(element, {
@@ -109,11 +119,14 @@ export function MonacoDiff({ diff, split, wrap, t, onCounts }: MonacoDiffProps):
         modified: monaco.editor.createModel(diff.newText, language),
       })
       updated = built.onDidUpdateDiff(() => { report.current?.(counted(built.getLineChanges())) })
+      requestAnimationFrame(measure)
+      laid = built.getModifiedEditor().onDidLayoutChange(measure)
       editor.current = built
     } catch (error: unknown) {
       setFailure(error instanceof Error ? error.message : String(error))
     }
     return () => {
+      laid?.dispose()
       updated?.dispose()
       const models = created?.getModel()
       created?.dispose()
