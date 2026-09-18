@@ -62,19 +62,28 @@ test('leaves a short unchanged run alone', () => {
   assert.deepEqual(display.map(item => item.kind), ['diff', 'diff', 'diff'])
 })
 
-test('folds the middle of a long unchanged run and re-expands it on request', () => {
-  const rows = Array.from({ length: 20 }, (_unused, index) => contextRow(index + 1))
+test('folds a long unchanged run, and opens it a step at a time', () => {
+  const rows = Array.from({ length: 100 }, (_unused, index) => contextRow(index + 1))
   const folded = collapseRows(rows, 6)
-  assert.deepEqual(folded.map(item => item.kind), ['diff', 'diff', 'diff', 'fold', 'diff', 'diff', 'diff'])
   const fold = folded.find(item => item.kind === 'fold')
-  assert.equal(fold?.kind === 'fold' ? fold.hidden : 0, 14)
+  const hiddenOf = (list: ReturnType<typeof collapseRows>): number => {
+    const found = list.find(item => item.kind === 'fold')
+    return found?.kind === 'fold' ? found.hidden : 0
+  }
+  // Six survive, three at each end, and the row states what is behind them.
+  assert.equal(hiddenOf(folded), 94)
+  assert.deepEqual(folded.map(item => item.kind), ['diff', 'diff', 'diff', 'fold', 'diff', 'diff', 'diff'])
 
-  // Opened, the run is drawn whole, headed by the band that folds it back — so a
-  // reader can close it again, which is more than the first version allowed.
-  const expanded = collapseRows(rows, 6, new Set(fold === undefined ? [] : [fold.key]))
-  assert.equal(expanded[0]?.kind, 'collapse')
-  assert.equal(expanded.length, 21)
-  assert.equal(expanded.slice(1).every(item => item.kind === 'diff'), true)
+  const key = fold?.key ?? ''
+  // A step up reveals fifteen more lines at the top, a step down the same at the
+  // bottom, and each is stated until nothing is behind the row.
+  assert.equal(hiddenOf(collapseRows(rows, 6, new Map([[key, { up: 15, down: 0 }]]))), 79)
+  assert.equal(hiddenOf(collapseRows(rows, 6, new Map([[key, { up: 0, down: 15 }]]))), 79)
+
+  // All of it: nothing is hidden, so there is no row left to draw.
+  const all = collapseRows(rows, 6, new Map([[key, { up: 94, down: 94 }]]))
+  assert.equal(all.every(item => item.kind === 'diff'), true)
+  assert.equal(all.length, 100)
 })
 
 test('does not fold when a run is exactly at the limit', () => {

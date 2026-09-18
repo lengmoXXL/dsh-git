@@ -37,6 +37,9 @@ export const zh = {
   'changes.truncated': '仅显示前 {n} 项改动',
 
   'section.collapse': '收起',
+  'fold.up': '向上展开 15 行',
+  'fold.down': '向下展开 15 行',
+  'fold.all': '全部展开',
   'section.expand': '展开',
 
   'group.conflicted': '冲突',
@@ -109,6 +112,9 @@ export const en = {
   'changes.truncated': 'Showing the first {n} changes only',
 
   'section.collapse': 'Collapse',
+  'fold.up': 'Open 15 more lines above',
+  'fold.down': 'Open 15 more lines below',
+  'fold.all': 'Open the whole run',
   'section.expand': 'Expand',
 
   'group.conflicted': 'Conflicts',

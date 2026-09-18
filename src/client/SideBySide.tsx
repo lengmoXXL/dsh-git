@@ -17,15 +17,17 @@
  * @module dsh-git/client/SideBySide
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { DiffPayload, DiffRow } from '../shared/wire.ts'
 import { cx } from './format.ts'
+import { ExpandAllGlyph, ExpandDownGlyph, ExpandUpGlyph } from './glyphs.tsx'
 import { highlightLines, langFromPath, type HighlightSpan } from './highlight.ts'
 import type { GitKey } from './locales.ts'
 import {
   collapseRows,
   inlineDisplayLines,
+  type FoldExpansion,
   lineNumber,
   oneSided,
   type DisplayRow,
@@ -167,8 +169,10 @@ export interface SideBySideProps {
  * @returns the diff, or the state that stands in for it.
  */
 export function SideBySide({ diff, t, embedded = false }: SideBySideProps): ReactNode {
-  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set())
-  const rows = useMemo(() => collapseRows(diff.rows, undefined, expanded), [diff, expanded])
+  /** Lines one press of a fold's controls opens. */
+  const FOLD_STEP = 15
+  const [expansion, setExpansion] = useState<ReadonlyMap<string, FoldExpansion>>(() => new Map())
+  const rows = useMemo(() => collapseRows(diff.rows, undefined, expansion), [diff, expansion])
   // Every diff follows the same answers, so the choices are a store rather than
   // this tab's state: they are how the reader reads diffs, not what this one
   // holds. The same reader serves both sides of a render, hence the snapshot.
@@ -255,38 +259,42 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
     diff.approximate === true ? t('diff.approximate') : undefined,
     diff.truncated ? t('diff.truncated') : undefined,
   ].filter((notice): notice is string => notice !== undefined)
-  const toggleFold = useCallback((key: string) => {
-    setExpanded((current) => {
-      const next = new Set(current)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }, [])
-  /** The control for a run of unchanged lines: three dots and how many are behind them. */
-  const foldControl = (key: string, hidden: number | undefined): ReactNode => (
-    <button
-      type="button"
-      className={css.fold}
-      title={`${String(hidden)} ${t('diff.unchanged')}`}
-      aria-label={`${String(hidden)} ${t('diff.unchanged')}`}
-      onClick={() => { toggleFold(key) }}
-    >
-      <span className={css.foldGlyph}>{'⋯'}</span>
-    </button>
-  )
-  /** The band that folds an opened run back, at the top of the run. */
-  const foldBackControl = (key: string): ReactNode => (
-    <button
-      type="button"
-      className={css.fold}
-      title={t('section.collapse')}
-      aria-label={t('section.collapse')}
-      onClick={() => { toggleFold(key) }}
-    >
-      <span className={css.foldGlyph}>↑</span>
-    </button>
-  )
+  /** The row a folded run draws: what it still hides, and the three ways to open it. */
+  const foldControl = (key: string, hidden: number | undefined): ReactNode => {
+    const count = hidden ?? 0
+    const open = (how: 'up' | 'down' | 'all', label: string, glyph: ReactNode): ReactNode => (
+      <button
+        type="button"
+        className={css.fold}
+        title={label}
+        aria-label={label}
+        onClick={() => {
+          setExpansion((current) => {
+            const before = current.get(key) ?? { up: 0, down: 0 }
+            const next = how === 'all'
+              ? { up: before.up + count, down: before.down + count }
+              : how === 'up'
+                ? { up: before.up + FOLD_STEP, down: before.down }
+                : { up: before.up, down: before.down + FOLD_STEP }
+            const copy = new Map(current)
+            copy.set(key, next)
+            return copy
+          })
+        }}
+      >
+        {glyph}
+      </button>
+    )
+    return (
+      <>
+        <span className={css.foldGlyph}>{'⋯ '}</span>
+        {`${String(count)} ${t('diff.unchanged')}`}
+        {open('up', t('fold.up'), <ExpandUpGlyph />)}
+        {open('down', t('fold.down'), <ExpandDownGlyph />)}
+        {open('all', t('fold.all'), <ExpandAllGlyph />)}
+      </>
+    )
+  }
   /** A run the host left out. Its counts are stated, because a view that is not
    *  contiguous must say so. */
   const gapControl = (line: Pick<InlineLine, 'skippedLeft' | 'skippedRight'>): ReactNode => {
@@ -298,7 +306,6 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
   /** The control one display row stands for, when it is not a line. */
   const heldControl = (row: DisplayRow): ReactNode => {
     if (row.kind === 'fold') return foldControl(row.key, row.hidden)
-    if (row.kind === 'collapse') return foldBackControl(row.key)
     return gapControl(row.row)
   }
 
@@ -306,18 +313,18 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
   const grid = (
     <div className={css.grid} data-view={inline ? 'inline' : 'split'}>
       {inline
-        ? lines.map((line, at) => (line.kind === 'fold' || line.kind === 'collapse' || line.kind === 'gap'
+        ? lines.map((line, at) => (line.kind === 'fold' || line.kind === 'gap'
           ? (
-            <div key={line.key} className={cx(css.held, line.kind === 'fold' && css.band, line.kind === 'collapse' && css.heldBack)}>
+            <div key={line.key} className={cx(css.held, line.kind === 'fold' && css.band)}>
               {line.kind === 'fold'
                 ? foldControl(line.key, line.hidden)
-                : line.kind === 'collapse' ? foldBackControl(line.key) : gapControl(line)}
+                : gapControl(line)}
             </div>
           )
           : <InlineCells key={line.key} line={line} highlighted={unified?.[at]} />))
         : rows.map((row, at) => (row.kind !== 'diff' || row.row.kind === 'gap'
           ? (
-            <div key={row.key} className={cx(css.held, row.kind === 'fold' && css.band, row.kind === 'collapse' && css.heldBack)}>
+            <div key={row.key} className={cx(css.held, row.kind === 'fold' && css.band)}>
               {heldControl(row)}
             </div>
           )
@@ -336,7 +343,7 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
         // Stated once, in the half a reader starts at; the other half draws its
         // row empty, which the lane's fixed-height tracks keep in step.
         return (
-          <div key={row.key} className={cx(css.held, row.kind === 'fold' && css.band, row.kind === 'collapse' && css.heldBack)}>
+          <div key={row.key} className={cx(css.held, row.kind === 'fold' && css.band)}>
             {side === 'left' && heldControl(row)}
           </div>
         )
@@ -356,12 +363,12 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
         />
       )
     })
-  const laneInline: ReactNode = lines.map((line, at) => (line.kind === 'fold' || line.kind === 'collapse' || line.kind === 'gap'
+  const laneInline: ReactNode = lines.map((line, at) => (line.kind === 'fold' || line.kind === 'gap'
     ? (
-      <div key={line.key} className={cx(css.held, line.kind === 'fold' && css.band, line.kind === 'collapse' && css.heldBack)}>
+      <div key={line.key} className={cx(css.held, line.kind === 'fold' && css.band)}>
         {line.kind === 'fold'
           ? foldControl(line.key, line.hidden)
-          : line.kind === 'collapse' ? foldBackControl(line.key) : gapControl(line)}
+                : gapControl(line)}
       </div>
     )
     : (

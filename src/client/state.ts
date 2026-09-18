@@ -384,9 +384,7 @@ export function inlineLines(rows: readonly DiffRow[]): InlineLine[] {
 export function inlineDisplayLines(rows: readonly DisplayRow[]): InlineLine[] {
   return rows.flatMap((row, at): InlineLine[] => {
     if (row.kind === 'diff') return linesOfRow(row.row, at)
-    return [row.kind === 'fold'
-      ? { kind: 'fold', key: row.key, hidden: row.hidden }
-      : { kind: 'collapse', key: row.key }]
+    return [{ kind: 'fold', key: row.key, hidden: row.hidden }]
   })
 }
 
@@ -420,29 +418,35 @@ export function nonEmptyGroups(
 /** How long an unchanged run may be before it folds. */
 const CONTEXT_RUN_LIMIT = 6
 
+/** How much of a folded run the reader has opened, in lines, each way. */
+export interface FoldExpansion {
+  readonly up: number
+  readonly down: number
+}
+
 /** One drawn line of the diff body. */
 export type DisplayRow =
   | { readonly kind: 'diff'; readonly key: string; readonly row: DiffRow }
+  /** A run with lines still hidden, and the row that opens it further. */
   | { readonly kind: 'fold'; readonly key: string; readonly hidden: number }
-  /** The top of a run the reader opened: the band that folds it back. */
-  | { readonly kind: 'collapse'; readonly key: string }
 
 /**
  * Fold long unchanged runs so a small change in a large file reads at a glance.
  *
- * The surviving head and tail use the same split arithmetic as the harness's
- * diff card, so a folded run looks the same wherever it is drawn. A fold's key
- * identifies the run, which is what an expansion set is addressed by.
+ * The surviving head and tail use the same split arithmetic as the harness's diff
+ * card, so a folded run looks the same wherever it is drawn. A run the reader has
+ * opened keeps its fold row until nothing is hidden; opening all of it leaves no fold
+ * row at all, and folding it again is a matter of forgetting the expansion.
  *
  * @param rows - the aligned diff rows.
  * @param limit - unchanged lines a run may have before it folds.
- * @param expanded - keys of folds the reader has opened.
+ * @param expansion - how far each fold has been opened, by fold key.
  * @returns the rows to draw, with unchanged middles replaced by folds.
  */
 export function collapseRows(
   rows: readonly DiffRow[],
   limit: number = CONTEXT_RUN_LIMIT,
-  expanded: ReadonlySet<string> = new Set(),
+  expansion: ReadonlyMap<string, FoldExpansion> = new Map(),
 ): DisplayRow[] {
   const out: DisplayRow[] = []
   let index = 0
@@ -459,28 +463,22 @@ export function collapseRows(
     let end = index
     while (end < rows.length && rows[end]?.kind === 'context') end += 1
     const run = end - index
-    const head = Math.ceil(limit / 2)
-    const tail = limit - head
     const push = (from: number, to: number): void => {
       for (const [offset, row] of rows.slice(from, to).entries()) {
         out.push({ kind: 'diff', key: `r${String(from + offset)}`, row })
       }
     }
-    if (run <= limit) {
+    const key = `f${String(index)}:${String(run)}`
+    const opened = expansion.get(key) ?? { up: 0, down: 0 }
+    const head = Math.min(run, Math.ceil(limit / 2) + Math.max(0, opened.up))
+    const tail = Math.min(run - head, limit - Math.ceil(limit / 2) + Math.max(0, opened.down))
+    const hidden = run - head - tail
+    if (hidden <= 0) {
       push(index, end)
     } else {
-      const foldKey = `f${String(index)}:${String(run)}`
-      // Opened, the run is drawn whole and headed by the band that folds it back;
-      // folded, it keeps a few lines at each end and states what it hid. A run is
-      // one or the other, never both.
-      if (expanded.has(foldKey)) {
-        out.push({ kind: 'collapse', key: foldKey })
-        push(index, end)
-      } else {
-        push(index, index + head)
-        out.push({ kind: 'fold', key: foldKey, hidden: run - limit })
-        push(end - tail, end)
-      }
+      push(index, index + head)
+      out.push({ kind: 'fold', key, hidden })
+      push(end - tail, end)
     }
     index = end
   }
