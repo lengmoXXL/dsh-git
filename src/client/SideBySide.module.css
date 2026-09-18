@@ -250,6 +250,9 @@
 
 .held.band .fold,
 .held.heldBack .fold {
+  /* Over the number the sticky cells paint: they carry a z-index of their own, so a
+     mark without one is under them — invisible, and nothing to click. */
+  z-index: 2;
   position: absolute;
   left: 0;
   /* The number's own column, measured the number's way: the control keeps its own
