@@ -97,6 +97,7 @@
     "@deepseek-ai/dsh-subprocess": "0.1.5-rc.1",
     "@deepseek-ai/dsh-subprocess-local": "0.1.5-rc.1",
     "@deepseek-ai/schemastery": "^3.18.2",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^22.10.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
@@ -108,7 +109,7 @@
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "^3.18.2",
-    "monaco-editor": "^0.56.0",
+    "monaco-editor-core": "^0.56.0",
     "vscode-diff": "^3.0.1"
   },
   "overrides": {
@@ -138,11 +139,12 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json --noEmit",
-    "build": "tsdown && rm -rf lib/vendor && mkdir -p lib/vendor && cp -R node_modules/monaco-editor/min/vs lib/vendor/vs && rm -rf lib/vendor/vs/language lib/vendor/vs/basic-languages/*.js.map",
+    "build": "tsdown",
     "prepare": "npm run build",
     "watch": "tsdown --watch",
     "pretest": "npm run build",
-    "test": "node --test --experimental-strip-types tests/unit/*.test.ts tests/e2e/*.test.ts"
+    "test": "node --test --experimental-strip-types tests/unit/*.test.ts tests/e2e/*.test.ts",
+    "test:e2e": "npm run build && playwright test"
   },
   "sideEffects": false
 }

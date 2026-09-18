@@ -177,7 +177,7 @@ const client = defineConfig({
   // cannot load.
   // Its own modules import each other by subpath, so the whole prefix has to match:
   // one entry for the exact id leaves `monaco-editor-core/esm/...` outside the bundle.
-  deps: { alwaysBundle: [/^monaco-editor-core/] },
+  deps: { alwaysBundle: [/^monaco-editor/] },
   plugins: [cssModulesInline(), buildStamp()],
   outputOptions: {
     banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify(ID)}, factory: (require) => {\nvar module = { exports: {} }; var exports = module.exports;`,

@@ -27,8 +27,7 @@ export const PLATFORM_MODULES = [
   '@deepseek-ai/dsh-client-store',
   '@deepseek-ai/dsh-client-ui-slots',
   '@deepseek-ai/dsh-client-ui-primitives',
-  '@deepseek-ai/dsh-client-ui-dockkit',
-] as const
+  '@deepseek-ai/dsh-client-ui-dockkit', 'url'] as const
 
 /**
  * Read a build output, naming the command that produces it.
