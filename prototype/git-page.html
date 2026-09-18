@@ -13,6 +13,7 @@
 
   一、页面形态
    1. [原型] 一个页面。Git 只贡献一个页面类型；不再有单独的 diff 页面／
+      资源类型（dsh-resource://git/**）。落地：删掉资源类型声明、provider.ts、
       DiffBody.tsx，地址缩成卡片的 key。
    2. [原型] 列表常驻。点 diff 不会替换列表，所以"点完再回来要恢复现场"这件事
       不存在了。落地：LogBody 拆成 rail + board；log-cache 只服务"切到别的标签页
