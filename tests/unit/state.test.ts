@@ -14,7 +14,6 @@ import {
   collapseRows,
   clampRailWidth,
   failureInfoOf,
-  parseRefs,
   placePane,
   RAIL_MIN_WIDTH,
   groupChanges,
