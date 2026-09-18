@@ -282,6 +282,23 @@ export function oneSided(diff: { readonly added: number; readonly removed: numbe
  * @param request - the comparison one pane shows.
  * @returns a key that is equal for equal comparisons.
  */
+/**
+ * The shell's file address for one workspace path.
+ *
+ * The file view is the shell's, not this page's: opening a file means handing it
+ * the address its own type claims (`dsh-resource://file/session/<sessionId>/<path>`),
+ * with each path segment percent-encoded. The plugin cannot import that package to
+ * borrow the builder — the client module table seeds package names, not subpaths —
+ * so the shape is written out here.
+ * @param sessionId - the Session whose workspace resolves the path.
+ * @param path - a repository-relative path, as git reported it.
+ * @returns the address the file view opens.
+ */
+export function fileAddress(sessionId: string, path: string): string {
+  const encoded = path.split('/').map(segment => encodeURIComponent(segment)).join('/')
+  return `dsh-resource://file/session/${encodeURIComponent(sessionId)}/${encoded}`
+}
+
 export function diffKey(request: {
   readonly source: DiffSource
   readonly path: string

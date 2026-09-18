@@ -58,6 +58,7 @@ import {
   clampRailWidth,
   diffKey,
   failureInfoOf,
+  fileAddress,
   groupChanges,
   placePane,
   type BoardPane,
@@ -85,22 +86,6 @@ function trackingLabel(branch: BranchStatus, t: Translate<GitKey>): string | und
   return parts.length === 0 ? undefined : parts.join(' · ')
 }
 
-/**
- * The shell's file address for one workspace path.
- *
- * The file view is the shell's, not this page's: opening a file means handing it
- * the address its own type claims (`dsh-resource://file/session/<sessionId>/<path>`),
- * with each path segment percent-encoded. The plugin cannot import that package to
- * borrow the builder — the client module table seeds package names, not subpaths —
- * so the shape is written out here.
- * @param sessionId - the Session whose workspace resolves the path.
- * @param path - a repository-relative path, as git reported it.
- * @returns the address the file view opens.
- */
-function fileAddress(sessionId: string, path: string): string {
-  const encoded = path.split('/').map(segment => encodeURIComponent(segment)).join('/')
-  return `dsh-resource://file/session/${encodeURIComponent(sessionId)}/${encoded}`
-}
 
 /** The page's composed props: the tab seat, the Session identity, and its dictionary. */
 export type LogBodyProps =

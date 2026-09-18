@@ -14,6 +14,7 @@ import {
   collapseRows,
   clampRailWidth,
   failureInfoOf,
+  fileAddress,
   placePane,
   RAIL_MIN_WIDTH,
   groupChanges,
@@ -98,6 +99,18 @@ test('gives up the reserve rather than the minimum on a narrow window', () => {
 test('rounds to whole pixels, so a drag cannot leave fractional widths behind', () => {
   assert.equal(clampRailWidth(336.4, 1440), 336)
   assert.equal(clampRailWidth(336.6, 1440), 337)
+})
+
+test('addresses a file the way the shell file view declares it', () => {
+  // The shape is the shell's document preview's, which this plugin cannot import: the
+  // client module table seeds package names, not subpaths. Asserted here because a
+  // wrong shape is a file that never opens, and nothing else would notice.
+  assert.equal(
+    fileAddress('session-1', 'src/client/a b#c.ts'),
+    'dsh-resource://file/session/session-1/src/client/a%20b%23c.ts',
+  )
+  // The session is one segment too, so an id carrying a slash cannot escape its scope.
+  assert.equal(fileAddress('s/1', 'README.md'), 'dsh-resource://file/session/s%2F1/README.md')
 })
 
 test('leaves the upstream out of a commit chips list', () => {
