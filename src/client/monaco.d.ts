@@ -1,11 +1,7 @@
 /**
- * The editor's API is reached by its own path, so that the package entry — which pulls
- * every language through a lazy import a bundle has no channel for — stays out. That
- * path exports the API the package's own types describe.
+ * The editor's contributions are reached by their own path, so the package entry — which
+ * pulls every language through a lazy import a bundle has no channel for — stays out. That
+ * path ships no declaration, while the API path beside it does: the API is typed by the
+ * package, and this is all that is left to state.
  */
-declare module 'monaco-editor-core/esm/vs/editor/editor.api.js' {
-  export * from 'monaco-editor-core'
-}
-
-/** The editor's own contributions, imported for their side effects. */
 declare module 'monaco-editor-core/esm/vs/editor/editor.all.js'

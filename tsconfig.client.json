@@ -4,7 +4,12 @@
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
-    "types": []
+    "types": [],
+    // The editor's grammar modules ship without declarations; one file states the pair
+    // every one of them exports, and the directory maps onto it.
+    "paths": {
+      "monaco-editor/languages/definitions/*": ["./src/client/grammar.d.ts"]
+    }
   },
   "include": ["src/client/**/*.ts", "src/client/**/*.tsx", "src/shared/**/*.ts"]
 }

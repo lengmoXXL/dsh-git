@@ -16,13 +16,14 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 // The editor's API and its own contributions, without the entry point that lazily pulls
-// every language: a bundle has no channel for the chunks that entry would need, and this
-// page highlights nothing the editor has to know a grammar for.
+// every language: a bundle has no channel for the chunks that entry would need. The
+// grammars this page draws with are registered by `syntax.ts` instead.
 import * as monaco from 'monaco-editor-core/esm/vs/editor/editor.api.js'
 import 'monaco-editor-core/esm/vs/editor/editor.all.js'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { DiffPayload } from '../shared/wire.ts'
 import type { GitKey } from './locales.ts'
+import { installSyntax, languageOf } from './syntax.ts'
 import css from './MonacoDiff.module.css'
 
 /** How the reader is reading diffs, which decides what the editor is told. */
@@ -51,15 +52,18 @@ function sides(diff: DiffPayload): { original: string, modified: string } {
  */
 export function MonacoDiff({ diff, split, wrap, t }: MonacoDiffProps): ReactNode {
   const host = useRef<HTMLDivElement>(null)
+  const editor = useRef<monaco.editor.IStandaloneDiffEditor | null>(null)
   const [failure, setFailure] = useState<string | undefined>(undefined)
   const text = useMemo(() => sides(diff), [diff])
+  const language = languageOf(diff.path)
 
   useEffect(() => {
     const element = host.current
     if (element === null) return
-    let editor: monaco.editor.IStandaloneDiffEditor | undefined
+    let created: monaco.editor.IStandaloneDiffEditor | undefined
     try {
-      editor = monaco.editor.createDiffEditor(element, {
+      installSyntax()
+      created = monaco.editor.createDiffEditor(element, {
         readOnly: true,
         originalEditable: false,
         renderSideBySide: split,
@@ -69,22 +73,30 @@ export function MonacoDiff({ diff, split, wrap, t }: MonacoDiffProps): ReactNode
         minimap: { enabled: false },
         scrollBeyondLastLine: false,
         renderOverviewRuler: false,
-        theme: 'vs-dark',
       })
-      editor.setModel({
-        original: monaco.editor.createModel(text.original, 'plaintext'),
-        modified: monaco.editor.createModel(text.modified, 'plaintext'),
+      created.setModel({
+        original: monaco.editor.createModel(text.original, language),
+        modified: monaco.editor.createModel(text.modified, language),
       })
+      editor.current = created
     } catch (error: unknown) {
       setFailure(error instanceof Error ? error.message : String(error))
     }
     return () => {
-      const models = editor?.getModel()
-      editor?.dispose()
+      const models = created?.getModel()
+      created?.dispose()
       models?.original.dispose()
       models?.modified.dispose()
+      editor.current = null
     }
-  }, [text, split, wrap])
+  }, [text, language])
+
+  // The reader's two switches are options of the editor that is already up: rebuilding it
+  // for a toggle threw away where the reader had scrolled, and a fresh editor measures its
+  // box before the browser has laid it out, which is a jump.
+  useEffect(() => {
+    editor.current?.updateOptions({ renderSideBySide: split, wordWrap: wrap ? 'on' : 'off' })
+  }, [split, wrap])
 
   // Three independent things the host can say about what it sent, and a reader shown
   // one of them still needs the others: no text, an approximate pairing, a diff that

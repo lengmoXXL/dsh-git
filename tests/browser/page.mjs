@@ -1,10 +1,16 @@
 /**
  * Build the page the browser tests drive.
  *
- * The plugin's real bundle, React from the shell's own dependency, and a diff written
- * by hand so the test knows exactly what it should be looking at: three lines, a long
- * unchanged middle, and a change. The component under test is the one the page draws
- * diffs with, mounted directly — there is no shell here to hide behind.
+ * The plugin's real bundle, React from the shell's own dependency, and a diff written by
+ * hand so the test knows exactly what it should be looking at: a few lines of a code file,
+ * a long unchanged middle, and a change. The component is mounted inside the plugin's own
+ * board and pane rather than in a bare box — those classes are read out of the stylesheet
+ * the bundle injected, because the hash in front of a local name is this build's — since
+ * the box a diff is given is part of what is under test.
+ *
+ * The page also names the shell's token colours, because the editor paints its tokens from
+ * them: without them the component falls back to the editor's own theme, which is a case
+ * of its own.
  *
  *   node tests/browser/page.mjs <output-dir>
  */
@@ -25,18 +31,31 @@ const [bundle, react, reactDom] = await Promise.all([
 
 const page = `<!doctype html>
 <html><head><meta charset="utf-8"><title>dsh-git browser test</title>
-<style>html,body{margin:0;height:100%;background:#1e1e1e}#host{width:1200px;height:760px}</style>
-</head><body><div id="host"></div>
+<style>
+  html,body{margin:0;height:100%;background:#1e1e1e}
+  /* The shell's palette, as its theme package states it for a dark page: the token
+     colours the editor paints with, and the surface it and the page behind it share. */
+  :root{
+    --dsw-alias-markdown-code-block:#1e1e1e;
+    --shiki-foreground:#d4d4d4;--shiki-background:#1e1e1e;
+    --shiki-token-constant:#4dabf7;--shiki-token-string:#69db7c;
+    --shiki-token-comment:#adb5bd;--shiki-token-keyword:#faa2c1;
+    --shiki-token-parameter:#ffa94d;--shiki-token-function:#b197fc;
+    --shiki-token-string-expression:#8ce99a;--shiki-token-punctuation:#ced4da;
+  }
+  #board{width:1200px;height:760px}
+</style>
+</head><body data-ds-dark-theme><div id="board"><section id="pane"></section></div>
 <script src="loader.js"></script>
 <script>${react}</script>
 <script>${reactDom}</script>
 <script>${bundle}</script>
 <script>
-  const line = (n) => ({ no: n, text: 'line ' + String(n) + ' of a file whose middle is unchanged' })
+  const line = (n) => ({ no: n, text: 'const value' + String(n) + ' = compute(' + String(n) + ')' })
   const rows = []
   for (let n = 1; n <= 3; n += 1) rows.push({ kind: 'context', left: line(n), right: line(n) })
   for (let n = 4; n <= 60; n += 1) rows.push({ kind: 'context', left: line(n), right: line(n) })
-  rows.push({ kind: 'replace', left: { no: 61, text: 'old sixty one' }, right: { no: 61, text: 'new sixty one' } })
+  rows.push({ kind: 'replace', left: { no: 61, text: 'const answer = 41' }, right: { no: 61, text: 'const answer = 42' } })
   const diff = { path: 'src/example.ts', source: 'worktree', oldLabel: 'index', newLabel: 'working tree',
     binary: false, truncated: false, approximate: false, removed: 1, added: 1, rows }
   const entry = window.__pending
@@ -64,13 +83,74 @@ const page = `<!doctype html>
     : name === '@deepseek-ai/dsh-client-ui-primitives' ? { Button: (p) => React.createElement('button', p, p.children), Tag: (p) => React.createElement('span', p, p.children) }
     : (() => { throw new Error('the bundle asked for an unexpected module: ' + name) })()
   window.__exports = entry.factory(require)
+
+  /**
+   * The class the plugin's own stylesheet gives one of its local names.
+   *
+   * Every local name is hashed by the build, so the plugin's own boxes are reached through
+   * the sheet it injected rather than through a name written down here.
+   */
+  const classOf = (sheet, local) => {
+    const tag = document.querySelector('style[data-plugin-css="dsh-git/' + sheet + '"]')
+    if (tag === null) throw new Error('the bundle injected no ' + sheet)
+    const pattern = new RegExp('\\\\.([A-Za-z0-9_-]+)_' + local + '(?![A-Za-z0-9_-])')
+    for (const rule of tag.sheet.cssRules) {
+      const found = pattern.exec(rule.selectorText ?? '')
+      if (found !== null) return found[1] + '_' + local
+    }
+    throw new Error(sheet + ' has no ' + local)
+  }
+  const board = document.getElementById('board')
+  const pane = document.getElementById('pane')
+  board.className = classOf('GitBoard.module.css', 'board')
+  pane.className = classOf('GitBoard.module.css', 'pane')
+
   // One root per container: asking React for a second one leaves the page unchanged.
   let root
   window.__render = (props) => {
-    root = root ?? ReactDOM.createRoot(document.getElementById('host'))
+    if (props.width !== undefined) board.style.width = String(props.width) + 'px'
+    root = root ?? ReactDOM.createRoot(pane)
     root.render(React.createElement(window.__exports.MonacoDiff, Object.assign({
       diff, t: (key) => key, split: true, wrap: true,
     }, props)))
+  }
+
+  /**
+   * What the page can say about what was drawn, for the test to assert on: the colours the
+   * editor gave a line's tokens, every box it took over forty frames, and whether the
+   * editor on screen is the one a mark was taken of.
+   */
+  let marked
+  window.__probe = {
+    markEditor: () => { marked = document.querySelector('.monaco-diff-editor') },
+    editorIsMarked: () => {
+      const editor = document.querySelector('.monaco-diff-editor')
+      if (marked === null || editor === null) return 'no editor'
+      return marked === editor ? 'same' : 'replaced'
+    },
+    colours: () => {
+      const spans = [...document.querySelectorAll('.view-lines span span')]
+      const colourOf = (matches) => {
+        const span = spans.find(element => matches((element.textContent ?? '').trim()))
+        return span === undefined ? undefined : getComputedStyle(span).color
+      }
+      return {
+        keyword: colourOf(text => text === 'const'),
+        identifier: colourOf(text => /^value\\d+$/.test(text)),
+        distinct: new Set(spans.map(element => getComputedStyle(element).color)).size,
+      }
+    },
+    settle: async () => {
+      const editor = document.querySelector('.monaco-diff-editor')
+      if (editor === null) return 'no editor'
+      const sizes = new Set()
+      for (let frame = 0; frame < 40; frame += 1) {
+        await new Promise(resolve => requestAnimationFrame(resolve))
+        const box = editor.getBoundingClientRect()
+        sizes.add(Math.round(box.width) + 'x' + Math.round(box.height))
+      }
+      return { sizes: [...sizes], width: pane.clientWidth, overflow: pane.scrollWidth - pane.clientWidth }
+    },
   }
   window.__render({})
 </script>
