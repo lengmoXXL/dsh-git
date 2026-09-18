@@ -7,7 +7,7 @@
  * @module dsh-git/client/state
  */
 
-import type { ChangeEntry, ChangeKind, ChangeStage, DiffRow, DiffSource } from '../shared/wire.ts'
+import type { ChangeEntry, ChangeKind, ChangeStage, DiffSource } from '../shared/wire.ts'
 import { GitRequestError, type DiffRequest } from './face.ts'
 
 /**
@@ -241,49 +241,6 @@ export function placePane<Pane extends { readonly key: string }>(
 }
 
 /**
- * The one number a line carries in a one-column reading.
- *
- * A line has a number on its own side: a removal keeps the old one, an addition takes
- * the new one, and a context line has the same number on both. Two numbers over one
- * line of code would say the same thing twice.
- *
- * @param line - one line of the one-column reading.
- * @returns the number to draw, or undefined when the line has none.
- */
-export function lineNumber(
-  line: { readonly oldNo?: number | undefined; readonly newNo?: number | undefined },
-): number | undefined {
-  return line.newNo ?? line.oldNo
-}
-
-/**
- * Whether a diff has only one side to show.
- *
- * A wholly new or wholly gone file has one side in every row, and two columns would be
- * one column of code beside a column of blanks. A file that merely gained or lost lines
- * still has context rows carrying both sides, and reads as two columns like any other
- * edit — which is what the reader expects of an edit.
- *
- * @param diff - the payload, for its rows.
- * @returns true when no row carries both sides.
- */
-export function oneSided(diff: { readonly rows: readonly DiffRow[] }): boolean {
-  const absent = (side: DiffRow['left'] | DiffRow['right']): boolean => side === null || side === undefined
-  return diff.rows.length > 0
-    && diff.rows.every(row => absent(row.left) !== absent(row.right))
-}
-
-/**
- * The identity of one diff, as a pane key.
- *
- * A diff is what it compares: the same file at two revisions is a different diff
- * from the same file against the working tree, and each deserves its own pane —
- * while opening the same comparison twice should land on the pane already there.
-
- * @param request - the comparison one pane shows.
- * @returns a key that is equal for equal comparisons.
- */
-/**
  * The shell's file address for one workspace path.
  *
  * The file view is the shell's, not this page's: opening a file means handing it
@@ -300,6 +257,15 @@ export function fileAddress(sessionId: string, path: string): string {
   return `dsh-resource://file/session/${encodeURIComponent(sessionId)}/${encoded}`
 }
 
+/**
+ * The identity of one diff, as a pane key.
+ *
+ * A diff is what it compares: the same file at two revisions is a different diff from the
+ * same file against the working tree, and each deserves its own pane — while opening the
+ * same comparison twice should land on the pane already there.
+ * @param request - the comparison one pane shows.
+ * @returns a key that is equal for equal comparisons.
+ */
 export function diffKey(request: {
   readonly source: DiffSource
   readonly path: string
@@ -308,32 +274,6 @@ export function diffKey(request: {
 }): string {
   return [request.source, request.rev ?? '', request.origPath ?? '', request.path].join('\u0000')
 }
-
-/** One line of a diff read in one column instead of two. */
-export interface InlineLine {
-  /**
-   * What this line is. `fold` is a run the reader closed, `collapse` the band at
-   * the top of one they opened, and `gap` is a run the host left out.
-   */
-  readonly kind: 'context' | 'delete' | 'insert' | 'gap' | 'fold' | 'collapse'
-  /** Stable identity, for keys and for a fold's expansion set. */
-  readonly key: string
-  /** The old-side line number, when this line is on the old side. */
-  readonly oldNo?: number
-  /** The new-side line number, when this line is on the new side. */
-  readonly newNo?: number
-  /** The line's text; a `gap` and a `fold` carry counts instead. */
-  readonly text?: string
-  /** A fold's hidden line count. */
-  readonly hidden?: number
-  /** A gap's skipped old-side lines. */
-  readonly skippedLeft?: number
-  /** A gap's skipped new-side lines. */
-  readonly skippedRight?: number
-}
-
-
-
 
 /**
  * Split the changed paths into the four groups the panel draws.

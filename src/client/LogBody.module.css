@@ -67,11 +67,6 @@
   min-width: 8px;
 }
 
-.refresh {
-  flex: none;
-  white-space: nowrap;
-}
-
 /* The controls sit at the far end, whatever the branch name does. */
 /* One control in the page's header. The diff has no title bar of its own, so the
    switches that used to ride each diff live here, once. */
@@ -90,36 +85,6 @@
 .control:hover:enabled {
   color: var(--dsw-alias-label-primary);
   background: var(--dsw-alias-interactive-bg-hover);
-}
-
-/* A pair of answers with one of them lit: a single icon can only show the answer
-   that is not in force, which is a guess the reader has to make twice. */
-.switch {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 1px;
-}
-
-.option {
-  padding: 2px 7px;
-  border: none;
-  border-radius: 6px;
-  background: none;
-  color: var(--dsw-alias-label-tertiary);
-  font: var(--dsw-font-xxs-12);
-  cursor: pointer;
-}
-
-.option:hover {
-  color: var(--dsw-alias-label-primary);
-  background: var(--dsw-alias-interactive-bg-hover);
-}
-
-.optionOn,
-.optionOn:hover {
-  color: var(--dsw-alias-label-primary);
-  background: var(--dsw-alias-interactive-bg-active);
 }
 
 .control:disabled {
