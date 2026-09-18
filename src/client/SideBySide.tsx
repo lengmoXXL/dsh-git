@@ -265,9 +265,14 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
   }, [])
   /** The control for a run of unchanged lines: three dots and how many are behind them. */
   const foldControl = (key: string, hidden: number | undefined): ReactNode => (
-    <button type="button" className={css.fold} onClick={() => { toggleFold(key) }}>
-      <span className={css.foldGlyph}>{'⋯ '}</span>
-      {hidden} {t('diff.unchanged')}
+    <button
+      type="button"
+      className={css.fold}
+      title={`${String(hidden)} ${t('diff.unchanged')}`}
+      aria-label={`${String(hidden)} ${t('diff.unchanged')}`}
+      onClick={() => { toggleFold(key) }}
+    >
+      <span className={css.foldGlyph}>{'⋯'}</span>
     </button>
   )
   /** The band that folds an opened run back, at the top of the run. */

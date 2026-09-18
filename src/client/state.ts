@@ -259,16 +259,18 @@ export function lineNumber(
 /**
  * Whether a diff has only one side to show.
  *
- * A file that is wholly new or wholly gone has one side and nothing on the other,
- * so two columns would be one column of code beside a column of blanks. The counts
- * are the host's, from the whole alignment, so a truncated view still knows which
- * kind of change it is.
+ * A wholly new or wholly gone file has one side in every row, and two columns would be
+ * one column of code beside a column of blanks. A file that merely gained or lost lines
+ * still has context rows carrying both sides, and reads as two columns like any other
+ * edit — which is what the reader expects of an edit.
  *
- * @param diff - the payload, for its added and removed counts.
- * @returns true when there is nothing on one of the sides.
+ * @param diff - the payload, for its rows.
+ * @returns true when no row carries both sides.
  */
-export function oneSided(diff: { readonly added: number; readonly removed: number }): boolean {
-  return (diff.added > 0 && diff.removed === 0) || (diff.removed > 0 && diff.added === 0)
+export function oneSided(diff: { readonly rows: readonly DiffRow[] }): boolean {
+  const absent = (side: DiffRow['left'] | DiffRow['right']): boolean => side === null || side === undefined
+  return diff.rows.length > 0
+    && diff.rows.every(row => absent(row.left) !== absent(row.right))
 }
 
 /**
