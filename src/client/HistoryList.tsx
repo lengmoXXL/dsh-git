@@ -16,7 +16,7 @@
  * @module dsh-git/client/HistoryList
  */
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode, type RefObject } from 'react'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { CommitFile, CommitSummary } from '../shared/wire.ts'
 import { gitFace } from './face.ts'
@@ -48,10 +48,38 @@ export interface HistoryListProps {
   readonly onOpenFile?: ((path: string) => void) | undefined
   /** The branch's upstream, which is named by the header rather than by a row. */
   readonly upstream?: string | undefined
+  /** The rail's scrollport, whose height is the space this list may fill. */
+  readonly viewport: RefObject<HTMLDivElement | null>
 }
 
-/** How many commits the rail shows before it says there are older ones. */
-const HISTORY_PREVIEW = 12
+/** The fewest commits shown, however short the list is. */
+const HISTORY_MIN = 12
+
+/** One commit row's height, used to work out how many fill the list. */
+const ROW_HEIGHT = 24
+
+/**
+ * How many commits the list can show without scrolling itself, never fewer than
+ * {@link HISTORY_MIN}: a list shorter than the rail wastes the space it sits in, and
+ * the rail is the reader's window on the repository.
+ * @param viewport - the rail's scrollport, whose height is the space to fill.
+ * @returns how many rows to draw before the control for the rest.
+ */
+function useFittingRows(viewport: RefObject<HTMLDivElement | null>): number {
+  const [rows, setRows] = useState(HISTORY_MIN)
+  useEffect(() => {
+    const element = viewport.current
+    if (element === null) return
+    const measure = (): void => {
+      setRows(Math.max(HISTORY_MIN, Math.floor(element.clientHeight / ROW_HEIGHT)))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => { observer.disconnect() }
+  }, [viewport])
+  return rows
+}
 
 /** One commit's row, and the files it changed while it is open. */
 function CommitRow({ commit, sessionId, now, t, selected, onToggle, onSelectFile, onOpenFile, upstream }: {
@@ -183,11 +211,13 @@ export function HistoryList({
   onSelectFile,
   onOpenFile,
   upstream,
+  viewport,
 }: HistoryListProps): ReactNode {
   const [open, setOpen] = useState(true)
   // A page of history is a page, not the whole log: the rail shows the newest
   // few and one control for the rest, and the same holds for one commit's files.
   const [openCommits, setOpenCommits] = useState(false)
+  const fitting = useFittingRows(viewport)
   // One commit at a time: the files of the commit being read are what the
   // reader is looking at, and a page of fifty open file lists is a page of
   // fifty commits nobody can find again. Which one that is outlives this mount:
@@ -217,7 +247,7 @@ export function HistoryList({
       t={t}
     >
       {commits.length === 0 && <p className={css.note}>{t('history.empty')}</p>}
-      {(openCommits ? commits : commits.slice(0, HISTORY_PREVIEW)).map(commit => (
+      {(openCommits ? commits : commits.slice(0, fitting)).map(commit => (
         <CommitRow
           key={commit.sha}
           commit={commit}
@@ -231,7 +261,7 @@ export function HistoryList({
           upstream={upstream}
         />
       ))}
-      {commits.length > HISTORY_PREVIEW && (
+      {commits.length > fitting && (
         <MoreRow
           label={t('list.moreCommits')}
           open={openCommits}
