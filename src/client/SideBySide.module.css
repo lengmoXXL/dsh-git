@@ -219,6 +219,33 @@
   line-height: var(--dsh-git-diff-row);
 }
 
+/* The fold row states what a run hides and offers the three ways of opening it: a
+   step up, a step down, or all that is left. It is a row of the diff like any other,
+   as tall as one, so the lines it stands between keep their places. */
+.held.band,
+.held.heldBack {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--dsh-git-diff-band);
+}
+
+.held.band .foldGlyph,
+.held.band .fold {
+  display: inline-flex;
+  align-items: center;
+  height: var(--dsh-git-diff-row);
+  padding: 0 6px 0 0;
+  border: none;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+.held.band .fold {
+  padding: 0 8px 0 0;
+}
+
 /* A fold or a gap, stated once per row: in the lanes its band is pinned so the
    control does not scroll away with the line it interrupts. */
 .held {
@@ -231,50 +258,13 @@
    adjacent. A gap is different — it holds a row open for a side that has no line —
    so it keeps its height. What makes this work is that a row is as tall as its own
    content, which the absolute control no longer contributes to. */
-.band,
-.heldBack {
-  position: relative;
-  height: 0;
-}
 
 /* In the lanes a long line is read by scrolling its half, and the numbers stay put
    while it does. A mark that belongs with the numbers has to stay put with them: the
    band sticks where the numbers stick, and its control — absolute inside it, because
    the vertical placement is not a sticky offset — comes along. */
-.laneRows .band,
-.laneRows .heldBack {
-  position: sticky;
-  left: 0;
-  width: 0;
-}
 
-.held.band .fold,
-.held.heldBack .fold {
-  /* Over the number the sticky cells paint: they carry a z-index of their own, so a
-     mark without one is under them — invisible, and nothing to click. */
-  z-index: 2;
-  position: absolute;
-  left: 0;
-  /* The number's own column, measured the number's way: the control keeps its own
-     `display` and insets from the band it used to be, so the box is stated whole
-     here rather than adjusted piecemeal. Over the number, not beside it, and the
-     pane's surface behind it — which is what a folded run's context lines paint. */
-  box-sizing: border-box;
-  /* The gutter's own width, with its value written in as well: this element sits
-     outside the block that declares the geometry, so the variable alone left the
-     width unresolved and the control spanned the row. */
-  width: var(--dsh-git-diff-gutter, 48px);
-  height: var(--dsh-git-diff-row);
-  padding: 0 14px 0 0;
-  text-align: right;
-  background: var(--dsh-git-diff-band);
-}
 
-/* The fold stands for the rows above it; the band that opens one stands for the run
-   below it. Each sits against the line it belongs to. */
-.held.band .fold {
-  top: calc(-1 * var(--dsh-git-diff-row));
-}
 
 .laneRows .held {
   line-height: var(--dsh-git-diff-row);
