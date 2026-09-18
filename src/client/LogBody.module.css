@@ -11,6 +11,11 @@
      together. The height is a ceiling as well as a fill, which is what `min-height`
      alone cannot say. */
   height: 100%;
+  /* The box this page is given may have no height of its own — a tab container that
+     shrinks to fit would let the panel grow with its content, and then the only
+     scroller left is the shell's, which is what scrolls the list and the diff
+     together. The viewport is the one ceiling always available. */
+  max-height: 100vh;
   min-height: 0;
   min-width: 0;
   display: flex;
