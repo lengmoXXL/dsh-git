@@ -303,7 +303,7 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
       {inline
         ? lines.map((line, at) => (line.kind === 'fold' || line.kind === 'collapse' || line.kind === 'gap'
           ? (
-            <div key={line.key} className={cx(css.held, line.kind === 'collapse' && css.heldBack)}>
+            <div key={line.key} className={cx(css.held, line.kind === 'fold' && css.band, line.kind === 'collapse' && css.heldBack)}>
               {line.kind === 'fold'
                 ? foldControl(line.key, line.hidden)
                 : line.kind === 'collapse' ? foldBackControl(line.key) : gapControl(line)}
@@ -312,7 +312,7 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
           : <InlineCells key={line.key} line={line} highlighted={unified?.[at]} />))
         : rows.map((row, at) => (row.kind !== 'diff' || row.row.kind === 'gap'
           ? (
-            <div key={row.key} className={cx(css.held, row.kind === 'collapse' && css.heldBack)}>
+            <div key={row.key} className={cx(css.held, row.kind === 'fold' && css.band, row.kind === 'collapse' && css.heldBack)}>
               {heldControl(row)}
             </div>
           )
@@ -331,7 +331,7 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
         // Stated once, in the half a reader starts at; the other half draws its
         // row empty, which the lane's fixed-height tracks keep in step.
         return (
-          <div key={row.key} className={cx(css.held, row.kind === 'collapse' && css.heldBack)}>
+          <div key={row.key} className={cx(css.held, row.kind === 'fold' && css.band, row.kind === 'collapse' && css.heldBack)}>
             {side === 'left' && heldControl(row)}
           </div>
         )
@@ -353,7 +353,7 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
     })
   const laneInline: ReactNode = lines.map((line, at) => (line.kind === 'fold' || line.kind === 'collapse' || line.kind === 'gap'
     ? (
-      <div key={line.key} className={cx(css.held, line.kind === 'collapse' && css.heldBack)}>
+      <div key={line.key} className={cx(css.held, line.kind === 'fold' && css.band, line.kind === 'collapse' && css.heldBack)}>
         {line.kind === 'fold'
           ? foldControl(line.key, line.hidden)
           : line.kind === 'collapse' ? foldBackControl(line.key) : gapControl(line)}

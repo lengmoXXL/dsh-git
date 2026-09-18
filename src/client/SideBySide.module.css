@@ -174,7 +174,8 @@
 .laneRows {
   display: grid;
   grid-template-columns: 1fr;
-  grid-auto-rows: var(--dsh-git-diff-row);
+  /* A row is its content's height: a band contributing none is a band that takes no
+     row, and every line still measures one row through its own line-height. */
   align-content: start;
   width: max-content;
   min-width: 100%;
@@ -225,6 +226,32 @@
   grid-column: 1 / -1;
 }
 
+/* A folded run and the band that opens it take no row of their own: the control sits
+   in the line-number gutter, over the line it interrupts, and the two runs stay
+   adjacent. A gap is different — it holds a row open for a side that has no line —
+   so it keeps its height. What makes this work is that a row is as tall as its own
+   content, which the absolute control no longer contributes to. */
+.band,
+.heldBack {
+  position: relative;
+  height: 0;
+}
+
+.band .fold,
+.heldBack .fold {
+  position: absolute;
+  left: 0;
+  width: var(--dsh-git-diff-gutter);
+  height: var(--dsh-git-diff-row);
+  text-align: left;
+}
+
+/* The fold stands for the rows above it; the band that opens one stands for the run
+   below it. Each sits against the line it belongs to. */
+.band .fold {
+  top: calc(-1 * var(--dsh-git-diff-row));
+}
+
 .laneRows .held {
   line-height: var(--dsh-git-diff-row);
 }
@@ -262,6 +289,7 @@
 }
 
 .heldBack .fold {
+  top: 0;
   line-height: 12px;
 }
 

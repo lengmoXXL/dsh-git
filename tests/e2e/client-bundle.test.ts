@@ -432,7 +432,11 @@ test('sizes what scrolls in an unwrapped lane, not the lane\'s tracks', async ()
   assert.notEqual(wrapper, null, 'the lane has a scrolling content box of its own')
   assert.match(String(wrapper?.[1]), /width:max-content/, 'it is as wide as its widest line')
   assert.match(String(wrapper?.[1]), /min-width:100%/, 'and at least as wide as the half')
-  assert.match(String(wrapper?.[1]), /grid-auto-rows/, 'its rows keep their own height')
+  // A row is its own content's height now, so the halves stay in step through the
+  // line height every row carries — and a band, contributing none, takes no row.
+  assert.doesNotMatch(String(wrapper?.[1]), /grid-auto-rows/, 'no track height is imposed')
+  assert.match(sheet, /line-height:var\(--dsh-git-diff-row\)/,
+    'and each row measures one row through its own line height')
   const lane = new RegExp(`\\.${prefix}_lane\\{([^{}]*)\\}\\.${prefix}_laneRows`).exec(sheet)
   assert.notEqual(lane, null, 'the lane itself only scrolls')
 })
