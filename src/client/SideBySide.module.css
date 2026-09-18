@@ -252,12 +252,15 @@
 .heldBack .fold {
   position: absolute;
   left: 0;
+  /* The number's own column, measured the number's way: the control keeps its own
+     `display` and insets from the band it used to be, so the box is stated whole
+     here rather than adjusted piecemeal. Over the number, not beside it, and the
+     pane's surface behind it — which is what a folded run's context lines paint. */
+  box-sizing: border-box;
   width: var(--dsh-git-diff-gutter);
   height: var(--dsh-git-diff-row);
-  /* Over the number, not beside it: same edge, same inset, and the row's own band
-     behind it so the number does not show through. */
+  padding: 0 14px 0 0;
   text-align: right;
-  padding-right: 14px;
   background: var(--dsh-git-diff-band);
 }
 
