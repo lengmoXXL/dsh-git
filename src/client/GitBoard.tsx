@@ -96,10 +96,7 @@ export function GitBoard({ panes, focused, t, onFocus }: GitBoardProps): ReactNo
   if (panes.length === 0) {
     return (
       <div className={css.board}>
-        <div className={css.empty}>
-          <h2 className={css.emptyTitle}>{t('board.emptyTitle')}</h2>
-          <p className={css.emptyText}>{t('board.empty')}</p>
-        </div>
+        <p className={css.emptyText}>{t('board.empty')}</p>
       </div>
     )
   }

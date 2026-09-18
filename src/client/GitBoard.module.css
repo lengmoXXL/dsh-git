@@ -14,6 +14,10 @@
 .pane {
   flex: 1 1 0;
   min-width: 0;
+  /* Without this the pane takes its content's height and the panel clips it, so the
+     diff cannot be scrolled at all — a flex item's automatic minimum size is its
+     content, and the list beside it is what should scroll on its own. */
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -24,21 +28,9 @@
   margin-left: 10px;
 }
 
-.empty {
-  margin: auto;
-  max-width: 380px;
-  padding: 24px;
-  text-align: center;
-  color: var(--dsw-alias-label-secondary);
-}
-
-.emptyTitle {
-  margin: 0 0 6px;
-  font: var(--dsw-font-s-strong-14);
-  color: var(--dsw-alias-label-primary);
-}
-
+/* The diff area names itself and says nothing else. */
 .emptyText {
-  margin: 0;
+  margin: auto;
+  color: var(--dsw-alias-label-tertiary);
   font: var(--dsw-font-xs-13);
 }

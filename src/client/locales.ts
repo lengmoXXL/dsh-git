@@ -24,8 +24,7 @@ export const zh = {
 
   'log.title': 'Git',
   'log.guide': '浏览工作区改动与提交历史，点开即在新标签页看 diff',
-  'board.emptyTitle': '列表留在左边，diff 开在右边',
-  'board.empty': '点一条改动，或展开一个提交点它的文件；列表不会被替换掉。',
+  'board.empty': 'diff view',
   'list.moreFiles': '还有 {n} 个文件',
   'list.moreCommits': '更早的提交',
   'panel.railHide': '收起列表（b）',
@@ -99,8 +98,7 @@ export const en = {
 
   'log.title': 'Git',
   'log.guide': 'Working-tree changes and history; a click opens the diff in its own tab',
-  'board.emptyTitle': 'The list stays; the diff opens beside it',
-  'board.empty': 'Click a change, or expand a commit and click one of its files. The list is never replaced.',
+  'board.empty': 'diff view',
   'list.moreFiles': '{n} more files',
   'list.moreCommits': 'Older commits',
   'panel.railHide': 'Put the list away (b)',
