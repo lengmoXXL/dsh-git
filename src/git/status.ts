@@ -84,13 +84,13 @@ function appendEntries(
   xy: string,
   origPath: string | undefined,
 ): void {
-  const index = xy[0] ?? '.'
+  const index = xy.charAt(0)
   const base = origPath === undefined ? { path } : { path, origPath }
   if (index !== '.') {
     entries.push({ ...base, index, kind: kindOfLetter(index), stage: 'staged' })
   }
-  if ((xy[1] ?? '.') !== '.') {
-    entries.push({ ...base, index, kind: kindOfLetter(xy[1] ?? '.'), stage: 'unstaged' })
+  if (xy.charAt(1) !== '.') {
+    entries.push({ ...base, index, kind: kindOfLetter(xy.charAt(1)), stage: 'unstaged' })
   }
 }
 
@@ -150,7 +150,7 @@ export function parsePorcelainV2(output: string): ParsedStatus {
     if (kind === '1') {
       const parts = field.split(' ')
       if (parts.length < 9) continue
-      appendEntries(entries, parts.slice(8).join(' '), parts[1] ?? '..', undefined)
+      appendEntries(entries, parts.slice(8).join(' '), parts[1] as string, undefined)
       continue
     }
     if (kind === '2') {
@@ -158,17 +158,17 @@ export function parsePorcelainV2(output: string): ParsedStatus {
       const origPath = fields[i + 1]
       i += 1
       if (parts.length < 10 || origPath === undefined) continue
-      appendEntries(entries, parts.slice(9).join(' '), parts[1] ?? '..', origPath)
+      appendEntries(entries, parts.slice(9).join(' '), parts[1] as string, origPath)
       continue
     }
     if (kind === 'u') {
       const parts = field.split(' ')
       if (parts.length < 11) continue
       const path = parts.slice(10).join(' ')
-      const xy = parts[1] ?? 'UU'
+      const xy = parts[1] as string
       entries.push({
         path,
-        index: xy[0] ?? 'U',
+        index: xy.charAt(0),
         kind: 'conflicted',
         stage: 'conflicted',
       })
