@@ -1,6 +1,6 @@
 /*
- * The board and its panes: a column of diffs beside the list, told apart by the
- * page's own surface showing between them rather than by frames.
+ * The board and its panes: a column of diffs beside the list, each pane a block of its
+ * own, divided from the next by a line.
  */
 
 .board {
@@ -29,7 +29,9 @@
 }
 
 .pane + .pane {
-  margin-left: 10px;
+  /* A divider, not a gap: two diffs beside each other are two blocks, and the page's
+     own surface between them was not enough to say so. */
+  border-left: 0.5px solid var(--dsw-alias-border-l2);
 }
 
 /* The diff area names itself and says nothing else. */
