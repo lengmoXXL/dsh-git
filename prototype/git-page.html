@@ -427,10 +427,7 @@
   <span class="chip head" id="branch" title="">main</span>
   <span class="spacer"></span>
   <button id="open-file" class="icon" title="在内置的文件窗口中打开这个 diff 对应的文件"></button>
-  <span class="toggle" role="group" aria-label="布局">
-    <button id="v-split" aria-pressed="true">双栏</button>
-    <button id="v-inline" aria-pressed="false">单栏</button>
-  </span>
+  <button id="v-layout" class="icon" title="切换到单栏"></button>
   <span class="toggle" role="group" aria-label="长行">
     <button id="w-wrap" aria-pressed="true">折行</button>
     <button id="w-clip" aria-pressed="false">不折行</button>
@@ -484,6 +481,9 @@ const PREVIEW = 8
 const LOG_PREVIEW = 12
 
 /** The "open this file in the shell's viewer" glyph, shared by the row and the header. */
+/* Both carry their own size: a glyph with a viewBox alone measures nothing. */
+const SPLIT_GLYPH = `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.1" aria-hidden="true"><rect x="1.5" y="2.75" width="13" height="10.5" rx="2"/><path d="M8 2.75v10.5"/></svg>`
+const INLINE_GLYPH = `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.1" aria-hidden="true"><rect x="1.5" y="2.75" width="13" height="10.5" rx="2"/><path d="M4 6h8M4 8.5h8M4 11h5"/></svg>`
 const openFileGlyph = `<svg width="13" height="13" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 1.5h3.4L8.5 4.1v6.4h-6z" fill="none" stroke="currentColor" stroke-width="1"/><path d="M5.9 1.5v2.6h2.6" fill="none" stroke="currentColor" stroke-width="1"/><path d="M8.6 7.4h3M10.4 6l1.4 1.4-1.4 1.4" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>`
 
 const refName = (ref) => ref.replace(/^HEAD -> /, '').replace(/^refs\/heads\//, '').replace(/^refs\/remotes\//, '').replace(/^tag: refs\/tags\//, '')
@@ -1040,8 +1040,11 @@ document.addEventListener('keydown', (event) => {
 
 function setSplit(split) {
   state.split = split
-  $('v-split').setAttribute('aria-pressed', String(split))
-  $('v-inline').setAttribute('aria-pressed', String(!split))
+  // One button showing the layout in force: the reader reads the state, and the
+  // tooltip says what clicking does.
+  $('v-layout').innerHTML = split ? SPLIT_GLYPH : INLINE_GLYPH
+  $('v-layout').title = split ? '切换到单栏' : '切换到双栏'
+  $('v-layout').setAttribute('aria-pressed', String(!split))
   render()
 }
 function setWrap(wrap) {
@@ -1083,8 +1086,7 @@ for (const done of ['pointerup', 'pointercancel']) {
   })
 }
 $('grip').addEventListener('dblclick', () => { setRailWidth(336) })
-$('v-split').onclick = () => setSplit(true)
-$('v-inline').onclick = () => setSplit(false)
+$('v-layout').onclick = () => setSplit(!state.split)
 $('w-wrap').onclick = () => setWrap(true)
 $('w-clip').onclick = () => setWrap(false)
 

@@ -36,7 +36,7 @@ import { ChangeList } from './ChangeList.tsx'
 import { FailureBlock, Note } from './Feedback.tsx'
 import { GitBoard } from './GitBoard.tsx'
 import { gitFace, type DiffRequest } from './face.ts'
-import { OpenFileGlyph } from './glyphs.tsx'
+import { InlineLayoutGlyph, OpenFileGlyph, SplitLayoutGlyph } from './glyphs.tsx'
 import { HistoryList } from './HistoryList.tsx'
 import { logCache } from './log-cache.ts'
 import { cx } from './format.ts'
@@ -403,26 +403,16 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
         {/* The switches are the reader's, not a pane's: two panes showing two sets
             of them is the same question asked twice. Each pair names both of its
             answers, so which one is in force is read rather than guessed at. */}
-        <span className={css.switch}>
-          <button
-            type="button"
-            className={cx(css.option, settings.mode === 'split' && css.optionOn)}
-            aria-pressed={settings.mode === 'split'}
-            aria-label={t('diff.splitView')}
-            onClick={() => { setDiffViewMode('split') }}
-          >
-            {t('diff.split')}
-          </button>
-          <button
-            type="button"
-            className={cx(css.option, settings.mode === 'inline' && css.optionOn)}
-            aria-pressed={settings.mode === 'inline'}
-            aria-label={t('diff.inlineView')}
-            onClick={() => { setDiffViewMode('inline') }}
-          >
-            {t('diff.inline')}
-          </button>
-        </span>
+        <button
+          type="button"
+          className={css.control}
+          title={settings.mode === 'inline' ? t('diff.splitView') : t('diff.inlineView')}
+          aria-label={settings.mode === 'inline' ? t('diff.splitView') : t('diff.inlineView')}
+          aria-pressed={settings.mode === 'inline'}
+          onClick={() => { setDiffViewMode(settings.mode === 'inline' ? 'split' : 'inline') }}
+        >
+          {settings.mode === 'inline' ? <InlineLayoutGlyph /> : <SplitLayoutGlyph />}
+        </button>
         <span className={css.switch}>
           <button
             type="button"
