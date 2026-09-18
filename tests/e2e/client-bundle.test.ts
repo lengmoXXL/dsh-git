@@ -334,6 +334,14 @@ test('declares the diff geometry for the embedded card as well as the tab', asyn
   const selector = String(declared?.[1])
   assert.match(selector, /_diff(?![\w-])/, 'the tab root carries the geometry')
   assert.match(selector, /_diffEmbedded(?![\w-])/, 'the embedded card carries it too')
+
+  // An unchanged run is a band across the whole grid and centred in it, and the band
+  // that folds it back is thin: the reader is meant to see at a glance which part of
+  // the diff is not finished, and which line folds it away again.
+  const bandRule = /([^{}]+)\{[^{}]*text-align:center/.exec(String(sheet))
+  assert.notEqual(bandRule, null, 'the fold band is centred')
+  assert.match(String(bandRule?.[1]), /_grid [^{]*_fold/, 'the band is centred in the grid')
+  assert.match(String(sheet), /_heldBack[^{]*\{[^{}]*line-height:12px/, 'the fold-back band is thin')
 })
 
 test('pins a folded run\'s label, not the band it sits in', async () => {
