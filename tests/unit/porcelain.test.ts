@@ -28,7 +28,6 @@ test('reads the branch header', () => {
   assert.deepEqual(parsed.branch, {
     branch: 'main',
     detached: false,
-    oid: '0123456789abcdef0123456789abcdef01234567',
     upstream: 'origin/main',
     ahead: 2,
     behind: 1,
@@ -42,7 +41,6 @@ test('reads a detached HEAD and an unborn branch', () => {
   assert.equal(detached.branch.branch, null)
 
   const unborn = parsePorcelainV2(fields('# branch.oid (initial)', '# branch.head main'))
-  assert.equal(unborn.branch.oid, null)
   assert.equal(unborn.branch.branch, 'main')
 })
 
@@ -54,7 +52,6 @@ test('splits a both-halves change into one entry per stage', () => {
   assert.deepEqual(parsed.entries[0], {
     path: 'src/both.ts',
     index: 'M',
-    worktree: 'M',
     kind: 'modified',
     stage: 'staged',
   })
@@ -82,7 +79,6 @@ test('takes the old path of a rename from the field after the record', () => {
     path: 'src/new.ts',
     origPath: 'src/old.ts',
     index: 'R',
-    worktree: '.',
     kind: 'renamed',
     stage: 'staged',
   })
@@ -103,7 +99,6 @@ test('reports untracked and conflicted paths', () => {
   assert.deepEqual(parsed.entries[0], {
     path: 'src/untracked.txt',
     index: '?',
-    worktree: '?',
     kind: 'untracked',
     stage: 'untracked',
   })
@@ -120,7 +115,6 @@ test('reads an empty status as no changes', () => {
   assert.deepEqual(parsePorcelainV2(''), { branch: {
     branch: null,
     detached: false,
-    oid: null,
     upstream: null,
     ahead: 0,
     behind: 0,

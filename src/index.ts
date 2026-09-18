@@ -27,19 +27,19 @@ export const name = 'dsh-git'
  */
 export const inject = ['fs', 'subprocess', 'sessions']
 
-/** Deployment-varying caps. Every field has a default in {@link apply}. */
+/** Deployment-varying caps, each with a default in {@link apply}. */
 export interface Config {
-  /** Old- and new-side line cap for one diff. Defaults to 4000. */
+  /** Old- and new-side line cap for one diff. */
   maxLines?: number
-  /** Old- and new-side byte cap for one diff. Defaults to 2 MiB. */
+  /** Old- and new-side byte cap for one diff. */
   maxBytes?: number
-  /** Commits one history page may return. Defaults to 50. */
+  /** Commits one history page may return. */
   historyLimit?: number
-  /** Changed paths one status answer may return. Defaults to 2000. */
+  /** Changed paths one status answer may return. */
   maxEntries?: number
-  /** Files one commit's assembled diff may contain. Defaults to 100. */
+  /** Files one commit's assembled diff may contain. */
   maxCommitFiles?: number
-  /** Time the diff computer may spend before its answer becomes approximate. Defaults to 2000. */
+  /** Time the diff computer may spend before its answer becomes approximate. */
   maxDiffMs?: number
 }
 

@@ -17,9 +17,9 @@ function record(fields: readonly string[], trailingNewline = true): string {
 
 test('reads several log records', () => {
   const output = record([
-    'aaa111', 'aaa', 'bbb222', 'Ada', 'ada@example.com', '1700000000', 'HEAD -> main, tag: v1', 'first',
+    'aaa111', 'aaa', 'bbb222', 'Ada', '1700000000', 'HEAD -> main, tag: v1', 'first',
   ]) + record([
-    'bbb222', 'bbb', '', 'Grace', 'grace@example.com', '1690000000', '', 'second',
+    'bbb222', 'bbb', '', 'Grace', '1690000000', '', 'second',
   ], false)
 
   const commits = parseLog(output)
@@ -29,7 +29,6 @@ test('reads several log records', () => {
     shortSha: 'aaa',
     parents: ['bbb222'],
     authorName: 'Ada',
-    authorEmail: 'ada@example.com',
     authoredAt: 1_700_000_000,
     refs: ['HEAD -> main', 'tag: v1'],
     subject: 'first',
@@ -41,7 +40,7 @@ test('reads several log records', () => {
 test('keeps a subject the line-oriented parsers would have mis-split', () => {
   const subject = 'fix: a - b | c\td -> e'
   const commits = parseLog(record([
-    'a', 'a', '', 'X', 'x@e.com', '1', '', subject,
+    'a', 'a', '', 'X', '1', '', subject,
   ], false))
   assert.equal(commits[0]?.subject, subject)
 })

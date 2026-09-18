@@ -17,10 +17,10 @@ import { GitFailure } from './failure.ts'
 import { runGit } from './run.ts'
 
 /**
- * `sha`, `shortSha`, parents, author name, author email, author timestamp,
- * ref names, subject — then a record separator.
+ * `sha`, `shortSha`, parents, author name, author timestamp, ref names, subject —
+ * then a record separator.
  */
-const LOG_FORMAT = '%H%x1f%h%x1f%P%x1f%an%x1f%ae%x1f%at%x1f%D%x1f%s%x1e'
+const LOG_FORMAT = '%H%x1f%h%x1f%P%x1f%an%x1f%at%x1f%D%x1f%s%x1e'
 
 /** Field separator used by {@link LOG_FORMAT}. */
 const FIELD = '\x1f'
@@ -29,7 +29,7 @@ const FIELD = '\x1f'
 const RECORD = '\x1e'
 
 /** How many fields {@link LOG_FORMAT} emits per commit. */
-const FIELD_COUNT = 8
+const FIELD_COUNT = 7
 
 /**
  * Parse one run of the history command.
@@ -45,16 +45,16 @@ export function parseLog(output: string): CommitSummary[] {
     if (record === '') continue
     const parts = record.split(FIELD)
     if (parts.length < FIELD_COUNT) continue
-    const [sha, shortSha, parents, authorName, authorEmail, authoredAt, refs, subject] = parts
-    if (sha === undefined || shortSha === undefined || subject === undefined) continue
+    // The length check above is what lets the fields be taken as present.
+    const [sha, shortSha, parents, authorName, authoredAt, refs, subject] =
+      parts as [string, string, string, string, string, string, string]
     commits.push({
       sha,
       shortSha,
-      parents: (parents ?? '').split(' ').filter(part => part !== ''),
-      authorName: authorName ?? '',
-      authorEmail: authorEmail ?? '',
-      authoredAt: Number(authoredAt ?? '0'),
-      refs: (refs ?? '').split(', ').filter(part => part !== ''),
+      parents: parents.split(' ').filter(part => part !== ''),
+      authorName,
+      authoredAt: Number(authoredAt),
+      refs: refs.split(', ').filter(part => part !== ''),
       subject,
     })
   }

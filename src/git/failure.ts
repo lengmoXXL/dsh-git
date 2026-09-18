@@ -47,12 +47,3 @@ export class GitFailure extends Error {
     this.code = code
   }
 }
-
-/**
- * Describe an unknown thrown value.
- * @param error - the caught value.
- * @returns its message, or its string form when it is not an Error.
- */
-export function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}

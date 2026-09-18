@@ -22,16 +22,13 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import type { SubprocessHandle, SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
-import { GitFailure, messageOf } from './failure.ts'
+import { GitFailure } from './failure.ts'
 
 /** Grace the provider's termination procedure gets when a read is cancelled. */
 const GIT_GRACE_MS = 5_000
 
 /** Default in-memory cap on one command's standard output. */
 const DEFAULT_MAX_BYTES = 8 * 1024 * 1024
-
-/** Standard error is only ever a diagnostic tail, so it gets a small cap. */
-const STDERR_MAX_BYTES = 64 * 1024
 
 /** One git invocation. */
 export interface GitRunRequest {
@@ -49,14 +46,15 @@ export interface GitRunRequest {
 export interface GitRunResult {
   /** Exit code, or null when the child died from a signal. */
   readonly exitCode: number | null
-  /** Terminating signal, or null on a normal exit. */
-  readonly signal: NodeJS.Signals | null
   /** Collected standard output. */
   readonly stdout: string
   /** The stdout cap dropped the head of the stream, so `stdout` is a tail. */
   readonly stdoutTruncated: boolean
-  /** Collected standard error, a diagnostic tail. */
-  readonly stderr: string
+}
+
+/** Describe an unknown thrown value: an Error's message, or its string form. */
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }
 
 /**
@@ -102,7 +100,9 @@ export async function runGit(ctx: Context, request: GitRunRequest): Promise<GitR
       stdio: {
         stdin: 'ignore',
         stdout: { maxBytes },
-        stderr: { maxBytes: STDERR_MAX_BYTES },
+        // Kept to one byte: nothing reads a git diagnostic, but a pipe nobody drains
+        // is a child that can block writing to a full one.
+        stderr: { maxBytes: 1 },
       },
       graceMs: GIT_GRACE_MS,
       ...signal === undefined ? {} : { signal },
@@ -112,22 +112,16 @@ export async function runGit(ctx: Context, request: GitRunRequest): Promise<GitR
   }
 
   let exitCode: number | null
-  let exitSignal: NodeJS.Signals | null
   try {
-    const outcome = await handle.done
-    exitCode = outcome.exitCode
-    exitSignal = outcome.signal
+    exitCode = (await handle.done).exitCode
   } catch (error: unknown) {
     throw new GitFailure('git/command-failed', `git reported no outcome: ${messageOf(error)}`, { cause: error })
   }
 
   const stdout = handle.collected.stdout?.readFrom(0)
-  const stderr = handle.collected.stderr?.readFrom(0)
   return {
     exitCode,
-    signal: exitSignal,
     stdout: stdout?.text ?? '',
     stdoutTruncated: stdout?.lossy ?? false,
-    stderr: stderr?.text ?? '',
   }
 }

@@ -38,8 +38,6 @@ export interface ChangeEntry {
   readonly origPath?: string
   /** Index-side status letter, `.` when unchanged. */
   readonly index: string
-  /** Working-tree-side status letter, `.` when unchanged. */
-  readonly worktree: string
   /** What the stage's status letter means. */
   readonly kind: ChangeKind
   /** Which half this entry is reported for. */
@@ -52,8 +50,6 @@ export interface BranchStatus {
   readonly branch: string | null
   /** Whether HEAD is detached. */
   readonly detached: boolean
-  /** Full commit id of HEAD, or null before the first commit. */
-  readonly oid: string | null
   /** Upstream ref name, or null when the branch tracks nothing. */
   readonly upstream: string | null
   /** Commits ahead of the upstream. */
@@ -90,8 +86,6 @@ export interface CommitSummary {
   readonly parents: readonly string[]
   /** Author name. */
   readonly authorName: string
-  /** Author email. */
-  readonly authorEmail: string
   /** Author timestamp in whole seconds since the epoch. */
   readonly authoredAt: number
   /** Ref names pointing at this commit, fully qualified as `%D` renders them. */

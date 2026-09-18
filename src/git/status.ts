@@ -40,7 +40,6 @@ export interface ParsedStatus {
 interface MutableBranchStatus {
   branch: string | null
   detached: boolean
-  oid: string | null
   upstream: string | null
   ahead: number
   behind: number
@@ -48,7 +47,7 @@ interface MutableBranchStatus {
 
 /** A branch status before any header record was read. */
 function emptyBranch(): MutableBranchStatus {
-  return { branch: null, detached: false, oid: null, upstream: null, ahead: 0, behind: 0 }
+  return { branch: null, detached: false, upstream: null, ahead: 0, behind: 0 }
 }
 
 /**
@@ -86,13 +85,12 @@ function appendEntries(
   origPath: string | undefined,
 ): void {
   const index = xy[0] ?? '.'
-  const worktree = xy[1] ?? '.'
   const base = origPath === undefined ? { path } : { path, origPath }
   if (index !== '.') {
-    entries.push({ ...base, index, worktree, kind: kindOfLetter(index), stage: 'staged' })
+    entries.push({ ...base, index, kind: kindOfLetter(index), stage: 'staged' })
   }
-  if (worktree !== '.') {
-    entries.push({ ...base, index, worktree, kind: kindOfLetter(worktree), stage: 'unstaged' })
+  if ((xy[1] ?? '.') !== '.') {
+    entries.push({ ...base, index, kind: kindOfLetter(xy[1] ?? '.'), stage: 'unstaged' })
   }
 }
 
@@ -106,9 +104,6 @@ function applyBranchHeader(field: string, branch: MutableBranchStatus): void {
   const key = separator < 0 ? field : field.slice(0, separator)
   const value = separator < 0 ? '' : field.slice(separator + 1)
   switch (key) {
-    case 'branch.oid':
-      if (value !== '(initial)') branch.oid = value
-      break
     case 'branch.head':
       if (value === '(detached)') branch.detached = true
       else branch.branch = value
@@ -174,7 +169,6 @@ export function parsePorcelainV2(output: string): ParsedStatus {
       entries.push({
         path,
         index: xy[0] ?? 'U',
-        worktree: xy[1] ?? 'U',
         kind: 'conflicted',
         stage: 'conflicted',
       })
@@ -184,7 +178,6 @@ export function parsePorcelainV2(output: string): ParsedStatus {
       entries.push({
         path: field.slice(2),
         index: '?',
-        worktree: '?',
         kind: 'untracked',
         stage: 'untracked',
       })

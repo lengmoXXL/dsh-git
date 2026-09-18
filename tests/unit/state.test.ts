@@ -25,7 +25,7 @@ import {
 
 /** One status entry. */
 function entry(stage: ChangeEntry['stage'], path: string, kind: ChangeEntry['kind'] = 'modified'): ChangeEntry {
-  return { path, index: 'M', worktree: '.', kind, stage }
+  return { path, index: 'M', kind, stage }
 }
 
 /** One context row pair. */
