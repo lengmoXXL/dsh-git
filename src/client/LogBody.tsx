@@ -111,6 +111,8 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   )
   // Older pages the reader asked for, in the order they arrived.
   const [older, setOlder] = useState<readonly CommitSummary[]>([])
+  // What the host last said about commits behind the ones in hand.
+  const [moreCommits, setMoreCommits] = useState(false)
   const [panes, setPanes] = useState<readonly BoardPane[]>(() => logCache(sessionId).panes)
   const [focused, setFocused] = useState<string | null>(() => logCache(sessionId).focused)
   const scroller = useRef<HTMLDivElement>(null)
@@ -224,6 +226,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
     const inHand = (history.phase === 'ready' ? history.value.commits.length : 0) + older.length
     void gitFace.history(sessionId, new AbortController().signal, inHand).then(
       (value) => {
+        setMoreCommits(value.hasMore)
         setOlder((current) => {
           const seen = new Set([...(history.phase === 'ready' ? history.value.commits : []), ...current].map(c => c.sha))
           return [...current, ...value.commits.filter(commit => !seen.has(commit.sha))]
@@ -497,7 +500,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
                 : (
                   <HistoryList
                     commits={history.phase === 'ready' ? [...history.value.commits, ...older] : older}
-                    hasMore={history.phase === 'ready' && history.value.hasMore}
+                    hasMore={older.length === 0 ? history.phase === 'ready' && history.value.hasMore : moreCommits}
                     sessionId={sessionId}
                     now={now}
                     t={t}

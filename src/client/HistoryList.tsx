@@ -267,7 +267,7 @@ export function HistoryList({
           upstream={upstream}
         />
       ))}
-      {commits.length > fitting && (
+      {(hasMore || commits.length > fitting) && (
         <MoreRow
           label={t('list.moreCommits')}
           // Never "collapse": this control is how all of the history is reached, a
