@@ -229,3 +229,47 @@ export function subscribeRailSettings(listener: () => void): () => void {
   railListeners.add(listener)
   return () => { railListeners.delete(listener) }
 }
+
+/** How far each fold has been opened, by the pane and fold it belongs to. */
+export interface FoldOpening {
+  readonly up: number
+  readonly down: number
+}
+
+let foldOpenings: ReadonlyMap<string, FoldOpening> = new Map()
+const foldListeners = new Set<() => void>()
+
+/** Every fold's opening, for the page and for each pane's own reading. */
+export function foldOpeningsOf(): ReadonlyMap<string, FoldOpening> {
+  return foldOpenings
+}
+
+/** Watch the openings, the way the view settings are watched. */
+export function subscribeFoldOpenings(listener: () => void): () => void {
+  foldListeners.add(listener)
+  return () => { foldListeners.delete(listener) }
+}
+
+/** Open one fold further: a step up, a step down, or all that is left. */
+export function openFold(paneKey: string, foldKey: string, how: 'up' | 'down' | 'all', hidden: number): void {
+  const key = `${paneKey}\u0000${foldKey}`
+  const before = foldOpenings.get(key) ?? { up: 0, down: 0 }
+  const next = how === 'all'
+    ? { up: before.up + hidden, down: before.down + hidden }
+    : how === 'up'
+      ? { up: before.up + FOLD_STEP, down: before.down }
+      : { up: before.up, down: before.down + FOLD_STEP }
+  const copy = new Map(foldOpenings)
+  copy.set(key, next)
+  foldOpenings = copy
+  for (const listener of foldListeners) listener()
+}
+
+/** Fold every opened run again. */
+export function foldEveryOpening(): void {
+  foldOpenings = new Map()
+  for (const listener of foldListeners) listener()
+}
+
+/** Lines one press of a fold's controls opens. */
+export const FOLD_STEP = 15

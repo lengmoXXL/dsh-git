@@ -17,7 +17,7 @@
  * @module dsh-git/client/SideBySide
  */
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from 'react'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { DiffPayload, DiffRow } from '../shared/wire.ts'
 import { cx } from './format.ts'
@@ -35,7 +35,10 @@ import {
 } from './state.ts'
 import {
   diffViewSettings,
+  foldOpeningsOf,
+  openFold,
   subscribeDiffViewSettings,
+  subscribeFoldOpenings,
 } from './view-mode.ts'
 import css from './SideBySide.module.css'
 
@@ -169,9 +172,18 @@ export interface SideBySideProps {
  * @returns the diff, or the state that stands in for it.
  */
 export function SideBySide({ diff, t, embedded = false }: SideBySideProps): ReactNode {
-  /** Lines one press of a fold's controls opens. */
-  const FOLD_STEP = 15
-  const [expansion, setExpansion] = useState<ReadonlyMap<string, FoldExpansion>>(() => new Map())
+  // The fold state is the page's, not this pane's: what a reader opened is opened
+  // until they say otherwise, and one control closes all of it. A pane's own openings
+  // are the ones keyed by the comparison it shows.
+  const paneKey = `${diff.source}:${diff.path}`
+  const allOpenings = useSyncExternalStore(subscribeFoldOpenings, foldOpeningsOf, foldOpeningsOf)
+  const expansion = useMemo(() => {
+    const scoped = new Map<string, FoldExpansion>()
+    for (const [key, opening] of allOpenings) {
+      if (key.startsWith(`${paneKey}\u0000`)) scoped.set(key.slice(paneKey.length + 1), opening)
+    }
+    return scoped
+  }, [allOpenings, paneKey])
   const rows = useMemo(() => collapseRows(diff.rows, undefined, expansion), [diff, expansion])
   // Every diff follows the same answers, so the choices are a store rather than
   // this tab's state: they are how the reader reads diffs, not what this one
@@ -268,19 +280,7 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
         className={css.fold}
         title={label}
         aria-label={label}
-        onClick={() => {
-          setExpansion((current) => {
-            const before = current.get(key) ?? { up: 0, down: 0 }
-            const next = how === 'all'
-              ? { up: before.up + count, down: before.down + count }
-              : how === 'up'
-                ? { up: before.up + FOLD_STEP, down: before.down }
-                : { up: before.up, down: before.down + FOLD_STEP }
-            const copy = new Map(current)
-            copy.set(key, next)
-            return copy
-          })
-        }}
+        onClick={() => { openFold(paneKey, key, how, count) }}
       >
         {glyph}
       </button>

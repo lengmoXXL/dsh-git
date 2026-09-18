@@ -40,6 +40,7 @@ export const zh = {
   'fold.up': '向上展开 15 行',
   'fold.down': '向下展开 15 行',
   'fold.all': '全部展开',
+  'fold.reset': '重新折叠所有展开的段',
   'section.expand': '展开',
 
   'group.conflicted': '冲突',
@@ -115,6 +116,7 @@ export const en = {
   'fold.up': 'Open 15 more lines above',
   'fold.down': 'Open 15 more lines below',
   'fold.all': 'Open the whole run',
+  'fold.reset': 'Fold every opened run again',
   'section.expand': 'Expand',
 
   'group.conflicted': 'Conflicts',
