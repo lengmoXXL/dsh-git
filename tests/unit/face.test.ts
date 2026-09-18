@@ -39,6 +39,11 @@ test('asks for a page of history', async () => {
   const face = createGitFace(recorder.fetch)
   await face.history('s1', live())
   assert.equal(recorder.urls[0], '/dsh-git/history?sessionId=s1')
+
+  // The page in hand is what a first read asks for; older ones are asked for by how
+  // many are already in hand, which is how the reader reaches the whole history.
+  await face.history('s1', live(), 12)
+  assert.equal(recorder.urls[1], '/dsh-git/history?sessionId=s1&skip=12')
 })
 
 test('sends only the diff parameters that apply', async () => {

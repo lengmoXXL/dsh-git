@@ -50,6 +50,8 @@ export interface HistoryListProps {
   readonly upstream?: string | undefined
   /** The rail's scrollport, whose height is the space this list may fill. */
   readonly viewport: RefObject<HTMLDivElement | null>
+  /** Ask the host for the page of commits older than the ones in hand. */
+  readonly onLoadOlder: () => void
 }
 
 /** The fewest commits shown, however short the list is. */
@@ -212,6 +214,7 @@ export function HistoryList({
   onOpenFile,
   upstream,
   viewport,
+  onLoadOlder,
 }: HistoryListProps): ReactNode {
   const [open, setOpen] = useState(true)
   // A page of history is a page, not the whole log: the rail shows the newest
@@ -264,9 +267,11 @@ export function HistoryList({
       {commits.length > fitting && (
         <MoreRow
           label={t('list.moreCommits')}
-          open={openCommits}
+          // Never "collapse": this control is how all of the history is reached, a
+          // page at a time, and it stays until the host has no more to give.
+          open={false}
           t={t}
-          onToggle={() => { setOpenCommits(value => !value) }}
+          onToggle={() => { setOpenCommits(true); onLoadOlder() }}
           // The row says there are older commits; whether the host has still more
           // beyond the page in hand is a smaller fact, and it belongs in the
           // tooltip rather than in a second line under the row.

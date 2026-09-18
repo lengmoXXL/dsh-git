@@ -67,7 +67,7 @@ export interface GitFace {
   /** Read the working tree's state. */
   status(sessionId: string, signal: AbortSignal): Promise<StatusPayload>
   /** Read one page of history. */
-  history(sessionId: string, signal: AbortSignal): Promise<HistoryPayload>
+  history(sessionId: string, signal: AbortSignal, skip?: number): Promise<HistoryPayload>
   /** Read one commit and its files. */
   commit(sessionId: string, rev: string, signal: AbortSignal): Promise<CommitPayload>
   /** Read one change's aligned sides. */
@@ -125,7 +125,12 @@ export function createGitFace(
         signal,
       )
     },
-    async history(sessionId, signal) {
+    async history(sessionId, signal, skip = 0) {
+      // The page in hand is what a first read asks for; older ones are asked for by
+      // how many are already in hand, which is what `skip` counts. A first read names
+      // no skip at all, so the request stays what it was.
+      const params = new URLSearchParams({ sessionId })
+      if (skip > 0) params.set('skip', String(skip))
       return await call<HistoryPayload>(
         fetchImpl,
         '/history',

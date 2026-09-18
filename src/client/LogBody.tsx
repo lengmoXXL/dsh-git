@@ -69,7 +69,6 @@ import css from './LogBody.module.css'
 
 /** Stable empties, so a not-yet-loaded read does not mint a new array on every render. */
 const NO_ENTRIES: readonly ChangeEntry[] = []
-const NO_COMMITS: readonly CommitSummary[] = []
 
 /** What the header calls the branch. */
 function branchLabel(branch: BranchStatus, t: Translate<GitKey>): string {
@@ -110,6 +109,8 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   const [history, setHistory] = useState<Load<HistoryPayload>>(
     () => cached(logCache(sessionId).history),
   )
+  // Older pages the reader asked for, in the order they arrived.
+  const [older, setOlder] = useState<readonly CommitSummary[]>([])
   const [panes, setPanes] = useState<readonly BoardPane[]>(() => logCache(sessionId).panes)
   const [focused, setFocused] = useState<string | null>(() => logCache(sessionId).focused)
   const scroller = useRef<HTMLDivElement>(null)
@@ -214,6 +215,24 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
       setOpenFailure(failureInfoOf(error))
     }
   }, [openResource, sessionId])
+  /**
+   * Ask the host for the page of commits older than everything in hand, and keep
+   * them: a reader reaches the whole history by asking again, and the list says
+   * there is more only while the host does.
+   */
+  const loadOlder = useCallback(() => {
+    const inHand = (history.phase === 'ready' ? history.value.commits.length : 0) + older.length
+    void gitFace.history(sessionId, new AbortController().signal, inHand).then(
+      (value) => {
+        setOlder((current) => {
+          const seen = new Set([...(history.phase === 'ready' ? history.value.commits : []), ...current].map(c => c.sha))
+          return [...current, ...value.commits.filter(commit => !seen.has(commit.sha))]
+        })
+      },
+      () => { /* the next click asks again */ },
+    )
+  }, [history, older.length, sessionId])
+
   const openChange = useCallback((entry: ChangeEntry, beside: boolean) => {
     // An unstaged change compares the index against the working tree; a staged one
     // compares HEAD against the index.
@@ -475,7 +494,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
                 ? <FailureBlock code={history.code} message={history.message} t={t} onRetry={refresh} />
                 : (
                   <HistoryList
-                    commits={history.phase === 'ready' ? history.value.commits : NO_COMMITS}
+                    commits={history.phase === 'ready' ? [...history.value.commits, ...older] : older}
                     hasMore={history.phase === 'ready' && history.value.hasMore}
                     sessionId={sessionId}
                     now={now}
@@ -484,6 +503,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
                     onOpenFile={openFile}
                     upstream={ready?.repo?.branch.upstream ?? undefined}
                     viewport={scroller}
+                    onLoadOlder={loadOlder}
                   />
                 )}
             </>
