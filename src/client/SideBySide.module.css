@@ -237,6 +237,17 @@
   height: 0;
 }
 
+/* In the lanes a long line is read by scrolling its half, and the numbers stay put
+   while it does. A mark that belongs with the numbers has to stay put with them: the
+   band sticks where the numbers stick, and its control — absolute inside it, because
+   the vertical placement is not a sticky offset — comes along. */
+.laneRows .band,
+.laneRows .heldBack {
+  position: sticky;
+  left: 0;
+  width: 0;
+}
+
 .band .fold,
 .heldBack .fold {
   position: absolute;
