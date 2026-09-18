@@ -8,7 +8,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import type { ChangeEntry, ChangeKind, DiffRow } from '../../src/shared/wire.ts'
+import type { ChangeEntry, ChangeKind } from '../../src/shared/wire.ts'
 import { GitRequestError } from '../../src/client/face.ts'
 import {
   clampRailWidth,
