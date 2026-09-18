@@ -481,6 +481,18 @@ test('replaces a stylesheet the document already carries, rather than skipping i
   }
 })
 
+test('draws no colour of its own, and no ring around the focused pane', async () => {
+  const source = await readArtifact(bundlePath)
+  const css = [...source.matchAll(/const css(?:\$\d+)? = "((?:[^"\\]|\\.)*)";/g)]
+    .map(match => JSON.parse(`"${match[1]}"`))
+    .join('\n')
+  // Every colour comes from the shell's tokens: a literal would not follow the theme.
+  assert.doesNotMatch(css, /#[0-9a-fA-F]{3,8}\b/)
+  assert.doesNotMatch(css, /\b(rgba?|hsla?)\(/)
+  // And the focused pane is not marked at all: the reader who clicked it knows.
+  assert.doesNotMatch(css, /_focused[^}]*box-shadow/)
+})
+
 test('keeps the scrollbars thin without restyling the shell', async () => {
   const source = await readArtifact(bundlePath)
   const css = source.replace(/\s+/g, '')

@@ -14,6 +14,7 @@ import {
   collapseRows,
   clampRailWidth,
   failureInfoOf,
+  parseRefs,
   placePane,
   RAIL_MIN_WIDTH,
   groupChanges,
@@ -98,6 +99,14 @@ test('gives up the reserve rather than the minimum on a narrow window', () => {
 test('rounds to whole pixels, so a drag cannot leave fractional widths behind', () => {
   assert.equal(clampRailWidth(336.4, 1440), 336)
   assert.equal(clampRailWidth(336.6, 1440), 337)
+})
+
+test('leaves the upstream out of a commit chips list', () => {
+  const refs = ['HEAD -> refs/heads/main', 'refs/remotes/origin/main', 'refs/remotes/origin/other']
+  // The header names the upstream; a second capsule beside `main` says it twice.
+  assert.deepEqual(parseRefs(refs, 'origin/main').map(chip => chip.name), ['main', 'origin/other'])
+  // Without an upstream to leave out, every name is drawn.
+  assert.deepEqual(parseRefs(refs).map(chip => chip.name), ['main', 'origin/main', 'origin/other'])
 })
 
 test('lands a diff in the focused pane, or beside it when asked', () => {
