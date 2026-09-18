@@ -12,10 +12,10 @@
 
 ## 安装
 
-需要 Node 22.19+（或 24+）与 DSH CLI。安装时包会自行构建；pnpm 会打出一个要加进 `~/.dsh/profiles/web/pnpm-workspace.yaml` 的 `allowBuilds` key，加完再跑同一条命令即可。
+需要 Node 22.19+（或 24+）与 DSH CLI。每个 release 都是打好的 tarball，安装时不编译，也没有需要 pnpm 放行的构建脚本。
 
 ```sh
-dsh plugin --profile web add https://github.com/lengmoXXL/dsh-git
+dsh plugin --profile web add https://github.com/lengmoXXL/dsh-git/releases/latest/download/dsh-git.tgz
 dsh --profile web
 ```
 

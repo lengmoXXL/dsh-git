@@ -71,7 +71,7 @@ export const inject = ['slots', 'locale', 'sidebarRightTabs', 'resources', 'side
 // Exported for the browser suite: a page body rendered on the server never reaches its
 // effects, so the page that draws a diff mounts this component itself. The shell reads
 // `name`, `inject` and `apply`.
-export { MonacoDiff } from './MonacoDiff.tsx'
+export { DiffView } from './DiffView.tsx'
 
 /**
  * Mount the client half.

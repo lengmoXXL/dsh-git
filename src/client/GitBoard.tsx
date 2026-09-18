@@ -15,7 +15,7 @@ import { BUILD_STAMP } from './build.ts'
 import { FailureBlock, Note } from './Feedback.tsx'
 import { gitFace } from './face.ts'
 import type { GitKey } from './locales.ts'
-import { MonacoDiff, type DiffCounts } from './MonacoDiff.tsx'
+import { DiffView, type DiffCounts } from './DiffView.tsx'
 import { diffViewSettings, subscribeDiffViewSettings } from './view-mode.ts'
 import { failureInfoOf, type BoardPane, type Load } from './state.ts'
 import css from './GitBoard.module.css'
@@ -93,7 +93,7 @@ function DiffPane({ pane, focused, t, onFocus }: {
         <FailureBlock code={load.code} message={load.message} t={t} onRetry={undefined} />
       )}
       {load.phase === 'ready' && (
-        <MonacoDiff
+        <DiffView
           diff={load.value}
           split={settings.mode === 'split'}
           wrap={settings.wrap}

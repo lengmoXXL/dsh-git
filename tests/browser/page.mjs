@@ -114,7 +114,7 @@ const page = `<!doctype html>
   window.__render = (props) => {
     if (props.width !== undefined) board.style.width = String(props.width) + 'px'
     root = root ?? ReactDOM.createRoot(pane)
-    root.render(React.createElement(window.__exports.MonacoDiff, Object.assign({
+    root.render(React.createElement(window.__exports.DiffView, Object.assign({
       diff, t: (key) => key, split: true, wrap: true,
     }, props)))
   }

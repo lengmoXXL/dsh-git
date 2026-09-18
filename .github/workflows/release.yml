@@ -1,0 +1,55 @@
+# Cut a release from a tag.
+#
+# The tag is the version, and the release carries the built package: `lib/` is the artifact
+# the shell loads, so a release tarball needs no compiling on the machine that installs it —
+# and, having no install scripts, nothing for pnpm to allow either. The pipeline refuses a
+# tag that disagrees with `package.json`, so the version a release claims is the one it ships.
+#
+# Installing one is the ordinary plugin command, given the tarball's address: it forwards to
+# pnpm in the profile, which unpacks a tarball as it is.
+#
+#   dsh plugin --profile web add <the tarball>
+
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Refuse a tag the package does not agree with
+        run: test "${GITHUB_REF_NAME}" = "v$(node -p "require('./package.json').version")"
+
+      - run: npm run typecheck
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+
+      - name: Pack the built package
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          npm pack
+          cp "dsh-git-${version}.tgz" dsh-git.tgz
+          ls -l ./*.tgz
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --generate-notes || true
+          gh release upload "${GITHUB_REF_NAME}" "dsh-git-${version}.tgz" dsh-git.tgz --clobber

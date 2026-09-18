@@ -10,7 +10,7 @@
  * rendered on the server, where the host element exists and nothing may touch it. That
  * is why this component draws an empty box first and fills it after mount.
  *
- * @module dsh-git/client/MonacoDiff
+ * @module dsh-git/client/DiffView
  */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
@@ -19,7 +19,7 @@ import type { DiffPayload } from '../shared/wire.ts'
 import { monaco } from './editor.ts'
 import type { GitKey } from './locales.ts'
 import { installSyntax, languageOf } from './syntax.ts'
-import css from './MonacoDiff.module.css'
+import css from './DiffView.module.css'
 
 /** How many lines the editor found on each side of the change. */
 export interface DiffCounts {
@@ -30,7 +30,7 @@ export interface DiffCounts {
 }
 
 /** How the reader is reading diffs, which decides what the editor is told. */
-export interface MonacoDiffProps {
+export interface DiffViewProps {
   /** The change: both sides, whole. */
   readonly diff: DiffPayload
   /** Two columns, or one. */
@@ -67,10 +67,10 @@ function counted(changes: readonly monaco.editor.ILineChange[] | null): DiffCoun
 
 /**
  * Draw one change in the editor's own diff view.
- * @param props - see {@link MonacoDiffProps}.
+ * @param props - see {@link DiffViewProps}.
  * @returns the editor's host element, or the notice that stands in for it.
  */
-export function MonacoDiff({ diff, split, wrap, t, onCounts }: MonacoDiffProps): ReactNode {
+export function DiffView({ diff, split, wrap, t, onCounts }: DiffViewProps): ReactNode {
   const host = useRef<HTMLDivElement>(null)
   const editor = useRef<monaco.editor.IStandaloneDiffEditor | null>(null)
   // The pane is told through the latest callback without the editor being built again when

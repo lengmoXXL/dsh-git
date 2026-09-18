@@ -14,11 +14,11 @@ English | [中文](README.zh.md)
 
 ## Install
 
-Needs Node 22.19+ (or 24+) and the DSH CLI. The package builds itself on install; pnpm will print an `allowBuilds` key
-to add to `~/.dsh/profiles/web/pnpm-workspace.yaml`, and the same command works once you have.
+Needs Node 22.19+ (or 24+) and the DSH CLI. Every release is a tarball of the built package, so
+installing one compiles nothing and has no build for pnpm to allow.
 
 ```sh
-dsh plugin --profile web add https://github.com/lengmoXXL/dsh-git
+dsh plugin --profile web add https://github.com/lengmoXXL/dsh-git/releases/latest/download/dsh-git.tgz
 dsh --profile web
 ```
 
