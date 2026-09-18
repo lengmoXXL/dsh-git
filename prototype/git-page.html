@@ -746,7 +746,10 @@ function laneMarkup(rows, view, side) {
    the blank half is not information. Those are drawn as the one-column reading
    whatever the layout switch says. The counts are the host's, from the whole
    alignment, so a truncated view still knows which kind of change it is. */
-const oneSided = (diff) => (diff.added > 0 && diff.removed === 0) || (diff.removed > 0 && diff.added === 0)
+/* One column only for a file that is one side throughout — added or deleted. A file
+   that merely gained lines has context rows with both sides, and reads as two columns
+   like any other edit. */
+const oneSided = (diff) => diff.rows.length > 0 && diff.rows.every((row) => (row[1] === null) !== (row[3] === null))
 
 /**
  * The rows a column draws, each with the index of the source row it came from.
