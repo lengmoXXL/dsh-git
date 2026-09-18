@@ -3,7 +3,7 @@
  *
  * The host half answers four read-only questions about the current Session's
  * workspace over `/dsh-git/*`: the working tree's state, a page of history, one
- * commit's files, and the aligned text of one change. Everything it reads goes
+ * commit's files, and the two sides of one change. Everything it reads goes
  * through `ctx.fs` and `ctx.subprocess`, so a deployment that routed those
  * seams to a remote machine answers for that machine without this package
  * knowing anything about the wire.
@@ -29,28 +29,19 @@ export const inject = ['fs', 'subprocess', 'sessions']
 
 /** Deployment-varying caps, each with a default in {@link apply}. */
 export interface Config {
-  /** Old- and new-side line cap for one diff. */
-  maxLines?: number
   /** Old- and new-side byte cap for one diff. */
   maxBytes?: number
   /** Commits one history page may return. */
   historyLimit?: number
   /** Changed paths one status answer may return. */
   maxEntries?: number
-  /** Files one commit's assembled diff may contain. */
-  maxCommitFiles?: number
-  /** Time the diff computer may spend before its answer becomes approximate. */
-  maxDiffMs?: number
 }
 
 /** Validated plugin config. The defaults live in {@link apply}. */
 export const Config: z<Config> = z.object({
-  maxLines: z.number().step(1).min(1).max(200_000),
   maxBytes: z.number().step(1).min(1).max(64 * 1024 * 1024),
   historyLimit: z.number().step(1).min(1).max(500),
   maxEntries: z.number().step(1).min(1).max(20_000),
-  maxCommitFiles: z.number().step(1).min(1).max(2000),
-  maxDiffMs: z.number().step(1).min(1).max(60_000),
 })
 
 /**
@@ -60,11 +51,8 @@ export const Config: z<Config> = z.object({
  */
 export function apply(ctx: Context, config: Config): void {
   registerGitApi(ctx, {
-    maxLines: config.maxLines ?? 4000,
     maxBytes: config.maxBytes ?? 2 * 1024 * 1024,
     historyLimit: config.historyLimit ?? 50,
     maxEntries: config.maxEntries ?? 2000,
-    maxCommitFiles: config.maxCommitFiles ?? 100,
-    maxDiffMs: config.maxDiffMs ?? 2000,
   })
 }

@@ -68,13 +68,10 @@ export const name = 'dsh-git-ui'
 /** Client services this plugin needs before it activates. */
 export const inject = ['slots', 'locale', 'sidebarRightTabs', 'resources', 'sidebarRight']
 
-// Exported for the suite: how the diff draws and what the lists show are the two
-// things worth asserting against the built bundle, and a page body rendered on the
-// server never reaches its effects. The shell reads `name`, `inject` and `apply`.
+// Exported for the browser suite: a page body rendered on the server never reaches its
+// effects, so the page that draws a diff mounts this component itself. The shell reads
+// `name`, `inject` and `apply`.
 export { MonacoDiff } from './MonacoDiff.tsx'
-export type { MonacoDiffProps } from './MonacoDiff.tsx'
-export { ChangeList } from './ChangeList.tsx'
-export { HistoryList } from './HistoryList.tsx'
 
 /**
  * Mount the client half.

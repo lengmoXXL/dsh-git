@@ -51,19 +51,16 @@ const page = `<!doctype html>
 <script>${reactDom}</script>
 <script>${bundle}</script>
 <script>
-  const line = (n) => ({ no: n, text: 'const value' + String(n) + ' = compute(' + String(n) + ')' })
-  // The rows a host sends: aligned, one line per side, a side that is null drawn as an
-  // empty line so the two columns stay in step. All four kinds are here, because what the
-  // editor paints for an added or a removed line is one of the things under test.
-  const rows = [
-    { kind: 'context', left: line(1), right: line(1) },
-    { kind: 'delete', left: { no: 2, text: 'const gone = true' }, right: null },
-    { kind: 'insert', left: null, right: { no: 2, text: 'const added = compute(2)' } },
-    { kind: 'replace', left: { no: 3, text: 'const answer = 41' }, right: { no: 3, text: 'const answer = 42' } },
-  ]
-  for (let n = 4; n <= 60; n += 1) rows.push({ kind: 'context', left: line(n), right: line(n) })
+  const line = (n) => 'const value' + String(n) + ' = compute(' + String(n) + ')'
+  // Both sides of one small change, as a host sends them: a line gone, a line added, a line
+  // changed, and a long unchanged middle for the editor to fold away. All four are here
+  // because what the editor draws for each is one of the things under test.
+  const common = []
+  for (let n = 4; n <= 60; n += 1) common.push(line(n))
   const diff = { path: 'src/example.ts', source: 'worktree', oldLabel: 'index', newLabel: 'working tree',
-    binary: false, truncated: false, approximate: false, removed: 2, added: 2, rows }
+    binary: false, truncated: false,
+    oldText: [line(1), 'const gone = true', 'const answer = 41', ...common].join('\\n'),
+    newText: [line(1), 'const added = compute(2)', 'const answer = 42', ...common].join('\\n') }
   const entry = window.__pending
   // The bundle is compiled with React's automatic JSX runtime, which is an entry of its
   // own that the UMD build does not carry: three names are all it asks for.

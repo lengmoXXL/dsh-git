@@ -15,7 +15,7 @@ import { BUILD_STAMP } from './build.ts'
 import { FailureBlock, Note } from './Feedback.tsx'
 import { gitFace } from './face.ts'
 import type { GitKey } from './locales.ts'
-import { MonacoDiff } from './MonacoDiff.tsx'
+import { MonacoDiff, type DiffCounts } from './MonacoDiff.tsx'
 import { diffViewSettings, subscribeDiffViewSettings } from './view-mode.ts'
 import { failureInfoOf, type BoardPane, type Load } from './state.ts'
 import css from './GitBoard.module.css'
@@ -44,6 +44,9 @@ function DiffPane({ pane, focused, t, onFocus }: {
   readonly onFocus: (key: string) => void
 }): ReactNode {
   const [load, setLoad] = useState<Load<DiffPayload>>({ phase: 'loading' })
+  // How much the editor found changed. It is the one that reads the two sides, so the number
+  // is its answer rather than a second diff computed to fill a tooltip.
+  const [counts, setCounts] = useState<DiffCounts | undefined>(undefined)
 
   // Keyed by the comparison, not by the pane: a pane already showing what it was
   // asked for is not asked again.
@@ -71,9 +74,12 @@ function DiffPane({ pane, focused, t, onFocus }: {
   // what to draw and the page's switches are what decide it.
   const settings = useSyncExternalStore(subscribeDiffViewSettings, diffViewSettings, diffViewSettings)
   const ready = load.phase === 'ready' ? load.value : undefined
+  const changed = counts === undefined ? undefined : `+${String(counts.added)} −${String(counts.removed)}`
   const title = ready === undefined
     ? pane.request.path
-    : `${ready.path} · ${ready.oldLabel} → ${ready.newLabel} · +${String(ready.added)} −${String(ready.removed)} · ${BUILD_STAMP}`
+    : [ready.path, `${ready.oldLabel} → ${ready.newLabel}`, changed, BUILD_STAMP]
+      .filter(part => part !== undefined)
+      .join(' · ')
   return (
     <section
       className={css.pane}
@@ -87,7 +93,13 @@ function DiffPane({ pane, focused, t, onFocus }: {
         <FailureBlock code={load.code} message={load.message} t={t} onRetry={undefined} />
       )}
       {load.phase === 'ready' && (
-        <MonacoDiff diff={load.value} split={settings.mode === 'split'} wrap={settings.wrap} t={t} />
+        <MonacoDiff
+          diff={load.value}
+          split={settings.mode === 'split'}
+          wrap={settings.wrap}
+          t={t}
+          onCounts={setCounts}
+        />
       )}
     </section>
   )

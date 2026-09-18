@@ -16,7 +16,6 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import type {
-  CommitDiffPayload,
   CommitPayload,
   DiffPayload,
   DiffSource,
@@ -27,25 +26,18 @@ import type {
 import { readCommit } from '../git/commit.ts'
 import { GitFailure } from '../git/failure.ts'
 import { readHistory } from '../git/history.ts'
-import { confineToRepo, discoverRepo, resolveWorkspaceRoot, type RepoIdentity } from '../git/repo.ts'
+import { confineToRepo, discoverRepo, resolveWorkspaceRoot } from '../git/repo.ts'
 import { readRevisionTexts } from '../git/revision.ts'
-import { buildSideBySide, hunkRows } from '../git/sidediff.ts'
 import { readStatus } from '../git/status.ts'
 
 /** Deployment-varying caps on one answer. */
 export interface GitApiConfig {
-  /** Old- and new-side line cap for one diff. */
-  readonly maxLines: number
   /** Old- and new-side byte cap for one diff. */
   readonly maxBytes: number
   /** Commits one history page may return. */
   readonly historyLimit: number
   /** Changed paths one status answer may return. */
   readonly maxEntries: number
-  /** Files one commit's assembled diff may contain. */
-  readonly maxCommitFiles: number
-  /** Time the diff computer may spend before its answer becomes approximate. */
-  readonly maxDiffMs: number
 }
 
 /** One normalized request, already routed to this API's prefix. */
@@ -227,68 +219,11 @@ async function handleCommit(
 }
 
 /**
- * Align one change and shape it as the wire payload.
- *
- * Both the single-change endpoint and the commit-wide one go through here, so
- * a file inside a commit's diff and the same file opened on its own cannot
- * disagree about their rows.
- *
- * @param deps - the handler's context and caps.
- * @param repo - the repository to read.
- * @param request - the change to align.
- * @param signal - caller cancellation.
- * @returns the aligned diff.
- */
-async function alignChange(
-  deps: GitApiDeps,
-  repo: RepoIdentity,
-  request: {
-    readonly path: string
-    readonly origPath?: string | undefined
-    readonly source: DiffSource
-    readonly rev?: string | undefined
-  },
-  signal?: AbortSignal,
-): Promise<DiffPayload> {
-  const { path, origPath, source, rev } = request
-  const texts = await readRevisionTexts(deps.ctx, {
-    repoRoot: repo.root,
-    path,
-    ...origPath === undefined ? {} : { origPath },
-    source,
-    ...rev === undefined ? {} : { rev },
-    maxBytes: deps.config.maxBytes,
-    ...signal === undefined ? {} : { signal },
-  })
-
-  const alignment = texts.binary
-    ? { rows: [], added: 0, removed: 0, coarse: false }
-    : buildSideBySide(texts.oldText, texts.newText, deps.config.maxDiffMs)
-  // A long diff is cut to its changes rather than to its beginning, so a large
-  // file still shows the whole change instead of its first few thousand lines.
-  const rows = hunkRows(alignment.rows, deps.config.maxLines)
-
-  return {
-    path,
-    ...origPath === undefined ? {} : { origPath },
-    source,
-    oldLabel: texts.oldLabel,
-    newLabel: texts.newLabel,
-    binary: texts.binary,
-    truncated: texts.truncated || rows.length < alignment.rows.length,
-    removed: alignment.removed,
-    added: alignment.added,
-    rows,
-    ...alignment.coarse ? { approximate: true } : {},
-  }
-}
-
-/**
  * Answer `GET /diff`.
  * @param deps - the handler's context and caps.
  * @param query - the request's query string.
  * @param signal - caller cancellation.
- * @returns the aligned side-by-side diff.
+ * @returns the change's two sides.
  */
 async function handleDiff(
   deps: GitApiDeps,
@@ -305,61 +240,26 @@ async function handleDiff(
     throw new GitFailure('git/bad-request', `"source" must be one of ${SOURCES.join(', ')}`)
   }
   const rev = source === 'commit' ? readRequired(query, 'rev') : query.get('rev') ?? undefined
-  return await alignChange(deps, repo, {
+  const texts = await readRevisionTexts(deps.ctx, {
+    repoRoot: repo.root,
     path,
     ...origPath === undefined ? {} : { origPath },
     source,
     ...rev === undefined ? {} : { rev },
-  }, signal)
-}
-
-/**
- * Answer `GET /commit-diff`.
- *
- * The whole commit is assembled in one answer so a commit tab is one request
- * rather than one per file. Two caps bound it — files, and the rows every file
- * together may contribute — and either one tripping marks the payload
- * truncated instead of failing, because a partial commit is still useful.
- *
- * @param deps - the handler's context and caps.
- * @param query - the request's query string.
- * @param signal - caller cancellation.
- * @returns the commit and one aligned diff per file.
- */
-async function handleCommitDiff(
-  deps: GitApiDeps,
-  query: URLSearchParams,
-  signal?: AbortSignal,
-): Promise<CommitDiffPayload> {
-  const repo = await requireRepo(deps, query, signal)
-  const rev = readRequired(query, 'rev')
-  const payload = await readCommit(deps.ctx, {
-    repo,
-    rev,
+    maxBytes: deps.config.maxBytes,
     ...signal === undefined ? {} : { signal },
   })
-
-  // A commit's files share one budget of four single-diff caps, so opening a
-  // commit cannot cost a hundred diffs' worth of rows.
-  const rowCap = deps.config.maxLines * 4
-  const files: DiffPayload[] = []
-  let rows = 0
-  let truncated = payload.files.length > deps.config.maxCommitFiles
-  for (const file of payload.files.slice(0, deps.config.maxCommitFiles)) {
-    if (rows >= rowCap) {
-      truncated = true
-      break
-    }
-    const diff = await alignChange(deps, repo, {
-      path: file.path,
-      ...file.origPath === undefined ? {} : { origPath: file.origPath },
-      source: 'commit',
-      rev,
-    }, signal)
-    files.push(diff)
-    rows += diff.rows.length
+  return {
+    path,
+    ...origPath === undefined ? {} : { origPath },
+    source,
+    oldLabel: texts.oldLabel,
+    newLabel: texts.newLabel,
+    binary: texts.binary,
+    truncated: texts.truncated,
+    oldText: texts.oldText,
+    newText: texts.newText,
   }
-  return { commit: payload.commit, files, truncated }
 }
 
 /**
@@ -385,8 +285,6 @@ export async function handleGitApi(
         return { status: 200, body: await handleHistory(deps, request.query, signal) }
       case '/commit':
         return { status: 200, body: await handleCommit(deps, request.query, signal) }
-      case '/commit-diff':
-        return { status: 200, body: await handleCommitDiff(deps, request.query, signal) }
       case '/diff':
         return { status: 200, body: await handleDiff(deps, request.query, signal) }
       default:

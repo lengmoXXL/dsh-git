@@ -1,11 +1,10 @@
 /**
  * The diff, drawn by a code editor rather than by this plugin.
  *
- * The host already aligns the two sides — with the same algorithm the editor's own
- * diff view uses — and hands them over as rows. What is left is drawing them, and
- * that is what an editor is for: its diff view gives the two columns, the inline
- * reading, the folded unchanged regions and the syntax colouring, none of which this
- * plugin should keep a second copy of.
+ * Both sides of the change arrive as text and the editor does the rest: its diff view aligns
+ * them, gives the two columns, the inline reading, the folded unchanged regions, the marks
+ * for what was added, removed and changed, and the syntax colouring. None of that is this
+ * plugin's to keep a second copy of, the diff included.
  *
  * The editor is built in an effect because it needs a real document: the page is also
  * rendered on the server, where the host element exists and nothing may touch it. That
@@ -14,21 +13,25 @@
  * @module dsh-git/client/MonacoDiff
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-// The editor's API and its own contributions, without the entry point that lazily pulls
-// every language: a bundle has no channel for the chunks that entry would need. The
-// grammars this page draws with are registered by `syntax.ts` instead.
-import * as monaco from 'monaco-editor-core/esm/vs/editor/editor.api.js'
-import 'monaco-editor-core/esm/vs/editor/editor.all.js'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
-import type { DiffPayload, DiffSide } from '../shared/wire.ts'
+import type { DiffPayload } from '../shared/wire.ts'
+import { monaco } from './editor.ts'
 import type { GitKey } from './locales.ts'
 import { installSyntax, languageOf } from './syntax.ts'
 import css from './MonacoDiff.module.css'
 
+/** How many lines the editor found on each side of the change. */
+export interface DiffCounts {
+  /** Lines the new side has and the old one does not. */
+  readonly added: number
+  /** Lines the old side has and the new one does not. */
+  readonly removed: number
+}
+
 /** How the reader is reading diffs, which decides what the editor is told. */
 export interface MonacoDiffProps {
-  /** The change, already aligned by the host. */
+  /** The change: both sides, whole. */
   readonly diff: DiffPayload
   /** Two columns, or one. */
   readonly split: boolean
@@ -36,48 +39,55 @@ export interface MonacoDiffProps {
   readonly wrap: boolean
   /** The page's translator, for what the host said about this diff. */
   readonly t: Translate<GitKey>
+  /** Told how much changed, once the editor has read the two sides. */
+  readonly onCounts?: ((counts: DiffCounts) => void) | undefined
 }
 
 /**
- * The two sides of a diff, as the text an editor wants.
+ * How much of a change the editor found, from its own account of the lines.
  *
- * The host aligns the two sides for the wire and the editor aligns them again as it draws
- * them, so each side is built from the lines it has: a line the host padded for the other
- * side is a line this one does not have, and drawing it as an empty one would number every
- * line after it by the padding and put blank rows in the diff that no file contains. A
- * `gap` carries no line at all, which is why it is skipped rather than drawn — what was
- * left out is what the truncated notice over the editor is for.
- * @param diff - the change, aligned by the host.
- * @returns the old side's text and the new side's, each from its own lines.
+ * A change the editor reports as an insertion has no old-side lines and one that it reports
+ * as a deletion has no new-side lines, so each range is counted on the side that has one.
+ * @param changes - the editor's line changes, or null before it has computed any.
+ * @returns the two line counts.
  */
-function sides(diff: DiffPayload): { original: string, modified: string } {
-  const text = (pick: (row: DiffPayload['rows'][number]) => DiffSide | null): string =>
-    diff.rows.flatMap((row) => {
-      const side = pick(row)
-      return side === null ? [] : [side.text]
-    }).join('\n')
-  return { original: text(row => row.left), modified: text(row => row.right) }
+function counted(changes: readonly monaco.editor.ILineChange[] | null): DiffCounts {
+  let added = 0
+  let removed = 0
+  for (const change of changes ?? []) {
+    if (change.modifiedEndLineNumber > 0) {
+      added += change.modifiedEndLineNumber - change.modifiedStartLineNumber + 1
+    }
+    if (change.originalEndLineNumber > 0) {
+      removed += change.originalEndLineNumber - change.originalStartLineNumber + 1
+    }
+  }
+  return { added, removed }
 }
 
 /**
- * Draw one aligned diff in the editor's own diff view.
+ * Draw one change in the editor's own diff view.
  * @param props - see {@link MonacoDiffProps}.
  * @returns the editor's host element, or the notice that stands in for it.
  */
-export function MonacoDiff({ diff, split, wrap, t }: MonacoDiffProps): ReactNode {
+export function MonacoDiff({ diff, split, wrap, t, onCounts }: MonacoDiffProps): ReactNode {
   const host = useRef<HTMLDivElement>(null)
   const editor = useRef<monaco.editor.IStandaloneDiffEditor | null>(null)
+  // The pane is told through the latest callback without the editor being built again when
+  // a caller passes a new one.
+  const report = useRef(onCounts)
+  report.current = onCounts
   const [failure, setFailure] = useState<string | undefined>(undefined)
-  const text = useMemo(() => sides(diff), [diff])
   const language = languageOf(diff.path)
 
   useEffect(() => {
     const element = host.current
     if (element === null) return
     let created: monaco.editor.IStandaloneDiffEditor | undefined
+    let updated: monaco.IDisposable | undefined
     try {
       installSyntax()
-      created = monaco.editor.createDiffEditor(element, {
+      const built = monaco.editor.createDiffEditor(element, {
         readOnly: true,
         originalEditable: false,
         renderSideBySide: split,
@@ -93,22 +103,25 @@ export function MonacoDiff({ diff, split, wrap, t }: MonacoDiffProps): ReactNode
         scrollBeyondLastLine: false,
         renderOverviewRuler: false,
       })
-      created.setModel({
-        original: monaco.editor.createModel(text.original, language),
-        modified: monaco.editor.createModel(text.modified, language),
+      created = built
+      built.setModel({
+        original: monaco.editor.createModel(diff.oldText, language),
+        modified: monaco.editor.createModel(diff.newText, language),
       })
-      editor.current = created
+      updated = built.onDidUpdateDiff(() => { report.current?.(counted(built.getLineChanges())) })
+      editor.current = built
     } catch (error: unknown) {
       setFailure(error instanceof Error ? error.message : String(error))
     }
     return () => {
+      updated?.dispose()
       const models = created?.getModel()
       created?.dispose()
       models?.original.dispose()
       models?.modified.dispose()
       editor.current = null
     }
-  }, [text, language])
+  }, [diff, language])
 
   // The reader's two switches are options of the editor that is already up: rebuilding it
   // for a toggle threw away where the reader had scrolled, and a fresh editor measures its
@@ -117,12 +130,10 @@ export function MonacoDiff({ diff, split, wrap, t }: MonacoDiffProps): ReactNode
     editor.current?.updateOptions({ renderSideBySide: split, wordWrap: wrap ? 'on' : 'off' })
   }, [split, wrap])
 
-  // Three independent things the host can say about what it sent, and a reader shown
-  // one of them still needs the others: no text, an approximate pairing, a diff that
-  // stops short.
+  // Two independent things the host can say about what it sent, and a reader shown one of
+  // them still needs the other: no text, a side that stops short.
   const notices = [
     diff.binary ? t('diff.binary') : undefined,
-    diff.approximate === true ? t('diff.approximate') : undefined,
     diff.truncated ? t('diff.truncated') : undefined,
   ].filter((notice): notice is string => notice !== undefined)
 

@@ -54,8 +54,7 @@ export const zh = {
   'commit.empty': '这个提交没有改动文件',
 
   'diff.binary': '二进制文件，不显示文本 diff',
-  'diff.truncated': 'diff 不完整（已达到行数或大小上限）',
-  'diff.approximate': '对齐超出时间预算，配对为近似结果',
+  'diff.truncated': 'diff 不完整（已达到大小上限）',
   'diff.openFile': '在内置的文件窗口中打开这个文件',
   'diff.inlineView': '切换到内联视图（单栏）',
   'diff.splitView': '切换到两栏视图',
@@ -124,8 +123,7 @@ export const en = {
   'commit.empty': 'This commit changes no files',
 
   'diff.binary': 'Binary file — no text diff',
-  'diff.truncated': 'The diff is incomplete (line or size cap reached)',
-  'diff.approximate': 'the diff computer hit its time budget; the pairing is approximate',
+  'diff.truncated': 'The diff is incomplete (size cap reached)',
   'diff.openFile': 'Open this file in the built-in file view',
   'diff.inlineView': 'Switch to inline view (one column)',
   'diff.splitView': 'Switch to side-by-side view',

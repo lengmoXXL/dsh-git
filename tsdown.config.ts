@@ -108,29 +108,6 @@ function buildStamp() {
   }
 }
 
-/** The editor API the whole bundle shares, as the path this build resolves it to. */
-const EDITOR_API = resolvePath(import.meta.dirname, 'node_modules/monaco-editor-core/esm/vs/editor/editor.api.js')
-
-/**
- * Let the grammars meet the editor they are registered on.
- *
- * The editor this page builds is the core package's, whose entry leaves the languages out,
- * and the grammars are the full package's. A grammar reaches its API by a relative path
- * into its own package, so that import is answered with the core copy: with two editors in
- * the bundle the grammars would register on an API the models drawn by the other one have
- * never heard of, and every diff would come out plain.
- */
-function oneEditorApi() {
-  return {
-    name: 'dsh-git-one-editor-api',
-    resolveId(source: string, importer: string | undefined): string | null {
-      if (importer === undefined || !source.endsWith('/editor/editor.api.js')) return null
-      const from = resolvePath(dirname(importer), source)
-      return from.includes('/node_modules/monaco-editor/esm/') ? EDITOR_API : null
-    },
-  }
-}
-
 /** Compile every stylesheet import into an injecting module. */
 function cssModulesInline() {
   return {
@@ -205,11 +182,11 @@ const client = defineConfig({
   external: [/^react($|\/)/, /^@deepseek-ai\//],
   // A dependency is not bundled by default, and the editor and its grammars must be: the
   // shell's module table has no entry for either, so a `require` left in the artifact is a
-  // page that cannot load.
-  // Their own modules import each other by subpath, so the whole prefix has to match: one
-  // entry for the exact id leaves `monaco-editor-core/esm/...` outside the bundle.
+  // page that cannot load. The editor's own modules import each other by subpath, so the
+  // whole prefix has to match: one entry for the exact id leaves `monaco-editor/editor/...`
+  // outside the bundle.
   deps: { alwaysBundle: [/^monaco-editor/] },
-  plugins: [oneEditorApi(), cssModulesInline(), buildStamp()],
+  plugins: [cssModulesInline(), buildStamp()],
   outputOptions: {
     banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify(ID)}, factory: (require) => {\nvar module = { exports: {} }; var exports = module.exports;`,
     footer: 'return module.exports; } });',

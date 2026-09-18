@@ -40,12 +40,9 @@ const SESSION = 'session-1'
 
 /** The deployment's caps for this suite. */
 const CONFIG: GitApiConfig = {
-  maxLines: 4000,
   maxBytes: 2 * 1024 * 1024,
   historyLimit: 50,
   maxEntries: 2000,
-  maxCommitFiles: 100,
-  maxDiffMs: 2000,
 }
 
 /** The repository this suite builds and reads. */
@@ -218,40 +215,6 @@ test('commit lists the files one commit changed', async () => {
   )
 })
 
-test('commit-diff aligns every file of one commit in a single answer', async () => {
-  const history = await body<{ commits: readonly { sha: string; subject: string }[] }>(
-    `/history?sessionId=${SESSION}`,
-  )
-  const first = history.commits.find(commit => commit.subject === 'initial commit')
-  assert.ok(first !== undefined)
-
-  const payload = await body<{
-    commit: { subject: string }
-    files: readonly DiffPayload[]
-    truncated: boolean
-  }>(`/commit-diff?sessionId=${SESSION}&rev=${first.sha}`)
-
-  assert.equal(payload.commit.subject, 'initial commit')
-  assert.equal(payload.truncated, false)
-  // The initial commit adds four files, so each is one all-insert diff.
-  assert.deepEqual(
-    payload.files.map(file => file.path).sort(),
-    ['deleted.txt', 'modified.txt', 'renamed-old.txt', 'staged.txt'],
-  )
-  // Every file is new in that commit, so each diff is nothing but insertions,
-  // and the counts are the files' own lengths.
-  const addedByPath = new Map(payload.files.map(file => [file.path, file.added]))
-  assert.deepEqual(
-    [...addedByPath].sort(),
-    [['deleted.txt', 1], ['modified.txt', 3], ['renamed-old.txt', 1], ['staged.txt', 2]],
-  )
-  for (const file of payload.files) {
-    assert.equal(file.source, 'commit')
-    assert.equal(file.removed, 0)
-    assert.equal(file.rows.every(row => row.kind === 'insert'), true)
-  }
-})
-
 test('a commit with no changes lists no files', async () => {
   const history = await body<{ commits: readonly { sha: string; subject: string }[] }>(
     `/history?sessionId=${SESSION}`,
@@ -268,33 +231,22 @@ test('an unknown revision is refused as not found', async () => {
   assert.equal((answer.body as { code: string }).code, 'git/unknown-revision')
 })
 
-test('an unstaged diff aligns the index against the working tree', async () => {
+test('an unstaged diff reads the index against the working tree', async () => {
   const diff = await body<DiffPayload>(`/diff?sessionId=${SESSION}&path=modified.txt&source=worktree`)
   assert.equal(diff.oldLabel, 'index')
   assert.equal(diff.newLabel, 'working tree')
   assert.equal(diff.binary, false)
   assert.equal(diff.truncated, false)
-  assert.equal(diff.added, 2)
-  assert.equal(diff.removed, 1)
-
-  const replaced = diff.rows.find(row => row.kind === 'replace')
-  assert.deepEqual(replaced, {
-    kind: 'replace',
-    left: { no: 2, text: 'two' },
-    right: { no: 2, text: 'TWO' },
-  })
-  const inserted = diff.rows.find(row => row.kind === 'insert')
-  assert.deepEqual(inserted?.right, { no: 4, text: 'four' })
-  assert.equal(inserted?.left, null)
+  assert.equal(diff.oldText, 'one\ntwo\nthree\n')
+  assert.equal(diff.newText, 'one\nTWO\nthree\nfour\n')
 })
 
-test('a staged diff aligns HEAD against the index', async () => {
+test('a staged diff reads HEAD against the index', async () => {
   const diff = await body<DiffPayload>(`/diff?sessionId=${SESSION}&path=staged.txt&source=index`)
   assert.equal(diff.oldLabel, 'HEAD')
   assert.equal(diff.newLabel, 'index')
-  assert.equal(diff.added, 1)
-  assert.equal(diff.removed, 1)
-  assert.deepEqual(diff.rows.find(row => row.kind === 'replace')?.right, { no: 2, text: 'gamma' })
+  assert.equal(diff.oldText, 'alpha\nbeta\n')
+  assert.equal(diff.newText, 'alpha\ngamma\n')
 })
 
 test('a staged rename diffs the old path against the new one', async () => {
@@ -304,26 +256,23 @@ test('a staged rename diffs the old path against the new one', async () => {
   assert.equal(diff.origPath, 'renamed-old.txt')
   assert.equal(diff.binary, false)
   // Identical content: a rename with no edit is not a change of text.
-  assert.equal(diff.added, 0)
-  assert.equal(diff.removed, 0)
-  assert.equal(diff.rows.every(row => row.kind === 'context'), true)
+  assert.equal(diff.oldText, diff.newText)
+  assert.equal(diff.oldText, 'moved content\n')
 })
 
 test('a deleted file diffs against an empty new side', async () => {
   const diff = await body<DiffPayload>(`/diff?sessionId=${SESSION}&path=deleted.txt&source=worktree`)
-  assert.equal(diff.removed, 1)
-  assert.equal(diff.added, 0)
-  assert.equal(diff.rows.every(row => row.kind === 'delete'), true)
+  assert.equal(diff.oldText, 'gone\n')
+  assert.equal(diff.newText, '')
 })
 
 test('an untracked file diffs against an empty old side', async () => {
   const diff = await body<DiffPayload>(`/diff?sessionId=${SESSION}&path=untracked.txt&source=worktree`)
-  assert.equal(diff.added, 1)
-  assert.equal(diff.removed, 0)
-  assert.equal(diff.rows.every(row => row.kind === 'insert'), true)
+  assert.equal(diff.oldText, '')
+  assert.equal(diff.newText, 'brand new\n')
 })
 
-test('a commit diff aligns the commit against its first parent', async () => {
+test('a commit diff reads the commit against its first parent', async () => {
   const history = await body<{ commits: readonly { sha: string; subject: string }[] }>(
     `/history?sessionId=${SESSION}`,
   )
@@ -332,13 +281,15 @@ test('a commit diff aligns the commit against its first parent', async () => {
   const diff = await body<DiffPayload>(
     `/diff?sessionId=${SESSION}&path=second.txt&source=commit&rev=${first.sha}`,
   )
-  assert.equal(diff.removed, 0)
+  // That commit predates the file, so neither side of the change exists.
+  assert.equal(diff.oldText, '')
+  assert.equal(diff.newText, '')
 })
 
 test('a binary file is reported instead of diffed', async () => {
   const diff = await body<DiffPayload>(`/diff?sessionId=${SESSION}&path=binary.bin&source=index`)
   assert.equal(diff.binary, true)
-  assert.deepEqual(diff.rows, [])
+  assert.equal(diff.oldText, '')
 })
 
 test('a path outside the repository is refused', async () => {

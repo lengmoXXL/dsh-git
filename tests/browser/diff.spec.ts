@@ -56,34 +56,6 @@ interface Colours {
   readonly distinct: number
 }
 
-/** Forty frames of the editor's box, and the pane's own width and overflow. */
-function settle(page: Page): Promise<Settled> {
-  return page.evaluate(
-    () => (globalThis as unknown as { __probe: { settle: () => Promise<Settled> } }).__probe.settle(),
-  )
-}
-
-/** The colours the editor painted the fixture's own line with. */
-function colours(page: Page): Promise<Colours> {
-  return page.evaluate(
-    () => (globalThis as unknown as { __probe: { colours: () => Colours } }).__probe.colours(),
-  )
-}
-
-/** Remember the editor that is on screen now. */
-function markEditor(page: Page): Promise<void> {
-  return page.evaluate(
-    () => { (globalThis as unknown as { __probe: { markEditor: () => void } }).__probe.markEditor() },
-  )
-}
-
-/** Whether the editor on screen is the one the last mark saw. */
-function editorIsMarked(page: Page): Promise<string> {
-  return page.evaluate(
-    () => (globalThis as unknown as { __probe: { editorIsMarked: () => string } }).__probe.editorIsMarked(),
-  )
-}
-
 /** How the editor painted what a file gained, lost, and changed. */
 interface Marks {
   readonly addedLine: string | undefined
@@ -92,23 +64,33 @@ interface Marks {
   readonly removedText: string | undefined
 }
 
-/** The colours the editor marked the change with. */
-function marks(page: Page): Promise<Marks> {
-  return page.evaluate(
-    () => (globalThis as unknown as { __probe: { marks: () => Marks } }).__probe.marks(),
-  )
+/** Every question the page can answer, and what each answers with. */
+interface Probes {
+  /** Forty frames of the editor's box, and the pane's own width and overflow. */
+  readonly settle: () => Promise<Settled>
+  /** The colours the editor painted the fixture's own line with. */
+  readonly colours: () => Colours
+  /** The colours the editor marked the change with. */
+  readonly marks: () => Marks
+  /** Which number the gutter gave the changed line on each side, as text and number. */
+  readonly numbering: () => readonly string[]
+  /** Remember the editor that is on screen now. */
+  readonly markEditor: () => void
+  /** Whether the editor on screen is the one the last mark saw. */
+  readonly editorIsMarked: () => 'same' | 'replaced' | 'no editor'
 }
 
-/** Whether a colour is one a reader would see: absent or transparent both mean unpainted. */
+/** Ask the page one of its probes; a page can only be reached through `globalThis`. */
+function probe<K extends keyof Probes>(page: Page, name: K): Promise<Awaited<ReturnType<Probes[K]>>> {
+  return page.evaluate(
+    (which: string) => (globalThis as unknown as { __probe: Record<string, () => unknown> }).__probe[which]!(),
+    name,
+  ) as Promise<Awaited<ReturnType<Probes[K]>>>
+}
+
+/** Whether a colour is one a reader would see: an overlay with no colour computes to none. */
 function painted(colour: string | undefined): boolean {
-  return colour !== undefined && colour !== 'rgba(0, 0, 0, 0)' && colour !== 'transparent'
-}
-
-/** Which number the gutter gave the changed line on each side, as `text@number`. */
-function numbering(page: Page): Promise<readonly string[]> {
-  return page.evaluate(
-    () => (globalThis as unknown as { __probe: { numbering: () => string[] } }).__probe.numbering(),
-  )
+  return colour !== undefined && colour !== 'rgba(0, 0, 0, 0)'
 }
 
 test('draws a diff in the editor, in either reading', async ({ page }) => {
@@ -123,11 +105,11 @@ test('draws a diff in the editor, in either reading', async ({ page }) => {
   // The same diff in one column: the editor says which reading it is in, which is what
   // the page's switch asks it for — and it is the editor that is already up that is told
   // so, rather than a new one built in its place, which would lose the reading position.
-  await markEditor(page)
+  await probe(page, 'markEditor')
   await render(page, { split: false })
   await expect(page.locator('[data-reading="inline"]')).toBeVisible({ timeout: 10_000 })
   await expect(page.locator('.monaco-diff-editor')).toBeVisible()
-  expect(await editorIsMarked(page), 'the switch did not build a new editor').toBe('same')
+  expect(await probe(page, 'editorIsMarked'), 'the switch did not build a new editor').toBe('same')
 
   expect(errors, 'the page logged errors').toEqual([])
 })
@@ -137,11 +119,11 @@ test('paints the tokens in the palette the page named', async ({ page }) => {
   await expect(page.locator('.monaco-diff-editor')).toBeVisible({ timeout: 20_000 })
   // The lines are drawn a frame after the box they sit in, so the colour is polled until
   // it is there: the assertion is about the palette, not about which frame it was read on.
-  await expect.poll(async () => (await colours(page)).keyword).toBe('rgb(250, 162, 193)')
-  const painted = await colours(page)
+  await expect.poll(async () => (await probe(page, 'colours')).keyword).toBe('rgb(250, 162, 193)')
+  const line = await probe(page, 'colours')
   // An identifier is not a token any palette names, so it keeps the theme's default.
-  expect(painted.identifier, 'an identifier keeps the default colour').toBe('rgb(212, 212, 212)')
-  expect(painted.distinct, 'the line is more than one colour').toBeGreaterThan(1)
+  expect(line.identifier, 'an identifier keeps the default colour').toBe('rgb(212, 212, 212)')
+  expect(line.distinct, 'the line is more than one colour').toBeGreaterThan(1)
 })
 
 test('marks the lines a file gained and lost', async ({ page }) => {
@@ -149,8 +131,8 @@ test('marks the lines a file gained and lost', async ({ page }) => {
   await expect(page.locator('.monaco-diff-editor')).toBeVisible({ timeout: 20_000 })
   // The overlays are drawn a frame after the box they sit in, so the colour is polled
   // until it is there: the assertion is about the paint, not about the frame.
-  await expect.poll(async () => painted((await marks(page)).addedLine)).toBe(true)
-  const marked = await marks(page)
+  await expect.poll(async () => painted((await probe(page, 'marks')).addedLine)).toBe(true)
+  const marked = await probe(page, 'marks')
   // The colours come from a stylesheet in the editor's own package — the one that says an
   // added line is green and a removed one is red, and that the text which changed inside a
   // line is marked too. Without it every overlay is in the document and none is painted,
@@ -169,11 +151,11 @@ test('marks the lines a file gained and lost', async ({ page }) => {
 test('numbers each side by the file it came from', async ({ page }) => {
   await page.goto('/index.html')
   await expect(page.locator('.monaco-diff-editor')).toBeVisible({ timeout: 20_000 })
-  await expect.poll(async () => (await numbering(page)).length).toBe(2)
+  await expect.poll(async () => (await probe(page, 'numbering')).length).toBe(2)
   // The fixture's third line is a change, and the line before it is an addition the old
   // side does not have: a side padded with the other's lines counts it, and the reader is
   // sent to the wrong line of the file.
-  expect(await numbering(page), 'the line is numbered by its own file').toEqual([
+  expect(await probe(page, 'numbering'), 'the line is numbered by its own file').toEqual([
     'const answer = 41@3',
     'const answer = 42@3',
   ])
@@ -187,7 +169,7 @@ test('holds its box while it settles, however narrow the pane', async ({ page })
   // width the page has left, not a width of its own that overflows the page holding it.
   await render(page, { width: 360 })
   await expect(page.locator('.monaco-diff-editor')).toBeVisible()
-  const settled = await settle(page)
+  const settled = await probe(page, 'settle')
   // An editor that sizes itself to a scroller trades the scrollbar's few pixels with the
   // box it is given for as long as it is open, which is what the reader sees as a shake.
   expect(settled.sizes, 'the editor was laid out once').toHaveLength(1)

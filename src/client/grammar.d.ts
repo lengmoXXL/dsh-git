@@ -6,7 +6,7 @@
  * directory onto this file instead of the pair being stated once per language.
  */
 
-import type * as monaco from 'monaco-editor-core/esm/vs/editor/editor.api.js'
+import type * as monaco from 'monaco-editor/editor/editor.api.js'
 
 /** The language's configuration: comments, brackets, the pairs that surround a word. */
 export const conf: monaco.languages.LanguageConfiguration

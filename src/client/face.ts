@@ -70,9 +70,8 @@ export interface GitFace {
   history(sessionId: string, signal: AbortSignal, skip?: number): Promise<HistoryPayload>
   /** Read one commit and its files. */
   commit(sessionId: string, rev: string, signal: AbortSignal): Promise<CommitPayload>
-  /** Read one change's aligned sides. */
+  /** Read one change's two sides. */
   diff(request: DiffRequest, signal: AbortSignal): Promise<DiffPayload>
-  /** Read one commit's whole change set, already aligned. */
 }
 
 /**

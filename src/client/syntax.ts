@@ -16,7 +16,7 @@
  * @module dsh-git/client/syntax
  */
 
-import * as monaco from 'monaco-editor-core/esm/vs/editor/editor.api.js'
+import { monaco } from './editor.ts'
 import * as typescript from 'monaco-editor/languages/definitions/typescript/typescript.js'
 import * as javascript from 'monaco-editor/languages/definitions/javascript/javascript.js'
 import * as shell from 'monaco-editor/languages/definitions/shell/shell.js'

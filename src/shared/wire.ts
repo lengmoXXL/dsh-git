@@ -120,33 +120,6 @@ export interface CommitPayload {
   readonly files: readonly CommitFile[]
 }
 
-/** One side of one rendered diff row: its 1-based line number and its text. */
-export interface DiffSide {
-  readonly no: number
-  readonly text: string
-}
-
-/**
- * How one aligned row relates the two sides. `gap` is not a pair of lines at
- * all: it stands where rows were left out, and carries how many.
- */
-export type DiffRowKind = 'context' | 'delete' | 'insert' | 'replace' | 'gap'
-
-/**
- * One aligned row of a side-by-side diff. `left` is the old side and `right`
- * the new; a null side is drawn as empty space so the two columns stay in
- * step.
- */
-export interface DiffRow {
-  readonly kind: DiffRowKind
-  readonly left: DiffSide | null
-  readonly right: DiffSide | null
-  /** For a `gap`: how many old-side lines were left out here. */
-  readonly skippedLeft?: number
-  /** For a `gap`: how many new-side lines were left out here. */
-  readonly skippedRight?: number
-}
-
 /** `GET /dsh-git/diff` */
 export interface DiffPayload {
   /** The new-side path. */
@@ -159,21 +132,14 @@ export interface DiffPayload {
   readonly oldLabel: string
   /** Human-readable name of the new side, e.g. `working tree`. */
   readonly newLabel: string
-  /** A side is binary, so no rows are returned. */
+  /** A side is binary, so neither side's text is returned. */
   readonly binary: boolean
-  /** A side was cut at its byte or line cap, so rows are incomplete. */
+  /** A side was cut at its byte cap, so its text is incomplete. */
   readonly truncated: boolean
-  /** Old-side lines the change removes. */
-  readonly removed: number
-  /** New-side lines the change adds. */
-  readonly added: number
-  /** Aligned rows, in file order. */
-  readonly rows: readonly DiffRow[]
-  /**
-   * The diff computer hit its time budget, so the pairing is an approximation.
-   * Absent means the alignment is exact.
-   */
-  readonly approximate?: boolean
+  /** The old side, whole: the diff is the editor's to compute and to draw. */
+  readonly oldText: string
+  /** The new side, whole. */
+  readonly newText: string
 }
 
 /** Every failure body this API answers with. */
@@ -182,15 +148,5 @@ export interface ErrorPayload {
   readonly code: string
   /** Operator-readable description, already localized by the host. */
   readonly message: string
-}
-
-/** `GET /dsh-git/commit-diff` — every file of one commit, already aligned. */
-export interface CommitDiffPayload {
-  /** The commit these diffs belong to. */
-  readonly commit: CommitSummary
-  /** One aligned diff per changed file, in git's own order. */
-  readonly files: readonly DiffPayload[]
-  /** The file or row cap stopped the walk, so files are missing. */
-  readonly truncated: boolean
 }
 

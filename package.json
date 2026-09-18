@@ -109,9 +109,7 @@
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "^3.18.2",
-    "monaco-editor": "^0.56.0",
-    "monaco-editor-core": "^0.56.0",
-    "vscode-diff": "^3.0.1"
+    "monaco-editor": "^0.56.0"
   },
   "overrides": {
     "@deepseek-ai/dsh-api-session-controller": "0.1.5-rc.1",
