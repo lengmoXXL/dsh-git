@@ -379,14 +379,17 @@
   /* The VS Code diff shape: an unchanged run is a centred band — three dots, then
      how much is behind them — and once open, a thin band with an up arrow sits at
      the top of the run so it can be folded again. */
-  .grid .held {
-    grid-column: 1 / -1; background: var(--banner); color: var(--text-dim);
-    text-align: center; cursor: pointer; user-select: none;
+  /* A folded run, and the band that opens one, are marks in the line-number column
+     rather than rows of their own: the two runs they separate stay adjacent. A gap
+     row is different — it holds a row open for a side that has no line — so only
+     these two take no height. */
+  .held.band, .held.collapse { position: relative; height: 0; }
+  .held .glyph {
+    position: absolute; left: 0; width: var(--dsh-git-diff-gutter);
+    text-align: left; color: var(--text-faint); cursor: pointer; user-select: none;
   }
-  .grid .held:hover { color: var(--text); background: var(--hover); }
-  .held .glyph { color: var(--text-faint); padding-right: 6px; letter-spacing: 2px; }
-  .held.collapse { line-height: 12px; }
-  .held.collapse .glyph { padding: 0; }
+  .held.band .glyph { top: calc(-1 * var(--dsh-git-diff-row)); }
+  .held.collapse .glyph { top: 0; line-height: 12px; }
   .del { background: var(--del); }
   .add { background: var(--add); }
   .blank { background: var(--blank); }
@@ -668,7 +671,7 @@ const langOf = (path) => (path.endsWith('.css') ? 'css' : path.endsWith('.md') |
 
 /* ── the diff, drawn the way the plugin draws it ─────────────────────── */
 const foldBand = (row, at) =>
-  `<div class="held" data-fold="${at}" title="展开这 ${row[1]} 行未改动"><span class="glyph">⋯</span>${row[1]} 行未改动</div>`
+  `<div class="held band" data-fold="${at}" title="展开这 ${row[1]} 行未改动"><span class="glyph">⋯</span></div>`
 const collapseBand = (at) =>
   `<div class="held collapse" data-fold="${at}" title="收起这一段"><span class="glyph">↑</span></div>`
 
