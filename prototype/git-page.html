@@ -424,6 +424,18 @@
   .tok-comment { color: var(--shiki-token-comment); font-style: italic; }
   .tok-number { color: var(--shiki-token-constant); }
   .tok-type { color: var(--shiki-token-function); }
+
+  /* An unwrapped lane's mark takes the shape the wrapped grid gives it: no row of its
+     own, and the glyph over the number column of the line it interrupts. The numbers
+     are 22px rows and pinned, so the mark is pinned too and sits above them. */
+  .lane-held { position: sticky; left: 0; height: 0; }
+  .lane-held .glyph {
+    position: absolute; left: 0; width: 48px; box-sizing: border-box;
+    text-align: right; padding-right: 12px; background: var(--band, var(--surface));
+    top: -22px; z-index: 2;
+  }
+  .lane-held.collapse .glyph { top: 0; }
+
 </style>
 </head>
 <body>
