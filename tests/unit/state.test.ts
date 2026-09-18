@@ -13,6 +13,7 @@ import { GitRequestError } from '../../src/client/face.ts'
 import {
   collapseRows,
   clampRailWidth,
+  DIFF_MIN_WIDTH,
   failureInfoOf,
   fileAddress,
   placePane,
@@ -81,17 +82,16 @@ test('does not fold when a run is exactly at the limit', () => {
   assert.equal(collapseRows(rows, 6).every(item => item.kind === 'diff'), true)
 })
 
-test('keeps the list between a sliver and a share of the page', () => {
+test('keeps both blocks at their floor and neither at a ceiling', () => {
   assert.equal(clampRailWidth(336, 1440), 336)
-  // Nothing narrower than the minimum, however hard the pointer is pulled.
+  // Nothing narrower than the list's floor, however hard the pointer is pulled.
   assert.equal(clampRailWidth(40, 1440), RAIL_MIN_WIDTH)
-  // On a wide page the absolute maximum binds first…
-  assert.equal(clampRailWidth(2000, 1440), 760)
-  // …and on a narrower one the diff's reserve binds before that.
-  assert.equal(clampRailWidth(2000, 800), 380)
+  // No ceiling: the list may have all of the pane but the diff's floor.
+  assert.equal(clampRailWidth(2000, 1440), 1440 - DIFF_MIN_WIDTH)
+  assert.equal(clampRailWidth(2000, 800), 800 - DIFF_MIN_WIDTH)
 })
 
-test('gives up the reserve rather than the minimum on a narrow window', () => {
+test('gives the diff floor up rather than the list floor on a narrow pane', () => {
   assert.equal(clampRailWidth(500, 500), RAIL_MIN_WIDTH)
   assert.equal(clampRailWidth(500, 300), RAIL_MIN_WIDTH)
 })

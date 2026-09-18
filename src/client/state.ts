@@ -193,25 +193,24 @@ function unqualified(name: string, prefix: string): string {
 }
 
 /**
- * How narrow and how wide the list may be dragged.
+ * The least the list may be, and the least the diffs may be.
  *
- * The list may be a sliver or a generous column, but a diff needs room to be a
- * diff: the width stops short of eating the page. On a window too narrow for both,
- * the minimum wins rather than the reserve — a list nobody can read is worse than
- * a diff that is cramped.
+ * There is no upper limit on the list: the reader may give it the whole pane if that
+ * is how they read, and the only thing standing in the way is the room a diff needs
+ * to be a diff. Both blocks have a floor, neither has a ceiling, and on a pane too
+ * narrow for both floors the list's wins — a diff can scroll, a list cannot.
  */
 export const RAIL_MIN_WIDTH = 220
-const RAIL_MAX_WIDTH = 760
-const DIFF_RESERVE = 420
+export const DIFF_MIN_WIDTH = 420
 
 /**
- * The width the list may take, given the window it sits in.
+ * The width the list may take, given the pane it shares.
  * @param width - the width asked for, in pixels.
- * @param windowWidth - the width of the window, in pixels.
+ * @param paneWidth - the width of the pane both blocks sit in, in pixels.
  * @returns the width to use, in whole pixels.
  */
-export function clampRailWidth(width: number, windowWidth: number): number {
-  const widest = Math.min(RAIL_MAX_WIDTH, Math.max(RAIL_MIN_WIDTH, windowWidth - DIFF_RESERVE))
+export function clampRailWidth(width: number, paneWidth: number): number {
+  const widest = Math.max(RAIL_MIN_WIDTH, paneWidth - DIFF_MIN_WIDTH)
   return Math.max(RAIL_MIN_WIDTH, Math.min(widest, Math.round(width)))
 }
 

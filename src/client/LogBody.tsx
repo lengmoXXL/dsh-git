@@ -314,9 +314,11 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
       const from = grab.current
       if (from === undefined) return
       const travel = event.clientX - from.x
+      // The pane both blocks share, not the window: a sidebar is a fraction of the
+      // window, and a limit taken from the window let the list grow past the pane.
       dragWidth.current = clampRailWidth(
         listOnRight ? from.width - travel : from.width + travel,
-        window.innerWidth,
+        grip.current?.parentElement?.clientWidth ?? window.innerWidth,
       )
       setDragging(dragWidth.current)
     }

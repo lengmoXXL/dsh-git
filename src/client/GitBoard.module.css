@@ -6,7 +6,9 @@
 .board {
   flex: 1;
   display: flex;
-  min-width: 0;
+  /* A floor, no ceiling: the list beside it may take what it likes, but a diff needs
+     this much to stay a diff. */
+  min-width: 420px;
   min-height: 0;
   background: var(--dsw-alias-bg-base);
 }
