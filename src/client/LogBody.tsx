@@ -19,7 +19,6 @@ import {
   type ReactNode,
 } from 'react'
 import {
-  Button,
   IconBranchOutline16,
   IconRefreshOutline16,
 } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -454,26 +453,24 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
         >
           {settings.wrap ? <WrapGlyph /> : <ClipGlyph />}
         </button>
-        <Button
+        <button
           className={css.control}
-          variant="ghost"
-          size="sm"
-          icon={<IconRefreshOutline16 />}
           title={t('panel.refresh')}
           aria-label={t('panel.refresh')}
           onClick={refresh}
-        />
+        >
+          <IconRefreshOutline16 />
+        </button>
         {openings.size > 0 && (
-          <Button
+          <button
             type="button"
             className={css.control}
-            variant="ghost"
-            size="sm"
-            icon={<FoldAllGlyph />}
             title={t('fold.reset')}
             aria-label={t('fold.reset')}
             onClick={foldEveryOpening}
-          />
+          >
+            <FoldAllGlyph />
+          </button>
         )}
       </header>
       <div className={css.body} data-side={rail.side}>
