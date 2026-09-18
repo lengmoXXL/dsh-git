@@ -20,6 +20,29 @@ export function SplitLayoutGlyph(): ReactNode {
   )
 }
 
+/**
+ * Whether long lines wrap inside their half or run on, read by scrolling.
+ * @returns the glyph for lines that turn.
+ */
+export function WrapGlyph(): ReactNode {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.1" aria-hidden="true">
+      <path d="M2.5 3.5h11M2.5 7.5h8a2 2 0 0 1 0 4H8" strokeLinecap="round" />
+      <path d="M9.5 10l-1.5 1.5L9.5 13" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2.5 13h3" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+/** The same button, for lines that keep their length. */
+export function ClipGlyph(): ReactNode {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.1" aria-hidden="true">
+      <path d="M2.5 3.5h4M8.5 3.5h5M2.5 8h11M2.5 12.5h4M8.5 12.5h5" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 /** The same button, for the one-column reading. */
 export function InlineLayoutGlyph(): ReactNode {
   return (

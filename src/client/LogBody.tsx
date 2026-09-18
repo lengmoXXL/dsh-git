@@ -36,10 +36,9 @@ import { ChangeList } from './ChangeList.tsx'
 import { FailureBlock, Note } from './Feedback.tsx'
 import { GitBoard } from './GitBoard.tsx'
 import { gitFace, type DiffRequest } from './face.ts'
-import { InlineLayoutGlyph, OpenFileGlyph, SplitLayoutGlyph } from './glyphs.tsx'
+import { ClipGlyph, InlineLayoutGlyph, OpenFileGlyph, SplitLayoutGlyph, WrapGlyph } from './glyphs.tsx'
 import { HistoryList } from './HistoryList.tsx'
 import { logCache } from './log-cache.ts'
-import { cx } from './format.ts'
 import type { GitKey, GitNamespace } from './locales.ts'
 import {
   diffViewSettings,
@@ -437,35 +436,25 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
         >
           {settings.mode === 'inline' ? <InlineLayoutGlyph /> : <SplitLayoutGlyph />}
         </button>
-        <span className={css.switch}>
-          <button
-            type="button"
-            className={cx(css.option, settings.wrap && css.optionOn)}
-            aria-pressed={settings.wrap}
-            aria-label={t('diff.wrapView')}
-            onClick={() => { setDiffWrap(true) }}
-          >
-            {t('diff.wrap')}
-          </button>
-          <button
-            type="button"
-            className={cx(css.option, !settings.wrap && css.optionOn)}
-            aria-pressed={!settings.wrap}
-            aria-label={t('diff.clipView')}
-            onClick={() => { setDiffWrap(false) }}
-          >
-            {t('diff.clip')}
-          </button>
-        </span>
+        <button
+          type="button"
+          className={css.control}
+          title={settings.wrap ? t('diff.clipView') : t('diff.wrapView')}
+          aria-label={settings.wrap ? t('diff.clipView') : t('diff.wrapView')}
+          aria-pressed={!settings.wrap}
+          onClick={() => { setDiffWrap(!settings.wrap) }}
+        >
+          {settings.wrap ? <WrapGlyph /> : <ClipGlyph />}
+        </button>
         <Button
-          className={css.refresh}
+          className={css.control}
           variant="ghost"
           size="sm"
           icon={<IconRefreshOutline16 />}
+          title={t('panel.refresh')}
+          aria-label={t('panel.refresh')}
           onClick={refresh}
-        >
-          {t('panel.refresh')}
-        </Button>
+        />
       </header>
       <div className={css.body} data-side={rail.side}>
         {/* The list stays mounted when it is put away, so the reader's place in it
