@@ -257,7 +257,10 @@
      here rather than adjusted piecemeal. Over the number, not beside it, and the
      pane's surface behind it — which is what a folded run's context lines paint. */
   box-sizing: border-box;
-  width: var(--dsh-git-diff-gutter);
+  /* The gutter's own width, with its value written in as well: this element sits
+     outside the block that declares the geometry, so the variable alone left the
+     width unresolved and the control spanned the row. */
+  width: var(--dsh-git-diff-gutter, 48px);
   height: var(--dsh-git-diff-row);
   padding: 0 14px 0 0;
   text-align: right;
