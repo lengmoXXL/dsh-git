@@ -214,6 +214,18 @@ test('reads a change in one column, where a replacement becomes its two lines', 
   ])
 })
 
+test('marks the row a fold stands over, and only that row', () => {
+  const rows = [...Array.from({ length: 30 }, (_, i) => contextRow(i + 1)), contextRow(31),
+    ...Array.from({ length: 30 }, (_, i) => contextRow(i + 32))]
+  const folded = collapseRows(rows, undefined, new Set())
+  const band = folded.findIndex(row => row.kind === 'fold')
+  assert.ok(band > 0, 'a long unchanged run folds')
+  // The mark is drawn in the number column of the row above it, and of no other row.
+  assert.deepEqual(folded.map(row => row.kind === 'diff' && row.covered === true), [
+    ...Array.from({ length: band - 1 }, () => false), true, false, false, false, false,
+  ])
+})
+
 test('keeps a fold where the reader closed it', () => {
   const rows = Array.from({ length: 20 }, (_unused, index) => contextRow(index + 1))
   const lines = inlineDisplayLines(collapseRows(rows, 6))

@@ -422,7 +422,13 @@ const CONTEXT_RUN_LIMIT = 6
 
 /** One drawn line of the diff body. */
 export type DisplayRow =
-  | { readonly kind: 'diff'; readonly key: string; readonly row: DiffRow }
+  | {
+    readonly kind: 'diff'
+    readonly key: string
+    readonly row: DiffRow
+    /** A fold stands over this row, in its number column, so its number is not drawn. */
+    readonly covered?: boolean
+  }
   | { readonly kind: 'fold'; readonly key: string; readonly hidden: number }
   /** The top of a run the reader opened: the band that folds it back. */
   | { readonly kind: 'collapse'; readonly key: string }
@@ -478,6 +484,10 @@ export function collapseRows(
         push(index, end)
       } else {
         push(index, index + head)
+        // The mark is drawn in this row's number column: the row it stands over is the
+        // last one before it.
+        const last = out[out.length - 1]
+        if (last !== undefined && last.kind === 'diff') out[out.length - 1] = { ...last, covered: true }
         out.push({ kind: 'fold', key: foldKey, hidden: run - limit })
         push(end - tail, end)
       }
