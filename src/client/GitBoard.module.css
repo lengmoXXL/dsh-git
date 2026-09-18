@@ -10,6 +10,8 @@
      this much to stay a diff. */
   min-width: 420px;
   min-height: 0;
+  /* The panes scroll; the board they sit in must not. */
+  overflow: hidden;
   background: var(--dsw-alias-bg-base);
 }
 

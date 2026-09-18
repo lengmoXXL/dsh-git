@@ -6,6 +6,11 @@
 
 .panel {
   flex: 1;
+  /* Fills the tab's box rather than growing with its content: two blocks inside it
+     scroll on their own, and a panel taller than the tab makes the shell scroll them
+     together. The height is a ceiling as well as a fill, which is what `min-height`
+     alone cannot say. */
+  height: 100%;
   min-height: 0;
   min-width: 0;
   display: flex;
