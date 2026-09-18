@@ -340,11 +340,12 @@ export function SideBySide({ diff, t, embedded = false }: SideBySideProps): Reac
       // A band is a run the reader folded or opened, or a run the host left out —
       // which arrives as a diff row, because the host sent it as a row.
       if (row.kind !== 'diff' || row.row.kind === 'gap') {
-        // Stated once, in the half a reader starts at; the other half draws its
-        // row empty, which the lane's fixed-height tracks keep in step.
+        // Both halves state it: the lanes scroll on their own, so a row that
+        // belongs to the whole diff is drawn in each of them rather than in one
+        // with the other left empty.
         return (
           <div key={row.key} className={cx(css.held, row.kind === 'fold' && css.band)}>
-            {side === 'left' && heldControl(row)}
+            {heldControl(row)}
           </div>
         )
       }
