@@ -455,7 +455,7 @@ const $ = (id) => document.getElementById(id)
 const esc = (text) => String(text).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])
 
 /* ── state ─────────────────────────────────────────────────────────────
-   `cards` is the board, in order. Opening an address that is already on the
+   `cards` is the board, in order. Opening a comparison that is already on the
    board focuses it instead of adding a duplicate: the identity of a diff is what
    it shows, which is also what keeps a keyboard walk from piling up tabs. */
 const state = {
