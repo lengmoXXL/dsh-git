@@ -13,7 +13,7 @@
  * resolved through the `require` the loader hands the factory, and everything
  * else is inlined.
  *
- * A dynamic bundle has no stylesheet channel, so `*.module.css` is compiled
+ * A dynamic bundle has no stylesheet channel, so every stylesheet is compiled
  * here instead of being emitted as a file: Lightning CSS hashes every local
  * name, and the plugin emits a module that attaches one tagged `<style>` to the
  * document the first time the factory runs and hands the component the class
@@ -100,12 +100,12 @@ function buildStamp() {
   }
 }
 
-/** Compile every `*.module.css` import into an injecting module. */
+/** Compile every stylesheet import into an injecting module. */
 function cssModulesInline() {
   return {
     name: 'dsh-git-css-modules-inline',
     resolveId(source: string, importer: string | undefined): string | null {
-      if (!source.endsWith('.module.css')) return null
+      if (!source.endsWith('.module.css') && !source.endsWith('.css')) return null
       const absolute = importer === undefined ? source : resolvePath(dirname(importer), source)
       return CSS_VIRTUAL_PREFIX + absolute + CSS_VIRTUAL_SUFFIX
     },
@@ -114,15 +114,22 @@ function cssModulesInline() {
       const fileId = virtualId.slice(CSS_VIRTUAL_PREFIX.length, -CSS_VIRTUAL_SUFFIX.length)
       // A virtual id otherwise hides the physical stylesheet from the watcher.
       this.addWatchFile(fileId)
+      // A CSS Module's locals are hashed and its map is handed to the component that
+      // imported it; a plain stylesheet — a vendored library's, like a code editor's —
+      // has no locals and needs nothing beyond being inlined, since a dynamic bundle
+      // has no stylesheet channel and a file beside it would never be loaded.
+      const isModule = fileId.endsWith('.module.css')
       const { code, exports: cssExports } = transform({
         filename: fileId,
         code: await readFile(fileId),
-        cssModules: { pattern: '[hash]_[local]' },
+        ...isModule ? { cssModules: { pattern: '[hash]_[local]' } } : {},
         minify: true,
       })
       const classMap: Record<string, string> = {}
-      for (const [local, exported] of Object.entries(cssExports ?? {})) {
-        classMap[local] = exported.name
+      if (isModule) {
+        for (const [local, exported] of Object.entries(cssExports ?? {})) {
+          classMap[local] = exported.name
+        }
       }
       return styleInjectionModule(fileId, code.toString(), classMap)
     },
