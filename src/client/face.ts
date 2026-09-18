@@ -131,12 +131,7 @@ export function createGitFace(
       // no skip at all, so the request stays what it was.
       const params = new URLSearchParams({ sessionId })
       if (skip > 0) params.set('skip', String(skip))
-      return await call<HistoryPayload>(
-        fetchImpl,
-        '/history',
-        new URLSearchParams({ sessionId }),
-        signal,
-      )
+      return await call<HistoryPayload>(fetchImpl, '/history', params, signal)
     },
     async commit(sessionId, rev, signal) {
       return await call<CommitPayload>(
