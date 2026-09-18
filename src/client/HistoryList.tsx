@@ -73,7 +73,11 @@ function useFittingRows(viewport: RefObject<HTMLDivElement | null>): number {
     const element = viewport.current
     if (element === null) return
     const measure = (): void => {
-      setRows(Math.max(HISTORY_MIN, Math.floor(element.clientHeight / ROW_HEIGHT)))
+      const next = Math.max(HISTORY_MIN, Math.floor(element.clientHeight / ROW_HEIGHT))
+      // Writing the same number back would re-render, resize nothing, and be observed
+      // as another resize: a resize observer that always writes is a page that never
+      // settles, and a page that never settles is a tab that dies.
+      setRows((current) => (current === next ? current : next))
     }
     measure()
     // The page is also rendered where there is no `ResizeObserver` — the docs'
