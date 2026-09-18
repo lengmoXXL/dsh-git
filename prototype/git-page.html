@@ -484,7 +484,7 @@ const PREVIEW = 8
 const LOG_PREVIEW = 12
 
 /** The "open this file in the shell's viewer" glyph, shared by the row and the header. */
-const openFileGlyph = `<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 1.5h3.4L8.5 4.1v6.4h-6z" fill="none" stroke="currentColor" stroke-width="1"/><path d="M5.9 1.5v2.6h2.6" fill="none" stroke="currentColor" stroke-width="1"/><path d="M8.6 7.4h3M10.4 6l1.4 1.4-1.4 1.4" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>`
+const openFileGlyph = `<svg width="13" height="13" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 1.5h3.4L8.5 4.1v6.4h-6z" fill="none" stroke="currentColor" stroke-width="1"/><path d="M5.9 1.5v2.6h2.6" fill="none" stroke="currentColor" stroke-width="1"/><path d="M8.6 7.4h3M10.4 6l1.4 1.4-1.4 1.4" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>`
 
 const refName = (ref) => ref.replace(/^HEAD -> /, '').replace(/^refs\/heads\//, '').replace(/^refs\/remotes\//, '').replace(/^tag: refs\/tags\//, '')
 
@@ -867,9 +867,10 @@ function handOff(path) {
 }
 
 function openFocusedFile() {
-  const address = state.focused
-  if (address === null) return
-  handOff(decodeURIComponent((address.match(/path=([^&]*)/) ?? [, ''])[1]))
+  const key = state.focused
+  if (key === null) return
+  // The key's last segment is the path: source, revision, old path, path.
+  handOff(key.split('\u001f').pop() ?? '')
 }
 
 function render() {
