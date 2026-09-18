@@ -7,5 +7,10 @@ node_modules/
 lib/
 *.tsbuildinfo
 
+# The browser test's own outputs: the page it serves is built from the artifact
+# by `tests/browser/page.mjs`, and the run's results are Playwright's.
+tests/browser/.page/
+test-results/
+
 # Local noise
 .DS_Store
