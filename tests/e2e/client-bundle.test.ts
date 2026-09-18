@@ -508,7 +508,7 @@ test('draws no colour of its own, and no ring around the focused pane', async ()
 test('keeps the scrollbars thin without restyling the shell', async () => {
   const source = await readArtifact(bundlePath)
   const css = source.replace(/\s+/g, '')
-  assert.match(css, /--dsh-scrollbar-width:6px/)
+  assert.match(css, /--dsh-scrollbar-width:4px/)
   // On the panel's own rule, not on the document's.
   assert.doesNotMatch(css, /:root\{[^}]*--dsh-scrollbar-width/)
 })

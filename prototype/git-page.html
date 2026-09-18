@@ -94,7 +94,7 @@
       才在同一个胶囊上写 ↑n / ↓n，上游名字也放进同一个 tooltip。
   21. [原型] 不要蓝色描边：聚焦的卡片不画边框（class 留着给 Esc / 关闭用）。
   22. [原型] 滚动条要细：沿用外壳那套滚动条做法（--dsh-scrollbar-width 与
-      --dsw-alias-scrollbar-*），并把宽度重绑为 6px。落地：在 SideBySide.module.css
+      --dsw-alias-scrollbar-*），并把宽度重绑为 4px。落地：在 SideBySide.module.css
       里重绑同一个变量即可，不要另写一套。
 
   五、键盘
@@ -214,7 +214,7 @@
     body, body * { scrollbar-width: thin; scrollbar-color: var(--dsh-scrollbar-thumb) transparent; }
   }
   :root {
-    --dsh-scrollbar-width: 6px;
+    --dsh-scrollbar-width: 4px;
     --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l1, rgb(229, 229, 229));
     --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l1, rgb(212, 212, 212));
   }
