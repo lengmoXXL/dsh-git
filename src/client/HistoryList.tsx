@@ -76,9 +76,12 @@ function useFittingRows(viewport: RefObject<HTMLDivElement | null>): number {
       setRows(Math.max(HISTORY_MIN, Math.floor(element.clientHeight / ROW_HEIGHT)))
     }
     measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(element)
-    return () => { observer.disconnect() }
+    // The page is also rendered where there is no `ResizeObserver` — the docs'
+    // screenshot pass and the suite render it in jsdom — and the count then simply
+    // stays at its floor until the reader resizes nothing.
+    const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure)
+    observer?.observe(element)
+    return () => { observer?.disconnect() }
   }, [viewport])
   return rows
 }
