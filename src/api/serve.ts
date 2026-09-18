@@ -14,7 +14,10 @@
  * @module dsh-git/api/serve
  */
 
+import { readFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { dirname, extname, resolve, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type { GitApiConfig } from './handler.ts'
@@ -40,6 +43,51 @@ function writeJson(response: ServerResponse, status: number, body: unknown): voi
   response.end(payload)
 }
 
+/** The editor's files, and what each is served as. */
+const VENDOR_TYPES: Record<string, string> = {
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.ttf': 'font/ttf',
+  '.svg': 'image/svg+xml',
+}
+
+/** Where this package keeps the editor it serves. */
+const VENDOR_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'vendor')
+
+/**
+ * Serve one file of the editor's own build.
+ *
+ * These are the page's own requests, made by the editor's loader for its own modules,
+ * so a miss is a miss and not a git failure. The path is resolved against the vendor
+ * directory and refused if it climbs out of it: nothing here is allowed to name a file
+ * outside the editor this package ships.
+ *
+ * @param response - the response to write.
+ * @param below - the request path below the plugin's prefix.
+ */
+async function writeVendor(response: ServerResponse, below: string): Promise<void> {
+  const wanted = resolve(VENDOR_ROOT, below.slice('/vendor/'.length))
+  const type = VENDOR_TYPES[extname(wanted)]
+  if (!wanted.startsWith(VENDOR_ROOT + sep) || type === undefined) {
+    writeJson(response, 404, { code: 'git/bad-request', message: 'no such file' })
+    return
+  }
+  try {
+    const body = await readFile(wanted)
+    response.writeHead(200, {
+      'content-type': type,
+      'content-length': String(body.byteLength),
+      // The editor is fetched once per page and asked for by revision-less paths, so a
+      // cached copy would outlive the build that made it.
+      'cache-control': 'no-cache',
+    })
+    response.end(body)
+  } catch {
+    writeJson(response, 404, { code: 'git/bad-request', message: 'no such file' })
+  }
+}
+
 /**
  * Register the git routes on the host's Web server.
  * @param ctx - the host context.
@@ -61,6 +109,12 @@ export function registerGitApi(ctx: Context, config: GitApiConfig): void {
         if (!response.writableEnded) controller.abort()
       })
       const below = url.pathname.slice(API_PREFIX.length)
+      // The editor's files share this prefix but are not git: they are read from this
+      // package and answered as they are.
+      if (below.startsWith('/vendor/')) {
+        await writeVendor(response, below)
+        return
+      }
       const result = await handleGitApi(
         {
           method: (request.method ?? 'GET').toUpperCase(),

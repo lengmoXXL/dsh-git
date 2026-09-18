@@ -27,10 +27,6 @@ function entry(stage: ChangeEntry['stage'], path: string, kind: ChangeEntry['kin
   return { path, index: 'M', kind, stage }
 }
 
-/** One context row pair. */
-function contextRow(no: number): DiffRow {
-  return { kind: 'context', left: { no, text: `line ${String(no)}` }, right: { no, text: `line ${String(no)}` } }
-}
 
 test('groups entries by the stage they were reported for', () => {
   const grouped = groupChanges([
