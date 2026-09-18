@@ -254,7 +254,11 @@
   left: 0;
   width: var(--dsh-git-diff-gutter);
   height: var(--dsh-git-diff-row);
-  text-align: left;
+  /* Over the number, not beside it: same edge, same inset, and the row's own band
+     behind it so the number does not show through. */
+  text-align: right;
+  padding-right: 14px;
+  background: var(--dsh-git-diff-band);
 }
 
 /* The fold stands for the rows above it; the band that opens one stands for the run

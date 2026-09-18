@@ -386,7 +386,8 @@
   .held.band, .held.collapse { position: relative; height: 0; }
   .held .glyph {
     position: absolute; left: 0; width: var(--dsh-git-diff-gutter);
-    text-align: left; color: var(--text-faint); cursor: pointer; user-select: none;
+    text-align: right; padding-right: 14px; background: var(--band, transparent);
+    color: var(--text-faint); cursor: pointer; user-select: none;
   }
   .held.band .glyph { top: calc(-1 * var(--dsh-git-diff-row)); }
   .held.collapse .glyph { top: 0; line-height: 12px; }
