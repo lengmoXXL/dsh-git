@@ -172,6 +172,12 @@ const client = defineConfig({
   // React and the client stack are the shell's, not ours: a second copy would
   // break hooks and duplicate the renderer.
   external: [/^react($|\/)/, /^@deepseek-ai\//],
+  // A dependency is not bundled by default, and the editor must be: the shell's module
+  // table has no entry for it, so a `require` left in the artifact is a page that
+  // cannot load.
+  // Its own modules import each other by subpath, so the whole prefix has to match:
+  // one entry for the exact id leaves `monaco-editor-core/esm/...` outside the bundle.
+  deps: { alwaysBundle: [/^monaco-editor-core/] },
   plugins: [cssModulesInline(), buildStamp()],
   outputOptions: {
     banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify(ID)}, factory: (require) => {\nvar module = { exports: {} }; var exports = module.exports;`,

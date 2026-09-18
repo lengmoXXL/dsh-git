@@ -8,14 +8,15 @@
  * @module dsh-git/client/GitBoard
  */
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode , useSyncExternalStore } from 'react'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { DiffPayload } from '../shared/wire.ts'
 import { BUILD_STAMP } from './build.ts'
 import { FailureBlock, Note } from './Feedback.tsx'
 import { gitFace } from './face.ts'
 import type { GitKey } from './locales.ts'
-import { SideBySide } from './SideBySide.tsx'
+import { MonacoDiff } from './MonacoDiff.tsx'
+import { diffViewSettings, subscribeDiffViewSettings } from './view-mode.ts'
 import { failureInfoOf, type BoardPane, type Load } from './state.ts'
 import css from './GitBoard.module.css'
 
@@ -66,6 +67,9 @@ function DiffPane({ pane, focused, t, onFocus }: {
   // With no title bar over the code, the tooltip is where "which file, at which
   // revisions, how much changed" can be read — and which build is drawing it, since a
   // page can be running an older bundle while the diff's content is current.
+  // How the reader reads diffs is a store, not this pane's state: the editor is told
+  // what to draw and the page's switches are what decide it.
+  const settings = useSyncExternalStore(subscribeDiffViewSettings, diffViewSettings, diffViewSettings)
   const ready = load.phase === 'ready' ? load.value : undefined
   const title = ready === undefined
     ? pane.request.path
@@ -82,7 +86,9 @@ function DiffPane({ pane, focused, t, onFocus }: {
       {load.phase === 'failed' && (
         <FailureBlock code={load.code} message={load.message} t={t} onRetry={undefined} />
       )}
-      {load.phase === 'ready' && <SideBySide diff={load.value} t={t} embedded />}
+      {load.phase === 'ready' && (
+        <MonacoDiff diff={load.value} split={settings.mode === 'split'} wrap={settings.wrap} t={t} />
+      )}
     </section>
   )
 }

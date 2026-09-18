@@ -11,7 +11,6 @@ import { test } from 'node:test'
 import type { ChangeEntry, ChangeKind, DiffRow } from '../../src/shared/wire.ts'
 import { GitRequestError } from '../../src/client/face.ts'
 import {
-  collapseRows,
   clampRailWidth,
   DIFF_MIN_WIDTH,
   failureInfoOf,
@@ -19,8 +18,6 @@ import {
   placePane,
   RAIL_MIN_WIDTH,
   groupChanges,
-  inlineDisplayLines,
-  inlineLines,
   parseRefs,
   statusLetter,
 } from '../../src/client/state.ts'
@@ -54,41 +51,6 @@ test('reports no entry in a group nothing belongs to', () => {
   assert.deepEqual(grouped.conflicted, [])
   assert.deepEqual(grouped.staged, [])
   assert.deepEqual(grouped.untracked, [])
-})
-
-test('leaves a short unchanged run alone', () => {
-  const rows = [contextRow(1), contextRow(2), contextRow(3)]
-  const display = collapseRows(rows, 6)
-  assert.deepEqual(display.map(item => item.kind), ['diff', 'diff', 'diff'])
-})
-
-test('folds a long unchanged run, and opens it a step at a time', () => {
-  const rows = Array.from({ length: 100 }, (_unused, index) => contextRow(index + 1))
-  const folded = collapseRows(rows, 6)
-  const fold = folded.find(item => item.kind === 'fold')
-  const hiddenOf = (list: ReturnType<typeof collapseRows>): number => {
-    const found = list.find(item => item.kind === 'fold')
-    return found?.kind === 'fold' ? found.hidden : 0
-  }
-  // Six survive, three at each end, and the row states what is behind them.
-  assert.equal(hiddenOf(folded), 94)
-  assert.deepEqual(folded.map(item => item.kind), ['diff', 'diff', 'diff', 'fold', 'diff', 'diff', 'diff'])
-
-  const key = fold?.key ?? ''
-  // A step up reveals fifteen more lines at the top, a step down the same at the
-  // bottom, and each is stated until nothing is behind the row.
-  assert.equal(hiddenOf(collapseRows(rows, 6, new Map([[key, { up: 15, down: 0 }]]))), 79)
-  assert.equal(hiddenOf(collapseRows(rows, 6, new Map([[key, { up: 0, down: 15 }]]))), 79)
-
-  // All of it: nothing is hidden, so there is no row left to draw.
-  const all = collapseRows(rows, 6, new Map([[key, { up: 94, down: 94 }]]))
-  assert.equal(all.every(item => item.kind === 'diff'), true)
-  assert.equal(all.length, 100)
-})
-
-test('does not fold when a run is exactly at the limit', () => {
-  const rows = Array.from({ length: 6 }, (_unused, index) => contextRow(index + 1))
-  assert.equal(collapseRows(rows, 6).every(item => item.kind === 'diff'), true)
 })
 
 test('keeps both blocks at their floor and neither at a ceiling', () => {
@@ -205,29 +167,3 @@ test('reads a detached HEAD, skips blanks, and falls back to the raw ref name', 
 
 
 
-test('reads a change in one column, where a replacement becomes its two lines', () => {
-  const rows: DiffRow[] = [
-    { kind: 'context', left: { no: 1, text: 'keep' }, right: { no: 1, text: 'keep' } },
-    { kind: 'replace', left: { no: 2, text: 'old' }, right: { no: 2, text: 'new' } },
-    { kind: 'delete', left: { no: 3, text: 'gone' }, right: null },
-    { kind: 'insert', left: null, right: { no: 3, text: 'added' } },
-    { kind: 'gap', left: null, right: null, skippedLeft: 900, skippedRight: 901 },
-  ]
-  assert.deepEqual(inlineLines(rows), [
-    { kind: 'context', key: 'i0l', oldNo: 1, newNo: 1, text: 'keep' },
-    { kind: 'delete', key: 'i1l', oldNo: 2, text: 'old' },
-    { kind: 'insert', key: 'i1r', newNo: 2, text: 'new' },
-    { kind: 'delete', key: 'i2l', oldNo: 3, text: 'gone' },
-    { kind: 'insert', key: 'i3r', newNo: 3, text: 'added' },
-    { kind: 'gap', key: 'i4', skippedLeft: 900, skippedRight: 901 },
-  ])
-})
-
-test('keeps a fold where the reader closed it', () => {
-  const rows = Array.from({ length: 20 }, (_unused, index) => contextRow(index + 1))
-  const lines = inlineDisplayLines(collapseRows(rows, 6))
-  assert.deepEqual(lines.map(line => line.kind), [
-    'context', 'context', 'context', 'fold', 'context', 'context', 'context',
-  ])
-  assert.equal(lines[3]?.hidden, 14)
-})

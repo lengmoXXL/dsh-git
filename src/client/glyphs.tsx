@@ -34,54 +34,9 @@ export function WrapGlyph(): ReactNode {
   )
 }
 
-/**
- * Opening a folded run: fifteen lines up, fifteen down, or all that is left. Each
- * carries its own size, as every glyph here does.
- * @returns the glyph for opening upward.
- */
-export function ExpandUpGlyph(): ReactNode {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.1" aria-hidden="true">
-      <path d="M8 12.5V4" strokeLinecap="round" />
-      <path d="M4.5 7.5L8 4l3.5 3.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M3 14h10" strokeLinecap="round" />
-    </svg>
-  )
-}
 
-/** The same control, opening downward. */
-export function ExpandDownGlyph(): ReactNode {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.1" aria-hidden="true">
-      <path d="M8 3.5V12" strokeLinecap="round" />
-      <path d="M4.5 8.5L8 12l3.5-3.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M3 2h10" strokeLinecap="round" />
-    </svg>
-  )
-}
 
-/** The page's one way back: fold every run the reader has opened. */
-export function FoldAllGlyph(): ReactNode {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.1" aria-hidden="true">
-      <path d="M3 2h10M3 14h10" strokeLinecap="round" />
-      <path d="M8 4.5v7" strokeLinecap="round" />
-      <path d="M5.5 7L8 9.5 10.5 7" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M5.5 9L8 6.5 10.5 9" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
 
-/** The same control, opening the whole run. */
-export function ExpandAllGlyph(): ReactNode {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.1" aria-hidden="true">
-      <path d="M8 12.5V3.5" strokeLinecap="round" />
-      <path d="M4.5 7L8 3.5 11.5 7" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M4.5 9L8 12.5 11.5 9" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
 
 /** The same button, for lines that keep their length. */
 export function ClipGlyph(): ReactNode {

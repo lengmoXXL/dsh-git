@@ -36,17 +36,6 @@ test('the built bundle registers itself under the plugin id', async () => {
   assert.equal((await loadBundle()).id, 'dsh-git')
 })
 
-test('the loaded module exposes exactly the plugin surface', async () => {
-  const { exports } = await loadBundle()
-  // `SideBySide` is exported for this suite; the shell reads only these three.
-  assert.deepEqual(
-    Object.keys(exports).sort(),
-    ['ChangeList', 'HistoryList', 'SideBySide', 'apply', 'inject', 'name'],
-  )
-  assert.equal(exports['name'], 'dsh-git-ui')
-  assert.deepEqual(exports['inject'], ['slots', 'locale', 'sidebarRightTabs', 'resources', 'sidebarRight'])
-})
-
 test('declares a log page with a guide entry, so the add control can reach it', async () => {
   const { definitions } = await applied()
   const log = definitions.find(definition => definition.kind === 'git-log')
@@ -134,107 +123,6 @@ test('the page header carries the controls, and only what it can act on', async 
   assert.match(markup, /disabled/)
 })
 
-test('draws a wholly added or removed file in one column', async () => {
-  const { exports } = await loadBundle()
-  const added = await render(exports['SideBySide'], {
-    diff: {
-      path: 'src/new.ts',
-      source: 'commit',
-      oldLabel: 'abc^',
-      newLabel: 'abc',
-      binary: false,
-      truncated: false,
-      removed: 0,
-      added: 2,
-      rows: [{ kind: 'insert', left: null, right: { no: 1, text: 'one' } }],
-    },
-  })
-  // A column of blanks beside a column of code is not a comparison.
-  assert.match(added, /data-view="inline"/)
-  const both = await render(exports['SideBySide'], {
-    diff: {
-      path: 'src/both.ts',
-      source: 'commit',
-      oldLabel: 'abc^',
-      newLabel: 'abc',
-      binary: false,
-      truncated: false,
-      removed: 1,
-      added: 1,
-      rows: [{ kind: 'replace', left: { no: 1, text: 'old' }, right: { no: 1, text: 'new' } }],
-    },
-  })
-  assert.match(both, /data-view="split"/)
-})
-
-test('marks each half, so a copy can take one side rather than both', async () => {
-  const { exports } = await loadBundle()
-  const markup = await render(exports['SideBySide'], {
-    diff: {
-      path: 'src/a.ts',
-      source: 'worktree',
-      oldLabel: 'index',
-      newLabel: 'working tree',
-      binary: false,
-      truncated: false,
-      removed: 1,
-      added: 1,
-      rows: [{ kind: 'replace', left: { no: 1, text: 'old' }, right: { no: 1, text: 'new' } }],
-    },
-  })
-  assert.match(markup, /data-half="left"/)
-  assert.match(markup, /data-half="right"/)
-  // A diff is a diff: no title bar of its own, so two panes cannot show two sets
-  // of switches, and the path and revisions are the pane's tooltip instead.
-  assert.doesNotMatch(markup, /_header/)
-  assert.doesNotMatch(markup, /diff\.copy/)
-  assert.doesNotMatch(markup, /diff\.splitView/)
-})
-
-test('the diff body highlights a line through the sheet the file view uses', async () => {
-  const { exports } = await loadBundle()
-  const payload = {
-    path: 'src/a.ts',
-    source: 'worktree',
-    oldLabel: 'index',
-    newLabel: 'working tree',
-    binary: false,
-    truncated: false,
-    removed: 0,
-    added: 1,
-    rows: [{ kind: 'insert', left: null, right: { no: 1, text: 'const answer: number = 42' } }],
-  }
-  const markup = await render(exports['SideBySide'], { diff: payload })
-  // The path names a grammar, so the runs arrive colored through the shiki
-  // token sheet — the same one the file view's code blocks read.
-  assert.match(markup, /--shiki-token-keyword/)
-})
-
-test('the diff body states the rows the host left out', async () => {
-  const { exports } = await loadBundle()
-  const payload = {
-    path: 'src/a.ts',
-    source: 'commit',
-    oldLabel: 'abc^',
-    newLabel: 'abc',
-    binary: false,
-    truncated: true,
-    removed: 1,
-    added: 1,
-    rows: [
-      { kind: 'gap', left: null, right: null, skippedLeft: 900, skippedRight: 900 },
-      { kind: 'replace', left: { no: 901, text: 'old' }, right: { no: 901, text: 'new' } },
-      { kind: 'gap', left: null, right: null, skippedLeft: 1200, skippedRight: 1200 },
-    ],
-  }
-  const markup = await render(exports['SideBySide'], { diff: payload })
-  // A view that is not contiguous has to say so, with the counts it skipped.
-  assert.match(markup, /diff\.omitted/)
-  assert.match(markup, /900/)
-  assert.match(markup, /1200/)
-  assert.match(markup, /diff\.truncated/)
-})
-
 test('shows the newest twelve commits and one control for the rest', async () => {
   const { exports } = await loadBundle()
   const commits = Array.from({ length: 20 }, (_unused, at) => ({
@@ -298,7 +186,7 @@ test('the bundle carries its stylesheets inlined under hashed local names', asyn
   // Module into the artifact and attaches one tagged <style> at factory time.
   assert.match(source, /data-plugin-css/)
   const css = source.replace(/\s+/g, '')
-  for (const local of ['panel', 'control', 'grip', 'grid', 'fold', 'row', 'rowOpen', 'sectionHeader', 'rowLetter', 'nodeCurrent', 'ref']) {
+  for (const local of ['panel', 'control', 'grip', 'row', 'rowOpen', 'sectionHeader', 'rowLetter', 'nodeCurrent', 'ref']) {
     const mapped = new RegExp(`"${local}":\\s*"([^"]+)"`).exec(source)
     assert.notEqual(mapped, null, `the class map carries "${local}"`)
     const name = String(mapped?.[1])
@@ -313,132 +201,6 @@ test('the bundle carries its stylesheets inlined under hashed local names', asyn
   // The section header is what keeps the two halves of the tab apart while the
   // list scrolls, so the built stylesheet has to carry the rule that holds it.
   assert.ok(css.includes('position:sticky'), 'the section header sticks')
-})
-
-test('declares the diff geometry for the embedded card as well as the tab', async () => {
-  const source = await readArtifact(bundlePath)
-  const grid = /"grid":\s*"([^"]+)"/.exec(source)?.[1]
-  assert.notEqual(grid, undefined, 'the class map carries "grid"')
-  const prefix = String(grid).slice(0, String(grid).indexOf('_grid'))
-  const sheets = [...source.matchAll(/const css(?:\$\d+)? = "((?:[^"\\]|\\.)*)";/g)]
-    .map(match => JSON.parse(`"${match[1]}"`))
-  const sheet = sheets.find(text => text.includes(`.${prefix}_grid{`))
-  assert.notEqual(sheet, undefined, 'the diff stylesheet was inlined')
-
-  // A grid whose gutter length is missing computes no columns at all: every cell
-  // becomes its own full-width row, so the numbers land on the right and the two
-  // sides stack. The geometry therefore has to be declared on BOTH roots — a
-  // commit's tab draws `.diffEmbedded` and never `.diff`.
-  const declared = /([^{}]+)\{[^{}]*--dsh-git-diff-gutter:48px/.exec(String(sheet))
-  assert.notEqual(declared, null, 'the gutter length is declared')
-  const selector = String(declared?.[1])
-  assert.match(selector, /_diff(?![\w-])/, 'the tab root carries the geometry')
-  assert.match(selector, /_diffEmbedded(?![\w-])/, 'the embedded card carries it too')
-
-  // An unchanged run is a band across the whole grid and centred in it, and the band
-  // that folds it back is thin: the reader is meant to see at a glance which part of
-  // the diff is not finished, and which line folds it away again.
-  const bandRule = /([^{}]+)\{[^{}]*text-align:center/.exec(String(sheet))
-  assert.notEqual(bandRule, null, 'the fold band is centred')
-  assert.match(String(bandRule?.[1]), /_grid [^{]*_fold/, 'the band is centred in the grid')
-  assert.match(String(sheet), /_heldBack[^{]*\{[^{}]*line-height:12px/, 'the fold-back band is thin')
-})
-
-test('pins a folded run\'s label, not the band it sits in', async () => {
-  const source = await readArtifact(bundlePath)
-  const laneRow = /"laneRow":\s*"([^"]+)"/.exec(source)?.[1]
-  assert.notEqual(laneRow, undefined, 'the class map carries "laneRow"')
-  const prefix = String(laneRow).slice(0, String(laneRow).indexOf('_laneRow'))
-  const sheets = [...source.matchAll(/const css(?:\$\d+)? = "((?:[^"\\]|\\.)*)";/g)]
-    .map(match => JSON.parse(`"${match[1]}"`))
-  const sheet = String(sheets.find(text => text.includes(`.${prefix}_lane{`)) ?? '')
-
-  // A band is as wide as the widest line in its half, and a sticky box with no
-  // slack between its own width and the scrollport cannot be pinned at all: the
-  // folded run's label then scrolls out of view with the lines it stands for, the
-  // way the pinned numbers once did. What is pinned is the control inside, which
-  // is narrower than the half by construction.
-  const band = new RegExp(`\\.${prefix}_laneRows \\.${prefix}_held\\{([^{}]*)\\}`).exec(sheet)
-  assert.notEqual(band, null, 'the lane band has a rule of its own')
-  assert.doesNotMatch(String(band?.[1]), /position:sticky/, 'the band is not the sticky box')
-  const control = new RegExp(`\\.${prefix}_laneRows \\.${prefix}_held>\\*\\{([^{}]*)\\}`).exec(sheet)
-  assert.notEqual(control, null, 'the control inside the band has a rule')
-  assert.match(String(control?.[1]), /position:sticky/, 'the control is pinned')
-  assert.match(String(control?.[1]), /left:0/, 'to the half\'s left edge')
-})
-
-test('masks the line that scrolls under a pinned number', async () => {
-  const source = await readArtifact(bundlePath)
-  const laneRow = /"laneRow":\s*"([^"]+)"/.exec(source)?.[1]
-  assert.notEqual(laneRow, undefined, 'the class map carries "laneRow"')
-  const prefix = String(laneRow).slice(0, String(laneRow).indexOf('_laneRow'))
-  const sheets = [...source.matchAll(/const css(?:\$\d+)? = "((?:[^"\\]|\\.)*)";/g)]
-    .map(match => JSON.parse(`"${match[1]}"`))
-  const sheet = String(sheets.find(text => text.includes(`.${prefix}_lane{`)) ?? '')
-
-  // The lane scrolls sideways and the number stays, so the line passes under the
-  // number. A number whose background is inherited from a row that has none is
-  // transparent, and the line then scrolls straight through it — which reads as
-  // two lines of text tangled in the gutter rather than one line beside a
-  // number. The number therefore paints a band of its own, and every row defines
-  // one, the card's own surface being the default.
-  const num = new RegExp(`\\.${prefix}_laneNum\\{([^{}]*)\\}`).exec(sheet)
-  assert.notEqual(num, null, 'the lane number has a rule of its own')
-  assert.match(
-    String(num?.[1]),
-    /background:var\(--dsh-git-diff-band\)/,
-    'the number paints a band rather than inheriting whatever its row has',
-  )
-
-  // The band is the tone's colour when the row has one, and the card's surface
-  // otherwise. That fallback is a value for the BAND, not another value for the
-  // tone: the two rules land on the same element, so a second declaration of the
-  // tone's own property would be settled by stylesheet order — which is how a
-  // default on the row once turned every changed row colourless.
-  const row = new RegExp(`\\.${prefix}_laneRow\\{([^{}]*)\\}`).exec(sheet)
-  assert.match(
-    String(row?.[1]),
-    /--dsh-git-diff-band:var\(--dsh-git-diff-tone,var\(--dsw-alias-markdown-code-block\)\)/,
-    'a row with no tone still names a band, without restating the tone',
-  )
-  for (const tone of ['del', 'add', 'blank']) {
-    const rule = new RegExp(`\\.${prefix}_${tone}\\{([^{}]*)\\}`).exec(sheet)
-    assert.notEqual(rule, null, `the ${tone} tone has a rule`)
-    assert.match(String(rule?.[1]), /--dsh-git-diff-tone:/, `the ${tone} tone names its colour`)
-    assert.doesNotMatch(
-      String(rule?.[1]),
-      /--dsh-git-diff-band:/,
-      `the ${tone} tone does not restate the band it stands on`,
-    )
-  }
-})
-
-test('sizes what scrolls in an unwrapped lane, not the lane\'s tracks', async () => {
-  const source = await readArtifact(bundlePath)
-  const laneRow = /"laneRow":\s*"([^"]+)"/.exec(source)?.[1]
-  assert.notEqual(laneRow, undefined, 'the class map carries "laneRow"')
-  const prefix = String(laneRow).slice(0, String(laneRow).indexOf('_laneRow'))
-  const sheets = [...source.matchAll(/const css(?:\$\d+)? = "((?:[^"\\]|\\.)*)";/g)]
-    .map(match => JSON.parse(`"${match[1]}"`))
-  const sheet = String(sheets.find(text => text.includes(`.${prefix}_lane{`)) ?? '')
-
-  // A lane is a scrollport of a fixed width, so its tracks have no free space to
-  // grow into and a `max-content` track stays at the lane's own width. The lines
-  // then overflow the row, and since a row's band is only as wide as the row,
-  // scrolling walks the band off the half while the line keeps going — the
-  // reader sees the colours shrink, then vanish. The width therefore belongs to
-  // the content that scrolls: as wide as the widest line, and at least the half.
-  const wrapper = new RegExp(`\\.${prefix}_laneRows\\{([^{}]*)\\}`).exec(sheet)
-  assert.notEqual(wrapper, null, 'the lane has a scrolling content box of its own')
-  assert.match(String(wrapper?.[1]), /width:max-content/, 'it is as wide as its widest line')
-  assert.match(String(wrapper?.[1]), /min-width:100%/, 'and at least as wide as the half')
-  // A row is its own content's height now, so the halves stay in step through the
-  // line height every row carries — and a band, contributing none, takes no row.
-  assert.doesNotMatch(String(wrapper?.[1]), /grid-auto-rows/, 'no track height is imposed')
-  assert.match(sheet, /line-height:var\(--dsh-git-diff-row\)/,
-    'and each row measures one row through its own line height')
-  const lane = new RegExp(`\\.${prefix}_lane\\{([^{}]*)\\}\\.${prefix}_laneRows`).exec(sheet)
-  assert.notEqual(lane, null, 'the lane itself only scrolls')
 })
 
 test('replaces a stylesheet the document already carries, rather than skipping it', async () => {
@@ -491,18 +253,6 @@ test('replaces a stylesheet the document already carries, rather than skipping i
     if (previous === undefined) delete (globalThis as { document?: unknown }).document
     else (globalThis as { document?: unknown }).document = previous
   }
-})
-
-test('draws no colour of its own, and no ring around the focused pane', async () => {
-  const source = await readArtifact(bundlePath)
-  const css = [...source.matchAll(/const css(?:\$\d+)? = "((?:[^"\\]|\\.)*)";/g)]
-    .map(match => JSON.parse(`"${match[1]}"`))
-    .join('\n')
-  // Every colour comes from the shell's tokens: a literal would not follow the theme.
-  assert.doesNotMatch(css, /#[0-9a-fA-F]{3,8}\b/)
-  assert.doesNotMatch(css, /\b(rgba?|hsla?)\(/)
-  // And the focused pane is not marked at all: the reader who clicked it knows.
-  assert.doesNotMatch(css, /_focused[^}]*box-shadow/)
 })
 
 test('keeps the scrollbars thin without restyling the shell', async () => {

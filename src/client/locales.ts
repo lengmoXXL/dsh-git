@@ -37,10 +37,6 @@ export const zh = {
   'changes.truncated': '仅显示前 {n} 项改动',
 
   'section.collapse': '收起',
-  'fold.up': '向上展开 15 行',
-  'fold.down': '向下展开 15 行',
-  'fold.all': '全部展开',
-  'fold.reset': '重新折叠所有展开的段',
   'section.expand': '展开',
 
   'group.conflicted': '冲突',
@@ -59,8 +55,6 @@ export const zh = {
 
   'diff.binary': '二进制文件，不显示文本 diff',
   'diff.truncated': 'diff 不完整（已达到行数或大小上限）',
-  'diff.unchanged': '行未改动',
-  'diff.omitted': '行未显示',
   'diff.approximate': '对齐超出时间预算，配对为近似结果',
   'diff.openFile': '在内置的文件窗口中打开这个文件',
   'diff.inlineView': '切换到内联视图（单栏）',
@@ -113,10 +107,6 @@ export const en = {
   'changes.truncated': 'Showing the first {n} changes only',
 
   'section.collapse': 'Collapse',
-  'fold.up': 'Open 15 more lines above',
-  'fold.down': 'Open 15 more lines below',
-  'fold.all': 'Open the whole run',
-  'fold.reset': 'Fold every opened run again',
   'section.expand': 'Expand',
 
   'group.conflicted': 'Conflicts',
@@ -135,8 +125,6 @@ export const en = {
 
   'diff.binary': 'Binary file — no text diff',
   'diff.truncated': 'The diff is incomplete (line or size cap reached)',
-  'diff.unchanged': 'unchanged lines',
-  'diff.omitted': 'lines not shown',
   'diff.approximate': 'the diff computer hit its time budget; the pairing is approximate',
   'diff.openFile': 'Open this file in the built-in file view',
   'diff.inlineView': 'Switch to inline view (one column)',

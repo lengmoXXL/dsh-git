@@ -34,13 +34,8 @@ import type {
 import { ChangeList } from './ChangeList.tsx'
 import { FailureBlock, Note } from './Feedback.tsx'
 import { GitBoard } from './GitBoard.tsx'
-import {
-  foldEveryOpening,
-  foldOpeningsOf,
-  subscribeFoldOpenings,
-} from './view-mode.ts'
 import { gitFace, type DiffRequest } from './face.ts'
-import { ClipGlyph, FoldAllGlyph, InlineLayoutGlyph, OpenFileGlyph, SplitLayoutGlyph, WrapGlyph } from './glyphs.tsx'
+import { ClipGlyph, InlineLayoutGlyph, OpenFileGlyph, SplitLayoutGlyph, WrapGlyph } from './glyphs.tsx'
 import { HistoryList } from './HistoryList.tsx'
 import { logCache } from './log-cache.ts'
 import type { GitKey, GitNamespace } from './locales.ts'
@@ -164,9 +159,6 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
     element.scrollTop = logCache(sessionId).scrollTop
   }, [sessionId])
 
-  // What the reader has opened, anywhere in this page: the control that closes all of
-  // it belongs to the page rather than to one diff.
-  const openings = useSyncExternalStore(subscribeFoldOpenings, foldOpeningsOf, foldOpeningsOf)
   const refresh = useCallback(() => {
     setNow(Date.now())
     setEpoch(value => value + 1)
@@ -461,17 +453,6 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
         >
           <IconRefreshOutline16 />
         </button>
-        {openings.size > 0 && (
-          <button
-            type="button"
-            className={css.control}
-            title={t('fold.reset')}
-            aria-label={t('fold.reset')}
-            onClick={foldEveryOpening}
-          >
-            <FoldAllGlyph />
-          </button>
-        )}
       </header>
       <div className={css.body} data-side={rail.side}>
         {/* The list stays mounted when it is put away, so the reader's place in it

@@ -71,8 +71,8 @@ export const inject = ['slots', 'locale', 'sidebarRightTabs', 'resources', 'side
 // Exported for the suite: how the diff draws and what the lists show are the two
 // things worth asserting against the built bundle, and a page body rendered on the
 // server never reaches its effects. The shell reads `name`, `inject` and `apply`.
-export { SideBySide } from './SideBySide.tsx'
-export type { SideBySideProps } from './SideBySide.tsx'
+export { MonacoDiff } from './MonacoDiff.tsx'
+export type { MonacoDiffProps } from './MonacoDiff.tsx'
 export { ChangeList } from './ChangeList.tsx'
 export { HistoryList } from './HistoryList.tsx'
 

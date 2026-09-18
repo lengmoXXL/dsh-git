@@ -1,0 +1,22 @@
+/* The editor fills its pane; the pane is what scrolls. */
+.host {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.failure {
+  margin: 12px 14px;
+  color: var(--dsw-alias-state-error-label);
+  font: var(--dsw-font-xs-13);
+}
+
+/* What the host said about this diff, above the editor it belongs to. */
+.notice {
+  flex: none;
+  margin: 0;
+  padding: 8px 14px;
+  background: var(--dsw-alias-markdown-code-block);
+  color: var(--dsw-alias-state-warn-label);
+  font: var(--dsw-font-xs-13);
+}
