@@ -21,7 +21,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import * as monaco from 'monaco-editor-core/esm/vs/editor/editor.api.js'
 import 'monaco-editor-core/esm/vs/editor/editor.all.js'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
-import type { DiffPayload } from '../shared/wire.ts'
+import type { DiffPayload, DiffSide } from '../shared/wire.ts'
 import type { GitKey } from './locales.ts'
 import { installSyntax, languageOf } from './syntax.ts'
 import css from './MonacoDiff.module.css'
@@ -38,11 +38,25 @@ export interface MonacoDiffProps {
   readonly t: Translate<GitKey>
 }
 
-/** The two sides of an aligned diff, as the text an editor wants. */
+/**
+ * The two sides of a diff, as the text an editor wants.
+ *
+ * The host aligns the two sides for the wire and the editor aligns them again as it draws
+ * them, so each side is built from the lines it has: a line the host padded for the other
+ * side is a line this one does not have, and drawing it as an empty one would number every
+ * line after it by the padding and put blank rows in the diff that no file contains. A
+ * `gap` carries no line at all, which is why it is skipped rather than drawn — what was
+ * left out is what the truncated notice over the editor is for.
+ * @param diff - the change, aligned by the host.
+ * @returns the old side's text and the new side's, each from its own lines.
+ */
 function sides(diff: DiffPayload): { original: string, modified: string } {
-  const lines = (pick: (row: DiffPayload['rows'][number]) => { readonly text: string } | null): string =>
-    diff.rows.map(row => pick(row)?.text ?? '').join('\n')
-  return { original: lines(row => row.left), modified: lines(row => row.right) }
+  const text = (pick: (row: DiffPayload['rows'][number]) => DiffSide | null): string =>
+    diff.rows.flatMap((row) => {
+      const side = pick(row)
+      return side === null ? [] : [side.text]
+    }).join('\n')
+  return { original: text(row => row.left), modified: text(row => row.right) }
 }
 
 /**
@@ -67,6 +81,11 @@ export function MonacoDiff({ diff, split, wrap, t }: MonacoDiffProps): ReactNode
         readOnly: true,
         originalEditable: false,
         renderSideBySide: split,
+        // The reader's switch decides, not the width. Left to itself the editor answers a
+        // request for two columns with one wherever the pane is narrower than its own
+        // breakpoint — nine hundred pixels, which a sidebar is — so the switch would look
+        // like it did nothing.
+        useInlineViewWhenSpaceIsLimited: false,
         wordWrap: wrap ? 'on' : 'off',
         hideUnchangedRegions: { enabled: true },
         automaticLayout: true,

@@ -57,6 +57,22 @@ test('keeps the scrollbars thin without restyling the shell', async () => {
   assert.doesNotMatch(css, /:root\{[^}]*--dsh-scrollbar-width/)
 })
 
+test('gives every stylesheet its own tag', async () => {
+  const source = await readArtifact(bundlePath)
+  // A tag is keyed by the path the stylesheet came from, so that the tag a page already
+  // holds is the one a newer build replaces in place. Keyed by file name it was not: the
+  // editor alone ships several files called `style.css`, and each of them overwrote the
+  // last — which is how the diff view lost the rules that paint an added or a removed line.
+  const ids = [...source.matchAll(/tagId(?:\$\d+)? = "([^"]+)"/g)].map(match => String(match[1]))
+  assert.ok(ids.length > 50, `the bundle injects stylesheets (${String(ids.length)})`)
+  const shared = ids.filter((id, index) => ids.indexOf(id) !== index)
+  assert.deepEqual([...new Set(shared)], [], 'no two stylesheets share a tag')
+  assert.ok(
+    ids.some(id => id.includes('diffEditor/style.css')),
+    'the diff view stylesheet is one of them',
+  )
+})
+
 test('carries the build it came from', async () => {
   const source = await readArtifact(bundlePath)
   // Substituted at build time, so a page can be asked which build it is
@@ -91,7 +107,7 @@ test('defines every class the components reach for', async () => {
   // class map the build emits is the only place that can be asked.
   const sheets = new Map<string, string>()
   for (const name of files.filter(file => file.endsWith('.module.css'))) {
-    const tag = new RegExp(`tagId(?:\\$\\d+)? = "dsh-git/${name.replace('.', '\\.')}"`).exec(source)
+    const tag = new RegExp(`tagId(?:\\$\\d+)? = "([^"]*/${name.replace('.', '\\.')})"`).exec(source)
     assert.notEqual(tag, null, `the bundle carries the class map for ${name}`)
     const map = /var \w+_module_css_default = \{([^}]*)\};/.exec(source.slice(tag?.index ?? 0))
     assert.notEqual(map, null, `the class map for ${name} is readable`)

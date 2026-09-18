@@ -52,12 +52,18 @@ const page = `<!doctype html>
 <script>${bundle}</script>
 <script>
   const line = (n) => ({ no: n, text: 'const value' + String(n) + ' = compute(' + String(n) + ')' })
-  const rows = []
-  for (let n = 1; n <= 3; n += 1) rows.push({ kind: 'context', left: line(n), right: line(n) })
+  // The rows a host sends: aligned, one line per side, a side that is null drawn as an
+  // empty line so the two columns stay in step. All four kinds are here, because what the
+  // editor paints for an added or a removed line is one of the things under test.
+  const rows = [
+    { kind: 'context', left: line(1), right: line(1) },
+    { kind: 'delete', left: { no: 2, text: 'const gone = true' }, right: null },
+    { kind: 'insert', left: null, right: { no: 2, text: 'const added = compute(2)' } },
+    { kind: 'replace', left: { no: 3, text: 'const answer = 41' }, right: { no: 3, text: 'const answer = 42' } },
+  ]
   for (let n = 4; n <= 60; n += 1) rows.push({ kind: 'context', left: line(n), right: line(n) })
-  rows.push({ kind: 'replace', left: { no: 61, text: 'const answer = 41' }, right: { no: 61, text: 'const answer = 42' } })
   const diff = { path: 'src/example.ts', source: 'worktree', oldLabel: 'index', newLabel: 'working tree',
-    binary: false, truncated: false, approximate: false, removed: 1, added: 1, rows }
+    binary: false, truncated: false, approximate: false, removed: 2, added: 2, rows }
   const entry = window.__pending
   // The bundle is compiled with React's automatic JSX runtime, which is an entry of its
   // own that the UMD build does not carry: three names are all it asks for.
@@ -88,10 +94,11 @@ const page = `<!doctype html>
    * The class the plugin's own stylesheet gives one of its local names.
    *
    * Every local name is hashed by the build, so the plugin's own boxes are reached through
-   * the sheet it injected rather than through a name written down here.
+   * the sheet it injected rather than through a name written down here. The sheet is found
+   * by the name it ends with, since the tag it is keyed by is the stylesheet's path.
    */
   const classOf = (sheet, local) => {
-    const tag = document.querySelector('style[data-plugin-css="dsh-git/' + sheet + '"]')
+    const tag = document.querySelector('style[data-plugin-css$="/' + sheet + '"]')
     if (tag === null) throw new Error('the bundle injected no ' + sheet)
     const pattern = new RegExp('\\\\.([A-Za-z0-9_-]+)_' + local + '(?![A-Za-z0-9_-])')
     for (const rule of tag.sheet.cssRules) {
@@ -128,6 +135,45 @@ const page = `<!doctype html>
       if (marked === null || editor === null) return 'no editor'
       return marked === editor ? 'same' : 'replaced'
     },
+    /**
+     * How the editor painted the lines it added and removed, and the text it changed within
+     * a line. Each is an overlay it draws, and each takes its colour from the stylesheet it
+     * ships.
+     */
+    marks: () => {
+      const background = (selector) => {
+        const overlay = document.querySelector(selector)
+        return overlay === null ? undefined : getComputedStyle(overlay).backgroundColor
+      }
+      return {
+        addedLine: background('.line-insert'),
+        removedLine: background('.line-delete'),
+        addedText: background('.char-insert'),
+        removedText: background('.char-delete'),
+      }
+    },
+    /**
+     * Which number the gutter gives the changed line on each side, joined as text and
+     * number. The number is drawn in its own column beside the line, so the two are matched
+     * by where they are drawn rather than by an offset either of them may round.
+     */
+    numbering: () => {
+      const seen = []
+      for (const editor of document.querySelectorAll('.monaco-editor')) {
+        const gutter = [...editor.querySelectorAll('.line-numbers')]
+          .map(element => ({ top: element.getBoundingClientRect().top, text: String(element.textContent).trim() }))
+        for (const line of editor.querySelectorAll('.view-lines .view-line')) {
+          // The editor renders a space as a non-breaking one, so a line is compared as its
+          // own text rather than as the source written here.
+          const text = String(line.textContent ?? '').replace(/\\u00a0/g, ' ').trim()
+          if (!/^const answer = 4\\d$/.test(text)) continue
+          const top = line.getBoundingClientRect().top
+          const number = gutter.find(entry => Math.abs(entry.top - top) < 3)
+          seen.push(text + '@' + (number === undefined ? '?' : number.text))
+        }
+      }
+      return seen
+    },
     colours: () => {
       const spans = [...document.querySelectorAll('.view-lines span span')]
       const colourOf = (matches) => {
@@ -149,7 +195,11 @@ const page = `<!doctype html>
         const box = editor.getBoundingClientRect()
         sizes.add(Math.round(box.width) + 'x' + Math.round(box.height))
       }
-      return { sizes: [...sizes], width: pane.clientWidth, overflow: pane.scrollWidth - pane.clientWidth }
+      // Every editor the diff drew wide enough to see: two of them is two columns.
+      const columns = [...document.querySelectorAll('.monaco-editor')]
+        .map(element => Math.round(element.getBoundingClientRect().width))
+        .filter(width => width > 1)
+      return { sizes: [...sizes], columns, width: pane.clientWidth, overflow: pane.scrollWidth - pane.clientWidth }
     },
   }
   window.__render({})

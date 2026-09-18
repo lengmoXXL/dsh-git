@@ -33,7 +33,7 @@
  */
 
 import { readFile } from 'node:fs/promises'
-import { basename, dirname, resolve as resolvePath } from 'node:path'
+import { dirname, relative, resolve as resolvePath } from 'node:path'
 import { defineConfig } from 'tsdown'
 import { transform } from 'lightningcss'
 
@@ -48,13 +48,21 @@ const ID = 'dsh-git'
 const CSS_VIRTUAL_PREFIX = '\0dsh-git-css:'
 const CSS_VIRTUAL_SUFFIX = '.mjs'
 
-/** Emit one plugin-owned style injector plus the compiled class map. */
+/**
+ * Emit one plugin-owned style injector plus the compiled class map.
+ *
+ * The tag is keyed by the stylesheet's path within this checkout rather than by its file
+ * name: the editor alone carries half a dozen files called `style.css`, and one tag per
+ * name would have each of them overwrite the last — which is how the diff view lost the
+ * rules that paint an added or a removed line. The path is relative so that the key is the
+ * same on every machine, which the replacement below depends on.
+ */
 function styleInjectionModule(
   fileId: string,
   css: string,
   classMap: Readonly<Record<string, string>>,
 ): string {
-  const tagId = `${ID}/${basename(fileId)}`
+  const tagId = `${ID}/${relative(import.meta.dirname, fileId)}`
   return [
     `const css = ${JSON.stringify(css)};`,
     `const tagId = ${JSON.stringify(tagId)};`,

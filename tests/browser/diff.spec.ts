@@ -44,6 +44,7 @@ function render(page: Page, props: object): Promise<void> {
 /** The box the editor settled in, and every size it took while settling. */
 interface Settled {
   readonly sizes: readonly string[]
+  readonly columns: readonly number[]
   readonly width: number
   readonly overflow: number
 }
@@ -83,6 +84,33 @@ function editorIsMarked(page: Page): Promise<string> {
   )
 }
 
+/** How the editor painted what a file gained, lost, and changed. */
+interface Marks {
+  readonly addedLine: string | undefined
+  readonly removedLine: string | undefined
+  readonly addedText: string | undefined
+  readonly removedText: string | undefined
+}
+
+/** The colours the editor marked the change with. */
+function marks(page: Page): Promise<Marks> {
+  return page.evaluate(
+    () => (globalThis as unknown as { __probe: { marks: () => Marks } }).__probe.marks(),
+  )
+}
+
+/** Whether a colour is one a reader would see: absent or transparent both mean unpainted. */
+function painted(colour: string | undefined): boolean {
+  return colour !== undefined && colour !== 'rgba(0, 0, 0, 0)' && colour !== 'transparent'
+}
+
+/** Which number the gutter gave the changed line on each side, as `text@number`. */
+function numbering(page: Page): Promise<readonly string[]> {
+  return page.evaluate(
+    () => (globalThis as unknown as { __probe: { numbering: () => string[] } }).__probe.numbering(),
+  )
+}
+
 test('draws a diff in the editor, in either reading', async ({ page }) => {
   const errors = watch(page)
   await page.goto('/index.html')
@@ -116,6 +144,41 @@ test('paints the tokens in the palette the page named', async ({ page }) => {
   expect(painted.distinct, 'the line is more than one colour').toBeGreaterThan(1)
 })
 
+test('marks the lines a file gained and lost', async ({ page }) => {
+  await page.goto('/index.html')
+  await expect(page.locator('.monaco-diff-editor')).toBeVisible({ timeout: 20_000 })
+  // The overlays are drawn a frame after the box they sit in, so the colour is polled
+  // until it is there: the assertion is about the paint, not about the frame.
+  await expect.poll(async () => painted((await marks(page)).addedLine)).toBe(true)
+  const marked = await marks(page)
+  // The colours come from a stylesheet in the editor's own package — the one that says an
+  // added line is green and a removed one is red, and that the text which changed inside a
+  // line is marked too. Without it every overlay is in the document and none is painted,
+  // which is a diff whose every line looks alike.
+  for (const [what, colour] of Object.entries({
+    'a removed line': marked.removedLine,
+    'the text a line gained': marked.addedText,
+    'the text a line lost': marked.removedText,
+  })) {
+    expect(painted(colour), `${what} is painted`).toBe(true)
+  }
+  expect(marked.addedLine, 'an added line is not painted like a removed one').not.toBe(marked.removedLine)
+  await page.screenshot({ path: 'tests/browser/.page/diff-marks.png' })
+})
+
+test('numbers each side by the file it came from', async ({ page }) => {
+  await page.goto('/index.html')
+  await expect(page.locator('.monaco-diff-editor')).toBeVisible({ timeout: 20_000 })
+  await expect.poll(async () => (await numbering(page)).length).toBe(2)
+  // The fixture's third line is a change, and the line before it is an addition the old
+  // side does not have: a side padded with the other's lines counts it, and the reader is
+  // sent to the wrong line of the file.
+  expect(await numbering(page), 'the line is numbered by its own file').toEqual([
+    'const answer = 41@3',
+    'const answer = 42@3',
+  ])
+})
+
 test('holds its box while it settles, however narrow the pane', async ({ page }) => {
   const errors = watch(page)
   await page.goto('/index.html')
@@ -132,5 +195,9 @@ test('holds its box while it settles, however narrow the pane', async ({ page })
   // Width only: the editor's own widgets reach a few pixels below its box, which is the
   // editor's business and stays inside the pane.
   expect(settled.overflow, 'the editor fits the pane across').toBe(0)
+  // The reader asked for two columns and the pane is narrow: the editor answers with two
+  // anyway, rather than falling back to one below its own breakpoint and leaving the switch
+  // looking like it did nothing.
+  expect(settled.columns, 'the narrow pane is still drawn in two columns').toHaveLength(2)
   expect(errors, 'the page logged errors').toEqual([])
 })
