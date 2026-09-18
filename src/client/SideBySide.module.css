@@ -125,7 +125,11 @@
 
 /* A side with no line on this row: the page showing through the card, so the
    gap reads as absence rather than as content. */
+/* The side a line is missing from still occupies a row, or the two halves drift out of
+   step: the rows are their own height now, and a cell that draws nothing measures
+   nothing. This is what keeps a deleted line's blank right side as tall as the line. */
 .blank {
+  min-height: var(--dsh-git-diff-row);
   --dsh-git-diff-tone: color-mix(in srgb, var(--dsw-alias-bg-base) 45%, var(--dsw-alias-markdown-code-block));
 
   background: var(--dsh-git-diff-tone);
