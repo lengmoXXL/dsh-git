@@ -101,6 +101,11 @@ export function DiffView({ diff, split, wrap, t, onCounts }: DiffViewProps): Rea
         readOnly: true,
         originalEditable: false,
         renderSideBySide: split,
+        // The editor gives the left column a glyph margin of its own and leaves the right one
+        // without, which starts its line numbers eighteen pixels further left. Both sides get
+        // one, so the two gutters are the same width — and the fold control has somewhere to be
+        // drawn on either side.
+        glyphMargin: true,
         // The reader's switch decides, not the width. Left to itself the editor answers a
         // request for two columns with one wherever the pane is narrower than its own
         // breakpoint — nine hundred pixels, which a sidebar is — so the switch would look

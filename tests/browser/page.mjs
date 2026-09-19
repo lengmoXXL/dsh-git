@@ -182,6 +182,22 @@ const page = `<!doctype html>
       }
     },
     /**
+     * Where each column begins its line numbers, and how wide the strip before them is. The
+     * editor draws a glyph margin for one side of a side-by-side diff and not the other unless
+     * it is asked, and the two gutters are only the same width when both have one.
+     */
+    gutters: () => [...document.querySelectorAll('.monaco-editor')]
+      .filter(editor => editor.getBoundingClientRect().width > 20)
+      .map((editor) => {
+        const box = editor.getBoundingClientRect()
+        const numbers = editor.querySelector('.line-numbers')
+        const glyph = editor.querySelector('.glyph-margin')
+        return {
+          offset: numbers === null ? null : Math.round(numbers.getBoundingClientRect().x - box.x),
+          glyph: glyph === null ? 0 : Math.round(glyph.getBoundingClientRect().width),
+        }
+      }),
+    /**
      * The rail through an open commit's files and the space the group is given: the rail's own
      * box is the group's, moved by the offsets the stylesheet asks for.
      */

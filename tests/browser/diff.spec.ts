@@ -82,8 +82,16 @@ interface History {
   readonly below: { readonly x: number, readonly y: number } | null
 }
 
+/** Where one column starts its line numbers, and the strip the editor draws before them. */
+interface Gutter {
+  readonly offset: number | null
+  readonly glyph: number
+}
+
 /** Every question the page can answer, and what each answers with. */
 interface Probes {
+  /** Where each column begins its line numbers. */
+  readonly gutters: () => readonly Gutter[]
   /** The rail through an open commit's files, once one is open. */
   readonly history: () => History | null
   /** Whether the editor's icon font is loaded, and the glyph the band draws with it. */
@@ -183,6 +191,12 @@ test('numbers each side by the file it came from', async ({ page }) => {
     'const answer = 41@3',
     'const answer = 42@3',
   ])
+  // The editor gives the left column a glyph margin of its own and none to the right, unless
+  // it is asked for both: without that the right column begins its numbers a strip earlier.
+  const gutters = await probe(page, 'gutters')
+  expect(gutters, 'both columns are drawn').toHaveLength(2)
+  expect(gutters[0]?.glyph, 'both columns have a strip before their numbers').toBe(gutters[1]?.glyph)
+  expect(gutters[0]?.offset, 'and both begin their numbers at the same place').toBe(gutters[1]?.offset)
 })
 
 test('draws the unfold control with the editor icon, in the glyph column', async ({ page }) => {
