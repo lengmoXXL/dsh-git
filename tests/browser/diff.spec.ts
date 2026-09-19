@@ -70,8 +70,22 @@ interface Columns {
   readonly glyph: number | null
 }
 
+/** The rail through an open commit's files, and the space the group is given. */
+interface History {
+  readonly paddingTop: number
+  readonly paddingBottom: number
+  readonly centre: number
+  readonly top: number
+  readonly bottom: number
+  readonly width: number
+  readonly above: { readonly x: number, readonly y: number } | null
+  readonly below: { readonly x: number, readonly y: number } | null
+}
+
 /** Every question the page can answer, and what each answers with. */
 interface Probes {
+  /** The rail through an open commit's files, once one is open. */
+  readonly history: () => History | null
   /** Whether the editor's icon font is loaded, and the glyph the band draws with it. */
   readonly icons: () => Promise<Icons>
   /** The columns the unfold control and the glyph margin sit in. */
@@ -188,6 +202,31 @@ test('draws the unfold control with the editor icon, in the glyph column', async
   expect(columns.unfold, 'the band has an unfold control').not.toBeNull()
   expect(columns.glyph, 'the editor has a glyph margin').not.toBeNull()
   expect(columns.unfold, 'the unfold control sits in the glyph column').toBe(columns.glyph)
+  expect(errors, 'the page logged errors').toEqual([])
+})
+
+test('joins an open commit to the one below it, and spaces it evenly', async ({ page }) => {
+  const errors = watch(page)
+  await page.goto('/index.html')
+  // The newest commit's files are open on arrival: the list is the way into them.
+  await page.evaluate(() => {
+    (globalThis as unknown as { __renderHistory: () => void }).__renderHistory()
+  })
+  await expect.poll(async () => (await probe(page, 'history')) !== null).toBe(true)
+  const history = await probe(page, 'history')
+  if (history === null) throw new Error('the newest commit drew no files')
+  expect(history.paddingTop, 'the files are spaced the same above and below').toBe(history.paddingBottom)
+  expect(history.above, 'the open commit has a node').not.toBeNull()
+  expect(history.below, 'the commit below it has one too').not.toBeNull()
+  // A graph would draw this line; a list has to draw it, or the files look detached.
+  expect(history.width, 'the rail is a hairline').toBe(1)
+  expect(history.centre, 'the rail runs through the nodes').toBe(history.above?.x)
+  expect(history.top, 'it starts at the node above').toBe(history.above?.y)
+  expect(history.bottom, 'and ends at the node below').toBe(history.below?.y)
+
+  // Opening and closing is the reader's, and closing takes the rail with it.
+  await page.locator('#historyHost [class*=_subject]').first().click()
+  await expect.poll(async () => (await probe(page, 'history')) === null).toBe(true)
   expect(errors, 'the page logged errors').toEqual([])
 })
 

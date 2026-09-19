@@ -57,8 +57,9 @@ export interface HistoryListProps {
 /** The fewest commits shown, however short the list is. */
 const HISTORY_MIN = 12
 
-/** One commit row's height, used to work out how many fill the list. */
-const ROW_HEIGHT = 24
+/** One commit row's height, used to work out how many fill the list. It is the height
+ * `List.module.css` gives a row: the two have to agree or the list under-fills the rail. */
+const ROW_HEIGHT = 22
 
 /**
  * How many commits the list can show without scrolling itself, never fewer than

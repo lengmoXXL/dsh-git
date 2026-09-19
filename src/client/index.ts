@@ -69,9 +69,10 @@ export const name = 'dsh-git-ui'
 export const inject = ['slots', 'locale', 'sidebarRightTabs', 'resources', 'sidebarRight']
 
 // Exported for the browser suite: a page body rendered on the server never reaches its
-// effects, so the page that draws a diff mounts this component itself. The shell reads
-// `name`, `inject` and `apply`.
+// effects, so the page that draws a diff, or a commit's files, mounts it itself. The shell
+// reads `name`, `inject` and `apply`.
 export { DiffView } from './DiffView.tsx'
+export { HistoryList } from './HistoryList.tsx'
 
 /**
  * Mount the client half.

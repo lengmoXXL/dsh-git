@@ -322,10 +322,24 @@
 }
 
 /* The files under an open commit: they begin where the commit's row ends, one step
-   in — the commit is the heading. */
+   in — the commit is the heading. The space above them is the space below them, so the
+   list reads as one rhythm whether a commit is open or shut. */
 .files {
+  position: relative;
   margin: 0;
-  padding: 0 0 6px;
+  padding: 6px 0;
+}
+
+/* The rail through an open group, which a graph would draw: it starts at the node above
+   and ends at the node below, each of which sits half a row past this box. */
+.files::before {
+  content: '';
+  position: absolute;
+  top: -11px;
+  bottom: -11px;
+  left: 14px;
+  width: 1px;
+  background: var(--dsw-alias-border-l2);
 }
 
 /* A commit's file list that could not be read. */

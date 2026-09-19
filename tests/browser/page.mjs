@@ -51,6 +51,26 @@ const page = `<!doctype html>
 <script>${reactDom}</script>
 <script>${bundle}</script>
 <script>
+  // The history list reads one commit's files through the plugin's own face, which calls the
+  // page's fetch: a commit's answer is canned here so a row can be opened without a host.
+  const COMMITS = [
+    { sha: 'a'.repeat(40), shortSha: 'aaaaaaa', parents: ['b'.repeat(40)], authorName: 'Ada', authoredAt: 1_700_000_000, refs: ['HEAD -> main'], subject: 'Draw the rail through an open commit' },
+    { sha: 'b'.repeat(40), shortSha: 'bbbbbbb', parents: [], authorName: 'Linus', authoredAt: 1_699_000_000, refs: [], subject: 'the commit below the one that is open' },
+  ]
+  const FILES = [
+    { path: 'src/client/List.module.css', kind: 'modified' },
+    { path: 'src/client/HistoryList.tsx', kind: 'modified' },
+  ]
+  const realFetch = window.fetch
+  window.fetch = async (input) => {
+    const url = String(input)
+    if (url.includes('/commit?')) {
+      return { ok: true, json: async () => ({ commit: COMMITS[0], files: FILES }) }
+    }
+    return await realFetch(input)
+  }
+</script>
+<script>
   const line = (n) => 'const value' + String(n) + ' = compute(' + String(n) + ')'
   // Both sides of one small change, as a host sends them: a line gone, a line added, a line
   // changed, and a long unchanged middle for the editor to fold away. All four are here
@@ -83,7 +103,19 @@ const page = `<!doctype html>
   const require = (name) => name === 'react' ? React
     : name === 'react/jsx-runtime' ? jsxRuntime
     : name === 'react-dom' ? ReactDOM
-    : name === '@deepseek-ai/dsh-client-ui-primitives' ? { Button: (p) => React.createElement('button', p, p.children), Tag: (p) => React.createElement('span', p, p.children) }
+    : name === '@deepseek-ai/dsh-client-ui-primitives' ? {
+        // Only what the components on this page draw with: a missing name would reach
+        // React as an element type it cannot render.
+        Button: (p) => React.createElement('button', p, p.children),
+        Tag: (p) => React.createElement('span', p, p.children),
+        FileTypeIcon: () => React.createElement('span', null, null),
+        // Sized, or an svg with no size of its own is 300 by 150 and covers the rows.
+        IconBranchOutline16: () => React.createElement('svg', { width: 16, height: 16 }),
+        IconChevronDownOutline14: () => React.createElement('svg', { width: 14, height: 14 }),
+        IconChevronRightOutline14: () => React.createElement('svg', { width: 14, height: 14 }),
+        // The shell's own reading of a timestamp, which a commit row's age is built from.
+        relativeTime: (at, now) => ({ unit: 'minutes', n: Math.max(1, Math.floor((now - at * 1000) / 60_000)) }),
+      }
     : (() => { throw new Error('the bundle asked for an unexpected module: ' + name) })()
   window.__exports = entry.factory(require)
 
@@ -147,6 +179,35 @@ const page = `<!doctype html>
         removedLine: background('.line-delete'),
         addedText: background('.char-insert'),
         removedText: background('.char-delete'),
+      }
+    },
+    /**
+     * The rail through an open commit's files and the space the group is given: the rail's own
+     * box is the group's, moved by the offsets the stylesheet asks for.
+     */
+    history: () => {
+      const files = document.querySelector('#historyHost [class*=_files]')
+      if (files === null) return null
+      const style = getComputedStyle(files)
+      const rail = getComputedStyle(files, '::before')
+      const box = files.getBoundingClientRect()
+      const shift = (value) => parseFloat(value) || 0
+      const centre = (row) => {
+        const node = row === null ? null : row.querySelector('[class*=_node]')
+        if (node === null) return null
+        const rect = node.getBoundingClientRect()
+        return { x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) }
+      }
+      return {
+        paddingTop: shift(style.paddingTop),
+        paddingBottom: shift(style.paddingBottom),
+        centre: Math.round(box.x + shift(rail.left) + shift(rail.width) / 2),
+        top: Math.round(box.y + shift(rail.top)),
+        // A negative bottom is an offset past the group's own edge, so it is subtracted.
+        bottom: Math.round(box.y + box.height - shift(rail.bottom)),
+        width: shift(rail.width),
+        above: centre(files.previousElementSibling),
+        below: centre(files.nextElementSibling),
       }
     },
     /** Whether the editor's icon font is loaded, and whether the band draws a glyph with it. */
@@ -224,6 +285,25 @@ const page = `<!doctype html>
     },
   }
   window.__render({})
+
+  // A second page for the history list, mounted the same way: its own root, its own box.
+  const historyRoot = document.createElement('div')
+  historyRoot.id = 'historyHost'
+  historyRoot.style.cssText = 'width:420px;height:400px;background:#1e1e1e'
+  // Ahead of the diff board, so nothing the editor overlays can cover a row.
+  document.body.prepend(historyRoot)
+  window.__renderHistory = () => {
+    ReactDOM.createRoot(historyRoot).render(React.createElement(window.__exports.HistoryList, {
+      commits: COMMITS,
+      hasMore: false,
+      sessionId: 'session-1',
+      now: 1_700_000_600_000,
+      t: (key) => key,
+      onSelectFile: () => {},
+      viewport: { current: historyRoot },
+      onLoadOlder: () => {},
+    }))
+  }
 </script>
 </body></html>
 `
