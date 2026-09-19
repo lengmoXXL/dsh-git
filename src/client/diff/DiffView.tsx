@@ -10,16 +10,16 @@
  * rendered on the server, where the host element exists and nothing may touch it. That
  * is why this component draws an empty box first and fills it after mount.
  *
- * @module dsh-git/client/DiffView
+ * @module dsh-git/client/diff/DiffView
  */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
-import type { DiffPayload } from '../shared/wire.ts'
+import type { DiffPayload } from '../../api/wire.ts'
 import { monaco } from './editor.ts'
-import type { GitKey } from './locales.ts'
+import type { GitKey } from '../i18n/locales.ts'
 import { installSyntax, languageOf } from './syntax.ts'
-import css from './DiffView.module.css'
+import css from '../styles/DiffView.module.css'
 
 /** How many lines the editor found on each side of the change. */
 export interface DiffCounts {

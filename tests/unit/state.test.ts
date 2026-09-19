@@ -8,8 +8,8 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import type { ChangeEntry, ChangeKind } from '../../src/shared/wire.ts'
-import { GitRequestError } from '../../src/client/face.ts'
+import type { ChangeEntry, ChangeKind } from '../../src/api/wire.ts'
+import { GitRequestError } from '../../src/client/data/face.ts'
 import {
   clampRailWidth,
   DIFF_MIN_WIDTH,
@@ -20,7 +20,7 @@ import {
   groupChanges,
   parseRefs,
   statusLetter,
-} from '../../src/client/state.ts'
+} from '../../src/client/data/state.ts'
 
 /** One status entry. */
 function entry(stage: ChangeEntry['stage'], path: string, kind: ChangeEntry['kind'] = 'modified'): ChangeEntry {

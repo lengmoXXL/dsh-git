@@ -8,12 +8,12 @@
  * with, the chips a commit's refs become — where it can be tested without the
  * component library.
  *
- * @module dsh-git/client/format
+ * @module dsh-git/client/i18n/format
  */
 
 import { relativeTime, type RelativeTimeUnit } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ChangeKind } from '../shared/wire.ts'
+import type { ChangeKind } from '../../api/wire.ts'
 import type { GitKey } from './locales.ts'
 
 /** The dictionary key each relative-time bucket is spelled with. */

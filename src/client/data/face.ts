@@ -10,7 +10,7 @@
  * non-JSON body) reaches the caller as the raw rejection, because those are not
  * the host's answers to classify.
  *
- * @module dsh-git/client/face
+ * @module dsh-git/client/data/face
  */
 
 import type {
@@ -20,7 +20,7 @@ import type {
   ErrorPayload,
   HistoryPayload,
   StatusPayload,
-} from '../shared/wire.ts'
+} from '../../api/wire.ts'
 
 /** The path prefix the host half answers on. */
 const API_PREFIX = '/dsh-git'

@@ -22,7 +22,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 // Type-only: pulls the persistence plugin's Context merge (ctx.sessionPersistence),
 // which is how a Session the host is not running still names its workspace.
 import type {} from '@deepseek-ai/dsh-session-persistence'
-import type { RepoIdentity } from '../shared/wire.ts'
+import type { RepoIdentity } from '../api/wire.ts'
 import { GitFailure } from './failure.ts'
 import { runGit } from './run.ts'
 

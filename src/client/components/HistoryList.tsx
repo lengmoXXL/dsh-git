@@ -13,22 +13,22 @@
  * would be fifty reads for nothing. Closing and reopening a row reads it again,
  * which is also how a reader retries a read that failed.
  *
- * @module dsh-git/client/HistoryList
+ * @module dsh-git/client/components/HistoryList
  */
 
 import { useEffect, useState, type ReactNode, type RefObject } from 'react'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
-import type { CommitFile, CommitSummary } from '../shared/wire.ts'
-import { gitFace } from './face.ts'
+import type { CommitFile, CommitSummary } from '../../api/wire.ts'
+import { gitFace } from '../data/face.ts'
 import { FileRow } from './FileRow.tsx'
 import { LIST_PREVIEW, MoreRow } from './MoreRow.tsx'
-import { cx, timeLabel } from './format.ts'
-import { logCache } from './log-cache.ts'
-import type { GitKey } from './locales.ts'
+import { cx, timeLabel } from '../i18n/format.ts'
+import { logCache } from '../data/log-cache.ts'
+import type { GitKey } from '../i18n/locales.ts'
 import { RefChips } from './RefChips.tsx'
 import { Section } from './Section.tsx'
-import { cached, failureInfoOf, parseRefs, type Load } from './state.ts'
-import css from './List.module.css'
+import { cached, failureInfoOf, parseRefs, type Load } from '../data/state.ts'
+import css from '../styles/List.module.css'
 
 /** Props of the history list. */
 export interface HistoryListProps {

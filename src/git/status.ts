@@ -22,7 +22,7 @@ import type {
   ChangeKind,
   RepoIdentity,
   StatusPayload,
-} from '../shared/wire.ts'
+} from '../api/wire.ts'
 import { runGit } from './run.ts'
 
 /** One parsed `git status` read. */

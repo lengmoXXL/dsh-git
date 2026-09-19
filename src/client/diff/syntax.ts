@@ -13,7 +13,7 @@
  * same file are coloured from one palette. A page that names none, like the browser
  * test's, keeps the editor's own theme.
  *
- * @module dsh-git/client/syntax
+ * @module dsh-git/client/diff/syntax
  */
 
 import { monaco } from './editor.ts'

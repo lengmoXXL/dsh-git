@@ -23,7 +23,7 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import { FsError } from '@deepseek-ai/dsh-fs'
-import type { DiffSource } from '../shared/wire.ts'
+import type { DiffSource } from '../api/wire.ts'
 import { runGit } from './run.ts'
 
 /** One side of a comparison, before labels are attached. */

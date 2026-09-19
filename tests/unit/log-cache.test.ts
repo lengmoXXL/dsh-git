@@ -10,7 +10,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { logCache } from '../../src/client/log-cache.ts'
+import { logCache } from '../../src/client/data/log-cache.ts'
 
 test('hands one Session the same cache every time', () => {
   const first = logCache('session-a')

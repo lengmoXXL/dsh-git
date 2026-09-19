@@ -2,14 +2,14 @@
  * The two states that stand in for content: a request in flight, and a failure
  * with the way to try it again.
  *
- * @module dsh-git/client/Feedback
+ * @module dsh-git/client/components/Feedback
  */
 
 import type { ReactNode } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
-import type { GitKey } from './locales.ts'
-import css from './Feedback.module.css'
+import type { GitKey } from '../i18n/locales.ts'
+import css from '../styles/Feedback.module.css'
 
 export function FailureBlock({ code, message, t, onRetry }: {
   readonly code: string

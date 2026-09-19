@@ -1,97 +1,26 @@
 /**
- * The `/dsh-git` request handler, as a function of a normalized request.
+ * The four read-only endpoints of the git API, as a function of a normalized
+ * request.
  *
- * Rules and transport are separate halves of this package's HTTP surface, in
- * that order: this module validates parameters, resolves the repository,
- * calls the git readers, and returns a status plus a JSON body — all without
- * opening a socket. `serve.ts` owns only reading the URL and writing the
- * response, which is what makes every branch below reachable from a test.
+ * Each function validates its own parameters, resolves the repository, calls the
+ * git readers, and returns a payload — all without opening a socket. The route
+ * table that reaches them and the mapping from a failure to an HTTP status live
+ * in routes.ts.
  *
- * The workspace is resolved from the Session identity on the host, never from a
- * path the browser supplies, and every path that does arrive from the browser
- * is confined to the repository root before it reaches a git command.
- *
- * @module dsh-git/api/handler
+ * @module dsh-git/api/endpoints
  */
 
-import type { Context } from '@deepseek-ai/cordis'
-import type {
-  CommitPayload,
-  DiffPayload,
-  DiffSource,
-  ErrorPayload,
-  HistoryPayload,
-  StatusPayload,
-} from '../shared/wire.ts'
+import type { CommitPayload, DiffPayload, DiffSource, HistoryPayload, RepoIdentity, StatusPayload } from './wire.ts'
+import type { GitApiDeps } from './routes.ts'
 import { readCommit } from '../git/commit.ts'
 import { GitFailure } from '../git/failure.ts'
 import { readHistory } from '../git/history.ts'
 import { confineToRepo, discoverRepo, resolveWorkspaceRoot } from '../git/repo.ts'
-import type { RepoIdentity } from '../shared/wire.ts'
 import { readRevisionTexts } from '../git/revision.ts'
 import { readStatus } from '../git/status.ts'
 
-/** The caps this deployment was configured with. */
-export interface GitApiConfig {
-  readonly maxBytes: number
-  readonly historyLimit: number
-  readonly maxEntries: number
-}
-
-/** One normalized request, already routed to this API's prefix. */
-export interface GitApiRequest {
-  /** Upper-case HTTP method. */
-  readonly method: string
-  /** Path below the API prefix; always starts with `/`. */
-  readonly path: string
-  /** Parsed query string. */
-  readonly query: URLSearchParams
-}
-
-/** One normalized response. */
-export interface GitApiResponse {
-  /** HTTP status code. */
-  readonly status: number
-  /** JSON-serializable body. */
-  readonly body: unknown
-}
-
-/** What the handler needs from the plugin. */
-export interface GitApiDeps {
-  /** The host context carrying `ctx.fs`, `ctx.subprocess`, and `ctx.sessions`. */
-  readonly ctx: Context
-  /** The deployment's caps. */
-  readonly config: GitApiConfig
-}
-
 /** The comparison pairs a diff request may name. */
 const SOURCES: readonly DiffSource[] = ['worktree', 'index', 'commit']
-
-/**
- * The HTTP status one failure code answers with.
- *
- * A missing repository and an unknown revision are both "not here" (404), a
- * malformed or unconfined request is the caller's fault (400), an unavailable
- * git is transient and belongs to the deployment (503), and a failed git
- * command is an unexpected host condition (500).
- * @param code - the failure code.
- * @returns the status to answer with.
- */
-function statusFor(code: string): number {
-  switch (code) {
-    case 'session/unknown':
-    case 'git/bad-request':
-    case 'git/path-outside-repo':
-      return 400
-    case 'git/not-a-repository':
-    case 'git/unknown-revision':
-      return 404
-    case 'git/unavailable':
-      return 503
-    default:
-      return 500
-  }
-}
 
 /**
  * Read a non-negative integer parameter.
@@ -155,7 +84,7 @@ async function requireRepo(deps: GitApiDeps, query: URLSearchParams, signal?: Ab
  * @param signal - caller cancellation.
  * @returns the status payload.
  */
-async function handleStatus(
+export async function handleStatus(
   deps: GitApiDeps,
   query: URLSearchParams,
   signal?: AbortSignal,
@@ -181,7 +110,7 @@ async function handleStatus(
  * @param signal - caller cancellation.
  * @returns the history page.
  */
-async function handleHistory(
+export async function handleHistory(
   deps: GitApiDeps,
   query: URLSearchParams,
   signal?: AbortSignal,
@@ -203,7 +132,7 @@ async function handleHistory(
  * @param signal - caller cancellation.
  * @returns the commit and its files.
  */
-async function handleCommit(
+export async function handleCommit(
   deps: GitApiDeps,
   query: URLSearchParams,
   signal?: AbortSignal,
@@ -223,7 +152,7 @@ async function handleCommit(
  * @param signal - caller cancellation.
  * @returns the change's two sides.
  */
-async function handleDiff(
+export async function handleDiff(
   deps: GitApiDeps,
   query: URLSearchParams,
   signal?: AbortSignal,
@@ -255,49 +184,5 @@ async function handleDiff(
     truncated: texts.truncated,
     oldText: texts.oldText,
     newText: texts.newText,
-  }
-}
-
-/**
- * Handle one request against this API's prefix.
- * @param request - the normalized request.
- * @param deps - the handler's context and caps.
- * @param signal - caller cancellation, tied to the response's lifetime.
- * @returns the status and body to write.
- */
-export async function handleGitApi(
-  request: GitApiRequest,
-  deps: GitApiDeps,
-  signal?: AbortSignal,
-): Promise<GitApiResponse> {
-  try {
-    if (request.method !== 'GET') {
-      return { status: 405, body: { code: 'git/bad-request', message: 'only GET is supported' } }
-    }
-    switch (request.path) {
-      case '/status':
-        return { status: 200, body: await handleStatus(deps, request.query, signal) }
-      case '/history':
-        return { status: 200, body: await handleHistory(deps, request.query, signal) }
-      case '/commit':
-        return { status: 200, body: await handleCommit(deps, request.query, signal) }
-      case '/diff':
-        return { status: 200, body: await handleDiff(deps, request.query, signal) }
-      default:
-        return {
-          status: 404,
-          body: { code: 'git/bad-request', message: `no such endpoint: ${request.path}` },
-        }
-    }
-  } catch (error: unknown) {
-    if (error instanceof GitFailure) {
-      const body: ErrorPayload = { code: error.code, message: error.message }
-      return { status: statusFor(error.code), body }
-    }
-    const body: ErrorPayload = {
-      code: 'git/command-failed',
-      message: error instanceof Error ? error.message : String(error),
-    }
-    return { status: 500, body }
   }
 }

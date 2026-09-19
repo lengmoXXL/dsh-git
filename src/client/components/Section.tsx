@@ -6,7 +6,7 @@
  * sections share the top edge, so the later one covers the earlier one as it
  * arrives: the heading always belongs to the rows below it.
  *
- * @module dsh-git/client/Section
+ * @module dsh-git/client/components/Section
  */
 
 import type { ReactNode } from 'react'
@@ -16,8 +16,8 @@ import {
   Tag,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
-import type { GitKey } from './locales.ts'
-import css from './List.module.css'
+import type { GitKey } from '../i18n/locales.ts'
+import css from '../styles/List.module.css'
 
 /** Props of a section. */
 export interface SectionProps {

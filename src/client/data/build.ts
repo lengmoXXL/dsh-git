@@ -1,7 +1,7 @@
 /**
  * Which build this bundle is.
  *
- * @module dsh-git/client/build
+ * @module dsh-git/client/data/build
  */
 
 /** ISO timestamp of the build that produced this bundle. */

@@ -4,10 +4,10 @@
  * Keeping them pure is what lets the browser half be tested without a DOM, a
  * server, or a React root.
  *
- * @module dsh-git/client/state
+ * @module dsh-git/client/data/state
  */
 
-import type { ChangeEntry, ChangeKind, ChangeStage, DiffSource } from '../shared/wire.ts'
+import type { ChangeEntry, ChangeKind, ChangeStage, DiffSource } from '../../api/wire.ts'
 import { GitRequestError, type DiffRequest } from './face.ts'
 
 /**

@@ -4,7 +4,7 @@
  * The tone is what says which chip is the branch the reader is on, and which are
  * merely names for the same commit.
  *
- * @module dsh-git/client/RefChips
+ * @module dsh-git/client/components/RefChips
  */
 
 import type { ReactNode } from 'react'
@@ -13,8 +13,8 @@ import {
   Tag,
   type TagTone,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { RefChip, RefKind } from './state.ts'
-import css from './List.module.css'
+import type { RefChip, RefKind } from '../data/state.ts'
+import css from '../styles/List.module.css'
 
 /** The chip palette each kind of ref is drawn in. */
 const REF_TONE: Record<RefKind, TagTone> = {

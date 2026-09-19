@@ -6,7 +6,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createGitFace, GitRequestError, type FetchLike } from '../../src/client/face.ts'
+import { createGitFace, GitRequestError, type FetchLike } from '../../src/client/data/face.ts'
 
 /** A fetch that records the URL it was given and answers with one body. */
 function recordingFetch(status: number, body: unknown): { readonly fetch: FetchLike; readonly urls: string[] } {

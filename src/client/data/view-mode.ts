@@ -8,7 +8,7 @@
  * and dragging the list a pixel would redraw every diff. Neither choice is the host's business,
  * so the browser holds them.
  *
- * @module dsh-git/client/view-mode
+ * @module dsh-git/client/data/view-mode
  */
 
 /** How the diff is laid out. */

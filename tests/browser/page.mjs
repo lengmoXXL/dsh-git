@@ -58,8 +58,8 @@ const page = `<!doctype html>
     { sha: 'b'.repeat(40), shortSha: 'bbbbbbb', parents: [], authorName: 'Linus', authoredAt: 1_699_000_000, refs: [], subject: 'the commit below the one that is open' },
   ]
   const FILES = [
-    { path: 'src/client/List.module.css', kind: 'modified' },
-    { path: 'src/client/HistoryList.tsx', kind: 'modified' },
+    { path: 'src/client/styles/List.module.css', kind: 'modified' },
+    { path: 'src/client/components/HistoryList.tsx', kind: 'modified' },
   ]
   const realFetch = window.fetch
   window.fetch = async (input) => {

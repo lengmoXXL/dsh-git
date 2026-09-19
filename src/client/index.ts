@@ -31,8 +31,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type { SidebarRightTabDefinition } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import { IconBranchOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
-import { LogBody } from './LogBody.tsx'
-import { en, NS, zh, type GitKey } from './locales.ts'
+import { LogBody } from './page/LogBody.tsx'
+import { en, NS, zh, type GitKey } from './i18n/locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -70,8 +70,8 @@ export const inject = ['slots', 'locale', 'sidebarRightTabs', 'resources', 'side
 // Exported for the browser suite: a page body rendered on the server never reaches its
 // effects, so the page that draws a diff, or a commit's files, mounts it itself. The shell
 // reads `name`, `inject` and `apply`.
-export { DiffView } from './DiffView.tsx'
-export { HistoryList } from './HistoryList.tsx'
+export { DiffView } from './diff/DiffView.tsx'
+export { HistoryList } from './components/HistoryList.tsx'
 
 /**
  * Mount the client half.

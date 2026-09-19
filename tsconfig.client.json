@@ -11,5 +11,5 @@
       "monaco-editor/languages/definitions/*": ["./src/client/grammar.d.ts"]
     }
   },
-  "include": ["src/client/**/*.ts", "src/client/**/*.tsx", "src/shared/**/*.ts"]
+  "include": ["src/client/**/*.ts", "src/client/**/*.tsx", "src/api/wire.ts"]
 }

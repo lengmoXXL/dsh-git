@@ -19,9 +19,9 @@ import { promisify } from 'node:util'
 import { Context } from '@deepseek-ai/cordis'
 import { LocalFileSystem } from '@deepseek-ai/dsh-fs-local'
 import { LocalSubprocessRuntime } from '@deepseek-ai/dsh-subprocess-local'
-import type { GitApiConfig, GitApiDeps, GitApiResponse } from '../../src/api/handler.ts'
-import { handleGitApi } from '../../src/api/handler.ts'
-import type { ChangeEntry, DiffPayload, StatusPayload } from '../../src/shared/wire.ts'
+import type { GitApiConfig, GitApiDeps, GitApiResponse } from '../../src/api/routes.ts'
+import { handleGitApi } from '../../src/api/routes.ts'
+import type { ChangeEntry, DiffPayload, StatusPayload } from '../../src/api/wire.ts'
 
 const run = promisify(execFile)
 

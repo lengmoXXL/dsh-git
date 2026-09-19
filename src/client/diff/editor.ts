@@ -13,7 +13,7 @@
  * two registries, and a grammar registered on one would be unknown to the models of the
  * other.
  *
- * @module dsh-git/client/editor
+ * @module dsh-git/client/diff/editor
  */
 
 import * as monaco from 'monaco-editor/editor/editor.api.js'

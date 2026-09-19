@@ -6,7 +6,7 @@
  * The panel receives `t` through the standard locale seat, which the shell
  * derives from the namespace registered in {@link NS}.
  *
- * @module dsh-git/client/locales
+ * @module dsh-git/client/i18n/locales
  */
 
 /** Locale namespace owned by this plugin's Web UI. */

@@ -12,10 +12,10 @@
  * board is kept too: which diffs the reader had open, and which one they were in,
  * is the same kind of fact as where they had scrolled to.
  *
- * @module dsh-git/client/log-cache
+ * @module dsh-git/client/data/log-cache
  */
 
-import type { CommitFile, HistoryPayload, StatusPayload } from '../shared/wire.ts'
+import type { CommitFile, HistoryPayload, StatusPayload } from '../../api/wire.ts'
 import type { BoardPane } from './state.ts'
 
 /** One Session's remembered log. */

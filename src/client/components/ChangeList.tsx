@@ -6,20 +6,20 @@
  * name with the directory trailing it in a dimmer tone, and the status letter
  * at the far right, where the eye lands after reading the name.
  *
- * @module dsh-git/client/ChangeList
+ * @module dsh-git/client/components/ChangeList
  */
 
 import { Fragment, useState, type ReactNode } from 'react'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ChangeEntry, ChangeStage } from '../shared/wire.ts'
+import type { ChangeEntry, ChangeStage } from '../../api/wire.ts'
 import { FileRow } from './FileRow.tsx'
 import { LIST_PREVIEW, MoreRow } from './MoreRow.tsx'
-import { cx } from './format.ts'
-import type { GitKey } from './locales.ts'
+import { cx } from '../i18n/format.ts'
+import type { GitKey } from '../i18n/locales.ts'
 import { Section } from './Section.tsx'
-import type { GroupedChanges } from './state.ts'
-import { nonEmptyGroups } from './state.ts'
-import css from './List.module.css'
+import type { GroupedChanges } from '../data/state.ts'
+import { nonEmptyGroups } from '../data/state.ts'
+import css from '../styles/List.module.css'
 
 /** The group heading each stage is drawn under. */
 const GROUP_KEY: Record<ChangeStage, GitKey> = {

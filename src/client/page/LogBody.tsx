@@ -5,7 +5,7 @@
  * it holds the reader's own arrangements — which diffs are open, where the list
  * sits, how the diffs are drawn — because none of that is the host's business.
  *
- * @module dsh-git/client/LogBody
+ * @module dsh-git/client/page/LogBody
  */
 
 import {
@@ -30,15 +30,15 @@ import type {
   CommitSummary,
   HistoryPayload,
   StatusPayload,
-} from '../shared/wire.ts'
-import { ChangeList } from './ChangeList.tsx'
-import { FailureBlock, Note } from './Feedback.tsx'
-import { GitBoard } from './GitBoard.tsx'
-import { gitFace, type DiffRequest } from './face.ts'
-import { ClipGlyph, InlineLayoutGlyph, OpenFileGlyph, SplitLayoutGlyph, WrapGlyph } from './glyphs.tsx'
-import { HistoryList } from './HistoryList.tsx'
-import { logCache } from './log-cache.ts'
-import type { GitKey, GitNamespace } from './locales.ts'
+} from '../../api/wire.ts'
+import { ChangeList } from '../components/ChangeList.tsx'
+import { FailureBlock, Note } from '../components/Feedback.tsx'
+import { GitBoard } from '../components/GitBoard.tsx'
+import { gitFace, type DiffRequest } from '../data/face.ts'
+import { ClipGlyph, InlineLayoutGlyph, OpenFileGlyph, SplitLayoutGlyph, WrapGlyph } from '../components/glyphs.tsx'
+import { HistoryList } from '../components/HistoryList.tsx'
+import { logCache } from '../data/log-cache.ts'
+import type { GitKey, GitNamespace } from '../i18n/locales.ts'
 import {
   diffViewSettings,
   RAIL_DEFAULT_WIDTH,
@@ -50,7 +50,7 @@ import {
   setRailWidth,
   subscribeDiffViewSettings,
   subscribeRailSettings,
-} from './view-mode.ts'
+} from '../data/view-mode.ts'
 import {
   cached,
   clampRailWidth,
@@ -62,8 +62,8 @@ import {
   type BoardPane,
   type FailureInfo,
   type Load,
-} from './state.ts'
-import css from './LogBody.module.css'
+} from '../data/state.ts'
+import css from '../styles/LogBody.module.css'
 
 /** Stable empties, so a not-yet-loaded read does not mint a new array on every render. */
 const NO_ENTRIES: readonly ChangeEntry[] = []

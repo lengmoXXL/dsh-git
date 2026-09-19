@@ -5,7 +5,7 @@
  * host program and the browser bundle share one description of what
  * `/dsh-git/*` answers without either pulling in the other's code.
  *
- * @module dsh-git/shared/wire
+ * @module dsh-git/api/wire
  */
 
 /** Which revision pair a diff compares. */

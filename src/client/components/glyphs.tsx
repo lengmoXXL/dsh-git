@@ -1,7 +1,7 @@
 /**
  * The glyphs this plugin draws itself.
  *
- * @module dsh-git/client/glyphs
+ * @module dsh-git/client/components/glyphs
  */
 
 import type { ReactNode } from 'react'

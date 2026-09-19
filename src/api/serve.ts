@@ -17,8 +17,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-host-webserver'
-import type { GitApiConfig } from './handler.ts'
-import { handleGitApi } from './handler.ts'
+import type { GitApiConfig } from './routes.ts'
+import { handleGitApi } from './routes.ts'
 
 /** The path prefix this plugin owns. */
 export const API_PREFIX = '/dsh-git'

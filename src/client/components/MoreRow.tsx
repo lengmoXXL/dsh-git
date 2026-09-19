@@ -1,14 +1,14 @@
 /**
  * The control that stands in for the rows a list is not showing.
  *
- * @module dsh-git/client/MoreRow
+ * @module dsh-git/client/components/MoreRow
  */
 
 import type { ReactNode } from 'react'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
-import { cx } from './format.ts'
-import type { GitKey } from './locales.ts'
-import css from './List.module.css'
+import { cx } from '../i18n/format.ts'
+import type { GitKey } from '../i18n/locales.ts'
+import css from '../styles/List.module.css'
 
 /** How many entries a list shows before it says there are more. */
 export const LIST_PREVIEW = 8

@@ -13,7 +13,7 @@
 
 import assert from 'node:assert/strict'
 import { readdir, readFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
@@ -127,7 +127,7 @@ test('defines every class the components reach for', async () => {
   const source = await readArtifact()
   const here = dirname(fileURLToPath(import.meta.url))
   const clientDir = join(here, '../..', 'src', 'client')
-  const files = await readdir(clientDir)
+  const files = await readdir(clientDir, { recursive: true })
 
   // A class the component names but the stylesheet does not define arrives as
   // `undefined`; `cx` then drops it and the element simply has no rule — a
@@ -139,14 +139,14 @@ test('defines every class the components reach for', async () => {
     assert.notEqual(tag, null, `the bundle carries the class map for ${name}`)
     const map = /var \w+_module_css_default = \{([^}]*)\};/.exec(source.slice(tag?.index ?? 0))
     assert.notEqual(map, null, `the class map for ${name} is readable`)
-    sheets.set(name, String(map?.[1]))
+    sheets.set(basename(name), String(map?.[1]))
   }
 
   const missing: string[] = []
   let checked = 0
   for (const file of files.filter(name => name.endsWith('.tsx') || name.endsWith('.ts'))) {
     const text = await readFile(join(clientDir, file), 'utf8')
-    const imported = /import css from '\.\/([A-Za-z0-9_.-]+\.module\.css)'/.exec(text)?.[1]
+    const imported = /import css from '[^']*\/([A-Za-z0-9_.-]+\.module\.css)'/.exec(text)?.[1]
     if (imported === undefined) continue
     const map = sheets.get(imported)
     assert.notEqual(map, undefined, `${file} imports a stylesheet the bundle lacks`)

@@ -3,18 +3,18 @@
  * tree's changes and the files inside a commit are the same kind of row, so a
  * reader learns one shape.
  *
- * @module dsh-git/client/FileRow
+ * @module dsh-git/client/components/FileRow
  */
 
 import type { ReactNode } from 'react'
 import { FileTypeIcon } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ChangeKind } from '../shared/wire.ts'
-import { cx, kindLabel, pathParts } from './format.ts'
+import type { ChangeKind } from '../../api/wire.ts'
+import { cx, kindLabel, pathParts } from '../i18n/format.ts'
 import { OpenFileGlyph } from './glyphs.tsx'
-import type { GitKey } from './locales.ts'
-import { statusLetter } from './state.ts'
-import css from './List.module.css'
+import type { GitKey } from '../i18n/locales.ts'
+import { statusLetter } from '../data/state.ts'
+import css from '../styles/List.module.css'
 
 /** Props of one changed path's row. */
 export interface FileRowProps {

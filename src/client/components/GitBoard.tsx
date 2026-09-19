@@ -5,20 +5,20 @@
  * for two revisions of one file cannot show each other's answer, and the board
  * itself knows nothing about git.
  *
- * @module dsh-git/client/GitBoard
+ * @module dsh-git/client/components/GitBoard
  */
 
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
-import type { DiffPayload } from '../shared/wire.ts'
-import { BUILD_STAMP } from './build.ts'
+import type { DiffPayload } from '../../api/wire.ts'
+import { BUILD_STAMP } from '../data/build.ts'
 import { FailureBlock, Note } from './Feedback.tsx'
-import { gitFace } from './face.ts'
-import type { GitKey } from './locales.ts'
-import { DiffView, type DiffCounts } from './DiffView.tsx'
-import { diffViewSettings, subscribeDiffViewSettings } from './view-mode.ts'
-import { failureInfoOf, type BoardPane, type Load } from './state.ts'
-import css from './GitBoard.module.css'
+import { gitFace } from '../data/face.ts'
+import type { GitKey } from '../i18n/locales.ts'
+import { DiffView, type DiffCounts } from '../diff/DiffView.tsx'
+import { diffViewSettings, subscribeDiffViewSettings } from '../data/view-mode.ts'
+import { failureInfoOf, type BoardPane, type Load } from '../data/state.ts'
+import css from '../styles/GitBoard.module.css'
 
 /** Props of the board. */
 export interface GitBoardProps {
