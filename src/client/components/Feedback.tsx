@@ -11,6 +11,11 @@ import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { GitKey } from '../i18n/locales.ts'
 import css from '../styles/Feedback.module.css'
 
+/**
+ * Draw one failure: the host's code and detail, and a retry when the caller offers one.
+ * @param props - the failure and the page's translator.
+ * @returns the failure block.
+ */
 export function FailureBlock({ code, message, t, onRetry }: {
   readonly code: string
   readonly message: string

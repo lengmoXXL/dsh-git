@@ -30,6 +30,7 @@ export interface RefChipsProps {
   readonly chips: readonly RefChip[]
 }
 
+/** How many chips a row draws before the rest become one count. */
 const MAX_CHIPS = 2
 
 /**
