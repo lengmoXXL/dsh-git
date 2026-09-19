@@ -76,8 +76,6 @@ export interface RevisionTexts {
   readonly newText: string
   readonly oldLabel: string
   readonly newLabel: string
-  readonly oldPresent: boolean
-  readonly newPresent: boolean
   readonly binary: boolean
   readonly truncated: boolean
 }
@@ -203,8 +201,6 @@ export async function readRevisionTexts(
     newText: binary ? '' : newSide.text,
     oldLabel,
     newLabel,
-    oldPresent: oldSide.present,
-    newPresent: newSide.present,
     binary,
     truncated: oldSide.truncated || newSide.truncated,
   }

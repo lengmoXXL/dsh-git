@@ -32,6 +32,7 @@ export function WrapGlyph(): ReactNode {
     </svg>
   )
 }
+
 /** The same button, for lines that keep their length. */
 export function ClipGlyph(): ReactNode {
   return (

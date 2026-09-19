@@ -1,11 +1,10 @@
 /**
  * Where the panel's repository is, and which paths it may name.
  *
- * The workspace root is derived exactly the way the platform's other
- * workspace-scoped readers derive it: from the selected Session's header, with
- * the deployment's sandbox-policy root as the no-cwd fallback. That keeps the
- * panel showing the same repository the file tools and the workspace file
- * reader are working in, including after a reload that rehydrated a stored
+ * The workspace root comes from the selected Session's header, live or
+ * persisted, which is how the platform's other workspace-scoped readers find
+ * it — so the panel shows the same repository the file tools and the workspace
+ * file reader are working in, including after a reload that rehydrated a stored
  * Session rather than a live one.
  *
  * Path confinement is the second half. The browser only ever sends back paths

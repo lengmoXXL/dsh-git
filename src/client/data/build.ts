@@ -5,4 +5,4 @@
  */
 
 /** ISO timestamp of the build that produced this bundle. */
-export const BUILD_STAMP: string = __DSH_GIT_BUILD__
+export const BUILD_STAMP = __DSH_GIT_BUILD__

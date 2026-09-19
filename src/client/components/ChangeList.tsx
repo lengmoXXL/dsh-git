@@ -72,33 +72,36 @@ export function ChangeList({ grouped, truncated, t, onSelect, onOpenFile }: Chan
       t={t}
     >
       {total === 0 && <p className={css.note}>{t('changes.empty')}</p>}
-      {groups.map(({ stage, entries }) => (
-        <Fragment key={stage}>
-          <h4 className={css.group}>
-            {t(GROUP_KEY[stage])}
-            <span className={css.groupCount}>{entries.length}</span>
-          </h4>
-          {entries.slice(0, shownOf(stage, entries.length)).map(entry => (
-            <FileRow
-              key={`${entry.stage}:${entry.path}`}
-              path={entry.path}
-              origPath={entry.origPath}
-              kind={entry.kind}
-              t={t}
-              onSelect={(beside) => { onSelect(entry, beside) }}
-              onOpenFile={onOpenFile === undefined ? undefined : () => { onOpenFile(entry.path) }}
-            />
-          ))}
-          {entries.length > LIST_PREVIEW && (
-            <MoreRow
-              label={t('list.moreFiles', { n: entries.length - shownOf(stage, entries.length) })}
-              open={shownOf(stage, entries.length) >= entries.length}
-              t={t}
-              onToggle={() => { toggle(stage, entries.length) }}
-            />
-          )}
-        </Fragment>
-      ))}
+      {groups.map(({ stage, entries }) => {
+        const shown = shownOf(stage, entries.length)
+        return (
+          <Fragment key={stage}>
+            <h4 className={css.group}>
+              {t(GROUP_KEY[stage])}
+              <span className={css.groupCount}>{entries.length}</span>
+            </h4>
+            {entries.slice(0, shown).map(entry => (
+              <FileRow
+                key={`${entry.stage}:${entry.path}`}
+                path={entry.path}
+                origPath={entry.origPath}
+                kind={entry.kind}
+                t={t}
+                onSelect={(beside) => { onSelect(entry, beside) }}
+                onOpenFile={onOpenFile === undefined ? undefined : () => { onOpenFile(entry.path) }}
+              />
+            ))}
+            {entries.length > LIST_PREVIEW && (
+              <MoreRow
+                label={t('list.moreFiles', { n: entries.length - shown })}
+                open={shown >= entries.length}
+                t={t}
+                onToggle={() => { toggle(stage, entries.length) }}
+              />
+            )}
+          </Fragment>
+        )
+      })}
       {truncated && <p className={cx(css.note, css.noteMore)}>{t('changes.truncated', { n: total })}</p>}
     </Section>
   )
