@@ -29,7 +29,7 @@ export interface DiffCounts {
   readonly removed: number
 }
 
-/** How the reader is reading diffs, which decides what the editor is told. */
+/** Props of the diff view. */
 export interface DiffViewProps {
   /** The change: both sides, whole. */
   readonly diff: DiffPayload

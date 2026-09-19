@@ -42,6 +42,16 @@ import * as sql from 'monaco-editor/languages/definitions/sql/sql.js'
 import * as xml from 'monaco-editor/languages/definitions/xml/xml.js'
 import * as lua from 'monaco-editor/languages/definitions/lua/lua.js'
 
+/** One language: the id a model names it by, the suffixes that ask for it, its rules. */
+interface Grammar {
+  readonly id: string
+  readonly extensions: readonly string[]
+  readonly rules: {
+    readonly conf: monaco.languages.LanguageConfiguration
+    readonly language: monaco.languages.IMonarchLanguage
+  }
+}
+
 /**
  * JSON's grammar, which this module states because the editor's own JSON support is a
  * language worker — a second script the page cannot reach — and a diff of a repository's
@@ -78,16 +88,6 @@ const json: Grammar['rules'] = {
       ],
     },
   },
-}
-
-/** One language: the id a model names it by, the suffixes that ask for it, its rules. */
-interface Grammar {
-  readonly id: string
-  readonly extensions: readonly string[]
-  readonly rules: {
-    readonly conf: monaco.languages.LanguageConfiguration
-    readonly language: monaco.languages.IMonarchLanguage
-  }
 }
 
 /**

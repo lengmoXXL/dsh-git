@@ -39,7 +39,6 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     /** Git log and diff copy. */
     'dsh-git': GitKey
   }
-
 }
 
 /** The page kind the guide opens, and the id its body registers under. */
