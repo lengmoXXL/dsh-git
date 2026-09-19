@@ -26,8 +26,6 @@ import type { RepoIdentity } from '../shared/wire.ts'
 import { GitFailure } from './failure.ts'
 import { runGit } from './run.ts'
 
-export type { RepoIdentity } from '../shared/wire.ts'
-
 /** Standard error of a `rev-parse` inside a repository is never interesting. */
 const REV_PARSE_MAX_BYTES = 64 * 1024
 

@@ -37,7 +37,7 @@ export interface Config {
   maxEntries?: number
 }
 
-/** Validated plugin config. The defaults live in {@link apply}. */
+/** The plugin's config, validated before {@link apply} sees it. */
 export const Config: z<Config> = z.object({
   maxBytes: z.number().step(1).min(1).max(64 * 1024 * 1024),
   historyLimit: z.number().step(1).min(1).max(500),

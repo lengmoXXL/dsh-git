@@ -67,7 +67,7 @@ function messageOf(error: unknown): string {
  *
  * @param ctx - the host context carrying `ctx.subprocess`.
  * @param request - the invocation to run.
- * @returns the exit facts and both collected streams.
+ * @returns the exit facts and the collected output.
  * @throws GitFailure `git/unavailable` when git cannot be resolved or started.
  */
 export async function runGit(ctx: Context, request: GitRunRequest): Promise<GitRunResult> {
@@ -95,7 +95,6 @@ export async function runGit(ctx: Context, request: GitRunRequest): Promise<GitR
         ...argv,
       ],
       cwd,
-      // A viewer must not refresh or rewrite the repository's index.
       env: { GIT_OPTIONAL_LOCKS: '0' },
       stdio: {
         stdin: 'ignore',

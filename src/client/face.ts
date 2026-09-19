@@ -22,7 +22,7 @@ import type {
   StatusPayload,
 } from '../shared/wire.ts'
 
-/** The path prefix this plugin's host half owns. */
+/** The path prefix the host half answers on. */
 const API_PREFIX = '/dsh-git'
 
 /** A failure the host reported, with its stable code. */

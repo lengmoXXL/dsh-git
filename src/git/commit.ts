@@ -11,7 +11,7 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import type { CommitFile, CommitPayload } from '../shared/wire.ts'
-import type { RepoIdentity } from './repo.ts'
+import type { RepoIdentity } from '../shared/wire.ts'
 import { readCommitSummary } from './history.ts'
 import { kindOfLetter } from './status.ts'
 import { runGit } from './run.ts'
