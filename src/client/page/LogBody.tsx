@@ -501,6 +501,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
           <div
             ref={grip}
             className={css.grip}
+            data-dragging={dragging === undefined ? undefined : ''}
             role="separator"
             aria-orientation="vertical"
             aria-label={t('panel.resize')}

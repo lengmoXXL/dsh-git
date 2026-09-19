@@ -137,6 +137,26 @@
   touch-action: none;
 }
 
-.grip:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+/* Reaching for the grip, or dragging it, is the editor's own divider: a blue
+   line down the split. The colour is the focus border of the editor the diffs
+   are drawn in — vs light or vs-dark — so the sidebar and the diff agree. */
+.grip::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  background: #0090f1;
+  opacity: 0;
+}
+
+[data-ds-dark-theme] .grip::after {
+  background: #007fd4;
+}
+
+.grip:hover::after,
+.grip[data-dragging]::after {
+  opacity: 1;
 }
