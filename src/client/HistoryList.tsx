@@ -1,7 +1,7 @@
 /**
  * The history half of the log tab: one row per commit. Clicking a row opens the
  * files that commit changed, right under it; clicking one of those files opens
- * that file's diff in its own tab.
+ * that file's diff in the pane beside the list.
  *
  * A row is one line, the way a source-control list draws a commit: the subject
  * takes the width it needs, the author and age trail it in a dimmer tone, and

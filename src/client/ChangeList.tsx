@@ -1,6 +1,6 @@
 /**
  * The working-tree half of the log tab: the changed paths, grouped the way a
- * reader looks for them, each row opening that change in its own tab.
+ * reader looks for them, each row opening that change in the pane beside them.
  *
  * A row is the shape a source-control list uses: the file's type glyph, its
  * name with the directory trailing it in a dimmer tone, and the status letter

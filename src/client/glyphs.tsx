@@ -1,5 +1,5 @@
 /**
- * The glyph this plugin draws itself.
+ * The glyphs this plugin draws itself.
  *
  * @module dsh-git/client/glyphs
  */

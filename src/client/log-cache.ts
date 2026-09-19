@@ -1,12 +1,11 @@
 /**
  * What the log tab remembers while the reader is somewhere else.
  *
- * A pane draws only its active tab, so opening a diff unmounts this tab and
- * everything it held: the page it had read, the commit it had expanded, the
- * files that commit's list had read, and where it was scrolled to. None of that
- * is the host's to remember, and coming back from a diff should not blank the
- * list to a spinner and fold the commit again — so it lives here, keyed by
- * Session, for as long as the page does.
+ * A sidebar draws only its active tab, so reading something else unmounts this page
+ * and everything it held: the page it had read, the commit it had expanded, the files
+ * that commit's list had read, and where it was scrolled to. None of that is the host's
+ * to remember, and coming back should not blank the list to a spinner and fold the commit
+ * again — so it lives here, keyed by Session, for as long as the page does.
  *
  * A commit's file list is immutable, so it is read once and kept; the status
  * and history are not, so they are cached to paint with and re-read anyway. The

@@ -23,7 +23,7 @@ export const zh = {
   'loading': '正在加载…',
 
   'log.title': 'Git',
-  'log.guide': '浏览工作区改动与提交历史，点开即在新标签页看 diff',
+  'log.guide': '浏览工作区改动与提交历史，点开即在列表旁看 diff',
   'board.empty': 'diff view',
   'list.moreFiles': '还有 {n} 个文件',
   'list.moreCommits': '更早的提交',
@@ -92,7 +92,7 @@ export const en = {
   'loading': 'Loading…',
 
   'log.title': 'Git',
-  'log.guide': 'Working-tree changes and history; a click opens the diff in its own tab',
+  'log.guide': 'Working-tree changes and history; a click opens the diff beside the list',
   'board.empty': 'diff view',
   'list.moreFiles': '{n} more files',
   'list.moreCommits': 'Older commits',
