@@ -27,9 +27,6 @@
  * the Loader mounted at boot, so a change there is only picked up by restarting
  * the server.
  *
- * The build stamps itself (`__DSH_GIT_BUILD__`), because a page's layout comes
- * from whichever bundle it loaded while the content it draws is read fresh:
- * without a stamp, an out-of-date page looks like a layout bug.
  */
 
 import { readFile } from 'node:fs/promises'
@@ -37,7 +34,7 @@ import { dirname, extname, relative, resolve as resolvePath } from 'node:path'
 import { defineConfig } from 'tsdown'
 import { transform } from 'lightningcss'
 
-/** The plugin id the loader keys this bundle by; it must match `dsh.client`. */
+/** The plugin id the loader keys this bundle by; it must match the package's name. */
 const ID = 'dsh-git'
 
 /**

@@ -6,8 +6,8 @@ import { defineConfig } from '@playwright/test'
  */
 export default defineConfig({
   testDir: 'tests/browser',
-  // Three tests, one static server and one page: running them side by side only adds a
-  // variable to the failures.
+  // One static server and one page, however many tests read it: running them side by side
+  // only adds a variable to the failures.
   fullyParallel: false,
   workers: 1,
   reporter: 'list',
