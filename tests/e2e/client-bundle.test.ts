@@ -26,7 +26,7 @@ const PLATFORM_MODULES = [
   '@deepseek-ai/dsh-client-store',
   '@deepseek-ai/dsh-client-ui-slots',
   '@deepseek-ai/dsh-client-ui-primitives',
-  '@deepseek-ai/dsh-client-ui-dockkit', 'url'] as const
+  '@deepseek-ai/dsh-client-ui-dockkit'] as const
 
 /**
  * Read the built bundle, naming the command that produces it.
@@ -121,6 +121,19 @@ test('the bundle requests only modules the shell already holds', async () => {
       `"${name}" is not in the shell's module table`,
     )
   }
+})
+
+test('answers the editor\'s Node worker branch, which this shell cannot', async () => {
+  const source = await readArtifact()
+  // With no MonacoEnvironment worker configured — and this page configures none —
+  // Monaco's standalone worker service falls back to
+  // require("url").pathToFileURL(__filename). The shell's module table seeds no url,
+  // so left in, it throws while a diff editor is built; the build answers the branch
+  // with a synchronous no-worker throw the editor service turns into its main-thread
+  // fallback.
+  assert.doesNotMatch(source, /require\("url"\)/, 'the url require is answered at build time')
+  assert.doesNotMatch(source, /\b__filename\b/, 'the CommonJS global is replaced at build time')
+  assert.match(source, /no editor web worker/, 'the branch is answered with the no-worker throw')
 })
 
 test('defines every class the components reach for', async () => {

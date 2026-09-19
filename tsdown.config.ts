@@ -164,6 +164,33 @@ function cssModulesInline() {
   }
 }
 
+/**
+ * Answer the Node branch Monaco's worker descriptor carries.
+ *
+ * With no \`MonacoEnvironment\` worker configured — and this page configures
+ * none — the standalone worker service falls back to
+ * \`new URL(".../editorWebWorkerMain.js", require("url").pathToFileURL(__filename).href)\`.
+ * Left as written, that is a \`require("url")\` the shell's module table does not
+ * seed, thrown while a diff editor is built; and \`__filename\` is a CommonJS global
+ * a browser page has not got. The branch is answered here instead: it throws
+ * synchronously, so the editor service catches it and draws the diff on the main
+ * thread — the fallback this page takes anyway.
+ */
+function nodeWorkerBranch() {
+  const BRANCH = 'require("url").pathToFileURL(__filename).href'
+  const MESSAGE = 'dsh-git: no editor web worker in this shell; drawing the diff on the main thread'
+  return {
+    name: 'dsh-git-node-worker-branch',
+    renderChunk(code: string): { code: string } | null {
+      if (!code.includes(BRANCH)) return null
+      // Thrown synchronously, so the editor service catches it and falls back to
+      // the main thread; a file URL would instead fail later as an uncaught
+      // dynamic-import error.
+      return { code: code.replaceAll(BRANCH, '(() => { throw new Error(' + JSON.stringify(MESSAGE) + ') })()') }
+    },
+  }
+}
+
 const host = defineConfig({
   entry: { index: 'src/index.ts' },
   outDir: 'lib',
@@ -206,7 +233,7 @@ const client = defineConfig({
   // whole prefix has to match: one entry for the exact id leaves `monaco-editor/editor/...`
   // outside the bundle.
   deps: { alwaysBundle: [/^monaco-editor/] },
-  plugins: [cssModulesInline(), buildStamp()],
+  plugins: [cssModulesInline(), buildStamp(), nodeWorkerBranch()],
   outputOptions: {
     banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify(ID)}, factory: (require) => {\nvar module = { exports: {} }; var exports = module.exports;`,
     footer: 'return module.exports; } });',
