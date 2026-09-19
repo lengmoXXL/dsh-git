@@ -57,19 +57,15 @@ function unusable(reason: 'binary' | 'truncated'): SideText {
 export type RevisionRequest = {
   /** Absolute path of the working-tree root; the cwd of every git call here. */
   readonly repoRoot: string
-  /** Repository-relative path of the new side. */
   readonly path: string
-  /** Repository-relative path of the old side, when the change is a rename. */
   readonly origPath?: string | undefined
   readonly signal?: AbortSignal | undefined
   /** Per-side cap on the text a blob read may collect. */
   readonly maxBytes: number
 } & (
-  /** Which comparison pair to read. */
   | { readonly source: Exclude<DiffSource, 'commit'> }
   | {
       readonly source: 'commit'
-      /** The commit to read. */
       readonly rev: string
     }
 )

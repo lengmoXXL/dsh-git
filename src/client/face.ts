@@ -52,11 +52,8 @@ export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
 export interface DiffRequest {
   /** The Session whose workspace the repository belongs to. */
   readonly sessionId: string
-  /** Repository-relative path of the new side. */
   readonly path: string
-  /** Repository-relative path of the old side, for a rename. */
   readonly origPath?: string | undefined
-  /** Which comparison pair to read. */
   readonly source: DiffSource
   /** The commit to read, required when `source` is `commit`. */
   readonly rev?: string | undefined

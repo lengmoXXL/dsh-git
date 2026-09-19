@@ -18,11 +18,8 @@ import css from './List.module.css'
 
 /** Props of one changed path's row. */
 export interface FileRowProps {
-  /** Repository-relative path of the new side. */
   readonly path: string
-  /** Previous path of a rename or copy. */
   readonly origPath?: string | undefined
-  /** What the change-status letter means. */
   readonly kind: ChangeKind
   /** The panel's translator, for the letter's accessible name. */
   readonly t: Translate<GitKey>

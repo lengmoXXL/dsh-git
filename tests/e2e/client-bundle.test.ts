@@ -20,14 +20,34 @@ import { readdir, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
-import {
-  bundlePath,
-  PLATFORM_MODULES,
-  readArtifact,
-} from './harness.ts'
+
+/** Absolute path of the client bundle this suite reads. */
+const bundlePath = join(dirname(fileURLToPath(import.meta.url)), '../..', 'lib', 'client.js')
+
+/** The specifiers the shell's frozen module table seeds. */
+const PLATFORM_MODULES = [
+  'react', 'react/jsx-runtime', 'react-dom', 'react-dom/client', '@deepseek-ai/cordis',
+  '@deepseek-ai/dsh-client-store',
+  '@deepseek-ai/dsh-client-ui-slots',
+  '@deepseek-ai/dsh-client-ui-primitives',
+  '@deepseek-ai/dsh-client-ui-dockkit', 'url'] as const
+
+/**
+ * Read the built bundle, naming the command that produces it.
+ * @returns the artifact's text.
+ * @throws when the artifact is absent, with the command that creates it.
+ */
+async function readArtifact(): Promise<string> {
+  try {
+    return await readFile(bundlePath, 'utf8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    throw new Error(`${bundlePath} is a build output and is absent; run \`npm run build\` first`)
+  }
+}
 
 test('the bundle carries its stylesheets inlined under hashed local names', async () => {
-  const source = await readArtifact(bundlePath)
+  const source = await readArtifact()
   // A dynamic bundle has no stylesheet channel, so the build compiles each CSS
   // Module into the artifact and attaches one tagged <style> at factory time.
   assert.match(source, /data-plugin-css/)
@@ -50,7 +70,7 @@ test('the bundle carries its stylesheets inlined under hashed local names', asyn
 })
 
 test('keeps the scrollbars thin without restyling the shell', async () => {
-  const source = await readArtifact(bundlePath)
+  const source = await readArtifact()
   const css = source.replace(/\s+/g, '')
   assert.match(css, /--dsh-scrollbar-width:4px/)
   // On the panel's own rule, not on the document's.
@@ -58,7 +78,7 @@ test('keeps the scrollbars thin without restyling the shell', async () => {
 })
 
 test('gives every stylesheet its own tag', async () => {
-  const source = await readArtifact(bundlePath)
+  const source = await readArtifact()
   // A tag is keyed by the path the stylesheet came from, so that the tag a page already
   // holds is the one a newer build replaces in place. Keyed by file name it was not: the
   // editor alone ships several files called `style.css`, and each of them overwrote the
@@ -74,7 +94,7 @@ test('gives every stylesheet its own tag', async () => {
 })
 
 test('carries the editor features and the font its icons are drawn with', async () => {
-  const source = await readArtifact(bundlePath)
+  const source = await readArtifact()
   // Both go missing silently when a bundler takes this package at its word that nothing here
   // has side effects: the editor's features are imported for their effects alone, and so is
   // the stylesheet that names the icon font. A diff without them loses its find widget, its
@@ -86,7 +106,7 @@ test('carries the editor features and the font its icons are drawn with', async 
 })
 
 test('carries the build it came from', async () => {
-  const source = await readArtifact(bundlePath)
+  const source = await readArtifact()
   // Substituted at build time, so a page can be asked which build it is
   // running: the diff's content comes from the host and is always current,
   // while the layout comes from whatever bundle the page loaded.
@@ -96,7 +116,7 @@ test('carries the build it came from', async () => {
 })
 
 test('the bundle requests only modules the shell already holds', async () => {
-  const source = await readArtifact(bundlePath)
+  const source = await readArtifact()
   const required = [...source.matchAll(/require\("([^"]+)"\)/g)].map(match => String(match[1]))
   assert.ok(required.length > 0, 'the bundle requested nothing at all')
   for (const name of required) {
@@ -108,7 +128,7 @@ test('the bundle requests only modules the shell already holds', async () => {
 })
 
 test('defines every class the components reach for', async () => {
-  const source = await readArtifact(bundlePath)
+  const source = await readArtifact()
   const here = dirname(fileURLToPath(import.meta.url))
   const clientDir = join(here, '../..', 'src', 'client')
   const files = await readdir(clientDir)

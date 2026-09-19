@@ -31,13 +31,10 @@ import type { RepoIdentity } from '../shared/wire.ts'
 import { readRevisionTexts } from '../git/revision.ts'
 import { readStatus } from '../git/status.ts'
 
-/** Deployment-varying caps on one answer. */
+/** The caps this deployment was configured with. */
 export interface GitApiConfig {
-  /** Old- and new-side byte cap for one diff. */
   readonly maxBytes: number
-  /** Commits one history page may return. */
   readonly historyLimit: number
-  /** Changed paths one status answer may return. */
   readonly maxEntries: number
 }
 
