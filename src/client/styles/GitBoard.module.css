@@ -39,9 +39,33 @@
   border-left: 0.5px solid var(--dsw-alias-border-l2);
 }
 
-/* The diff area names itself and says nothing else. */
-.emptyText {
+/* The board names itself while there is nothing in it: two pages, a wordmark,
+   and the one line that says how to put a diff here. */
+.empty {
   margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 0 24px;
+  text-align: center;
+}
+
+.empty > svg {
+  color: var(--dsw-alias-label-tertiary);
+  opacity: 0.5;
+}
+
+.emptyTitle {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font: var(--dsw-font-l-20);
+  letter-spacing: 0.04em;
+}
+
+.emptyHint {
+  margin: 0;
+  max-width: 28ch;
   color: var(--dsw-alias-label-tertiary);
   font: var(--dsw-font-xs-13);
 }

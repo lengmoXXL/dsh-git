@@ -64,3 +64,18 @@ export function OpenFileGlyph(): ReactNode {
     </svg>
   )
 }
+
+/**
+ * The board's empty state: two pages, one losing a line and one gaining it — the
+ * shape of the diff that is not open yet, drawn large enough to hold the space.
+ */
+export function DiffGlyph(): ReactNode {
+  return (
+    <svg width="44" height="44" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="4.5" y="9" width="17" height="30" rx="3.5" />
+      <rect x="26.5" y="9" width="17" height="30" rx="3.5" />
+      <path d="M10.5 24h5" />
+      <path d="M32 24h6M35 21v6" />
+    </svg>
+  )
+}

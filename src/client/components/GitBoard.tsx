@@ -16,6 +16,7 @@ import { FailureBlock, Note } from './Feedback.tsx'
 import { gitFace } from '../data/face.ts'
 import type { GitKey } from '../i18n/locales.ts'
 import { DiffView, type DiffCounts } from '../diff/DiffView.tsx'
+import { DiffGlyph } from './glyphs.tsx'
 import { diffViewSettings, subscribeDiffViewSettings } from '../data/view-mode.ts'
 import { failureInfoOf, type BoardPane, type Load } from '../data/state.ts'
 import css from '../styles/GitBoard.module.css'
@@ -115,7 +116,11 @@ export function GitBoard({ panes, focused, t, onFocus }: GitBoardProps): ReactNo
   if (panes.length === 0) {
     return (
       <div className={css.board}>
-        <p className={css.emptyText}>{t('board.empty')}</p>
+        <div className={css.empty}>
+          <DiffGlyph />
+          <p className={css.emptyTitle}>{t('board.empty')}</p>
+          <p className={css.emptyHint}>{t('board.emptyHint')}</p>
+        </div>
       </div>
     )
   }
