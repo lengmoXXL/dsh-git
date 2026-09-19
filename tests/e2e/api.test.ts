@@ -14,7 +14,7 @@ import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
 import { mkdtemp, realpath, rename, rm, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { after, before, test } from 'node:test'
 import { promisify } from 'node:util'
 import { Context } from '@deepseek-ai/cordis'
@@ -25,15 +25,6 @@ import { handleGitApi } from '../../src/api/handler.ts'
 import type { ChangeEntry, DiffPayload, StatusPayload } from '../../src/shared/wire.ts'
 
 const run = promisify(execFile)
-
-/**
- * The physical path of a directory, as `git rev-parse --show-toplevel` reports it.
- * @param path - the directory to resolve.
- * @returns its canonical absolute path.
- */
-async function realpathOf(path: string): Promise<string> {
-  return await realpath(path)
-}
 
 /** The Session identity every request below names. */
 const SESSION = 'session-1'
@@ -64,6 +55,25 @@ async function git(argv: readonly string[]): Promise<string> {
     ...argv,
   ], { cwd: root })
   return stdout
+}
+
+/**
+ * A host bench over the real local providers.
+ *
+ * The plugins register asynchronously, so the wait is what makes the context usable. What is
+ * stubbed on top of it are the two facts this plugin does not own: which Session maps to which
+ * workspace, and the deployment's fallback root.
+ * @param cwd - the workspace this bench answers for.
+ * @param provides - the seams to stub, by service name.
+ * @returns the context, to be disposed when the test is done.
+ */
+async function bench(cwd: string, provides: Record<string, unknown> = {}): Promise<Context> {
+  const context = new Context()
+  context.plugin(LocalFileSystem, { cwd })
+  context.plugin(LocalSubprocessRuntime)
+  await new Promise(resolve => { setTimeout(resolve, 200) })
+  for (const [name, value] of Object.entries(provides)) context.provide(name, value as never)
+  return context
 }
 
 /**
@@ -113,12 +123,10 @@ before(async () => {
   await writeFile(join(root, 'untracked.txt'), 'brand new\n')
   await unlink(join(root, 'deleted.txt'))
 
-  ctx = new Context()
-  ctx.plugin(LocalFileSystem, { cwd: root })
-  ctx.plugin(LocalSubprocessRuntime)
-  await new Promise(resolve => { setTimeout(resolve, 200) })
-  ctx.provide('sessions', { get: () => ({ header: { cwd: root } }) } as never)
-  ctx.provide('sandboxPolicy', { workspaceRoot: root } as never)
+  ctx = await bench(root, {
+    sessions: { get: () => ({ header: { cwd: root } }) },
+    sandboxPolicy: { workspaceRoot: root },
+  })
   deps = { ctx, config: CONFIG }
 })
 
@@ -127,21 +135,16 @@ after(async () => {
   await rm(root, { recursive: true, force: true })
 })
 
-/** Every entry of one status answer, flattened. */
-function entriesOf(status: StatusPayload): readonly ChangeEntry[] {
-  return status.entries
-}
-
 /** Find the entry for one path at one stage. */
 function find(status: StatusPayload, stage: ChangeEntry['stage'], path: string): ChangeEntry {
-  const match = entriesOf(status).find(entry => entry.stage === stage && entry.path === path)
+  const match = status.entries.find(entry => entry.stage === stage && entry.path === path)
   assert.ok(match !== undefined, `no ${stage} entry for ${path}`)
   return match
 }
 
 test('status reports the repository, its branch, and every change', async () => {
   const status = await body<StatusPayload>(`/status?sessionId=${SESSION}`)
-  assert.equal(status.repo?.name, root.split('/').pop())
+  assert.equal(status.repo?.name, basename(root))
   assert.equal(status.repo?.branch.branch, 'main')
   assert.equal(status.repo?.branch.detached, false)
   assert.equal(status.truncated, false)
@@ -159,12 +162,10 @@ test('status reports the repository, its branch, and every change', async () => 
 
 test('status answers a workspace that is not a repository without failing', async () => {
   const outside = await mkdtemp(join(tmpdir(), 'dsh-git-plain-'))
-  const plainCtx = new Context()
-  plainCtx.plugin(LocalFileSystem, { cwd: outside })
-  plainCtx.plugin(LocalSubprocessRuntime)
-  await new Promise(resolve => { setTimeout(resolve, 200) })
-  plainCtx.provide('sessions', { get: () => ({ header: { cwd: outside } }) } as never)
-  plainCtx.provide('sandboxPolicy', { workspaceRoot: outside } as never)
+  const plainCtx = await bench(outside, {
+    sessions: { get: () => ({ header: { cwd: outside } }) },
+    sandboxPolicy: { workspaceRoot: outside },
+  })
   const answer = await handleGitApi(
     { method: 'GET', path: '/status', query: new URLSearchParams({ sessionId: SESSION }) },
     { ctx: plainCtx, config: CONFIG },
@@ -314,11 +315,7 @@ test('a missing session identity is refused', async () => {
 test('refuses an identity nobody knows instead of guessing a repository', async () => {
   // Neither a live header nor a persisted one: refusing is the only honest
   // answer, because the alternative is showing some other repository.
-  const blindCtx = new Context()
-  blindCtx.plugin(LocalFileSystem, { cwd: root })
-  blindCtx.plugin(LocalSubprocessRuntime)
-  await new Promise(resolve => { setTimeout(resolve, 200) })
-  blindCtx.provide('sessions', { get: () => undefined } as never)
+  const blindCtx = await bench(root, { sessions: { get: () => undefined } })
   const answer = await handleGitApi(
     { method: 'GET', path: '/status', query: new URLSearchParams({ sessionId: SESSION }) },
     { ctx: blindCtx, config: CONFIG },
@@ -331,21 +328,17 @@ test('refuses an identity nobody knows instead of guessing a repository', async 
 test('resolves a Session the host is not running from its persisted header', async () => {
   // A browser can name any Session it is showing, including one no fiber has
   // entered. The workspace must still be that Session's, never the deployment's.
-  const storedCtx = new Context()
-  storedCtx.plugin(LocalFileSystem, { cwd: root })
-  storedCtx.plugin(LocalSubprocessRuntime)
-  await new Promise(resolve => { setTimeout(resolve, 200) })
-  storedCtx.provide('sessions', { get: () => undefined } as never)
-  storedCtx.provide('sessionPersistence', {
-    stat: async () => ({ header: { cwd: root }, revision: 'r1' }),
-  } as never)
+  const storedCtx = await bench(root, {
+    sessions: { get: () => undefined },
+    sessionPersistence: { stat: async () => ({ header: { cwd: root }, revision: 'r1' }) },
+  })
   const answer = await handleGitApi(
     { method: 'GET', path: '/status', query: new URLSearchParams({ sessionId: SESSION }) },
     { ctx: storedCtx, config: CONFIG },
   )
   await storedCtx.fiber.dispose()
   assert.equal(answer.status, 200)
-  assert.equal((answer.body as StatusPayload).repo?.root, await realpathOf(root))
+  assert.equal((answer.body as StatusPayload).repo?.root, await realpath(root))
 })
 
 test('an unknown endpoint is not found and a write method is not allowed', async () => {
