@@ -29,7 +29,6 @@ import { runGit } from './run.ts'
 export interface ParsedStatus {
   /** Branch facts from the `# branch.*` header records. */
   readonly branch: BranchStatus
-  /** Every changed path, in git's own order. */
   readonly entries: readonly ChangeEntry[]
 }
 
