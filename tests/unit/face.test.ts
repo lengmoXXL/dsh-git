@@ -49,7 +49,7 @@ test('asks for a page of history', async () => {
 test('sends only the diff parameters that apply', async () => {
   const recorder = recordingFetch(200, {
     path: 'a', source: 'worktree', oldLabel: 'index', newLabel: 'working tree',
-    binary: false, truncated: false, removed: 0, added: 0, rows: [],
+    binary: false, truncated: false, oldText: '', newText: '',
   })
   const face = createGitFace(recorder.fetch)
 
@@ -81,8 +81,8 @@ test('raises the host code on a described failure', async () => {
 })
 
 test('raises a status-derived failure when the body is not a failure body', async () => {
-  const recorders: FetchLike = async () => new Response('<html>nope</html>', { status: 502 })
-  const face = createGitFace(recorders)
+  const notJson: FetchLike = async () => new Response('<html>nope</html>', { status: 502 })
+  const face = createGitFace(notJson)
   await assert.rejects(
     () => face.history('s1', live()),
     (error: unknown) => error instanceof GitRequestError && error.code === 'git/command-failed',

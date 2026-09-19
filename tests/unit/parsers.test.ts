@@ -10,7 +10,7 @@ import { test } from 'node:test'
 import { parseNameStatus } from '../../src/git/commit.ts'
 import { parseLog } from '../../src/git/history.ts'
 
-/** One `git log` record, shaped the way {@link LOG_FORMAT} writes it. */
+/** One `git log` record, shaped the way the log format writes it. */
 function record(fields: readonly string[], trailingNewline = true): string {
   return `${fields.join('\x1f')}\x1e${trailingNewline ? '\n' : ''}`
 }

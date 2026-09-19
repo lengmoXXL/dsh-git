@@ -1,7 +1,7 @@
 /**
- * The list's derived state: how changed paths group, how a change is marked,
- * what a commit's refs become, how a diff copies as text, how a long unchanged
- * run folds, and how a rejected request is described.
+ * The list's derived state: how changed paths group, how a change is marked, what a
+ * commit's refs become, how the two blocks share a pane, and how a rejected request is
+ * described.
  *
  * @module dsh-git/tests/unit/state
  */
@@ -26,7 +26,6 @@ import {
 function entry(stage: ChangeEntry['stage'], path: string, kind: ChangeEntry['kind'] = 'modified'): ChangeEntry {
   return { path, index: 'M', kind, stage }
 }
-
 
 test('groups entries by the stage they were reported for', () => {
   const grouped = groupChanges([
