@@ -1,16 +1,12 @@
 /**
- * The client bundle is a build artifact the web shell loads through a module
- * loader, so its contracts are structural: the wrapper must call
- * `window.__ModuleLoader__.load` with this plugin's id, the loaded module must
- * expose exactly the plugin surface cordis needs, and the bundle must request
- * nothing the shell's frozen module table does not already hold.
+ * The client bundle is a build artifact the web shell loads through a module loader, so its
+ * contracts are structural: the wrapper hands the loader a factory, every stylesheet is compiled
+ * into the artifact under hashed local names, every module the artifact requires is one the
+ * shell's frozen table holds, and every class the components reach for is defined in one of those
+ * stylesheets.
  *
- * This exercises the real built file — not the source — because the wrapper is
- * what the shell sees, and nothing else in the suite would notice it changing.
- *
- * The shared component library is stubbed rather than imported: its published
- * artifact is browser-only, and what its components draw is not this file's
- * business.
+ * This reads the real built file — not the source — because the artifact is what the shell sees,
+ * and nothing else in the suite would notice it changing.
  *
  * @module dsh-git/tests/e2e/client-bundle
  */

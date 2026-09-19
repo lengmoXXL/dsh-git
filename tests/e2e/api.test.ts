@@ -1,11 +1,10 @@
 /**
  * The whole host half, against a real repository.
  *
- * Nothing here is stubbed except the two facts this plugin does not own — which
- * Session maps to which workspace, and the deployment's fallback root. The
- * filesystem and subprocess seams are the real local providers, so every git
- * invocation, every parse, and every alignment below is the code that runs in a
- * deployment.
+ * Nothing here is stubbed except the facts this plugin does not own — which Session maps to
+ * which workspace, and where a stored header is read from. The filesystem and subprocess seams
+ * are the real local providers, so every git invocation, every parse, and every read below is the
+ * code that runs in a deployment.
  *
  * @module dsh-git/tests/e2e/api
  */
