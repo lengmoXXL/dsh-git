@@ -110,12 +110,9 @@ function benchWindow(store?: ReadonlyMap<string, string>): BenchWindow {
 export async function loadBundle(store?: ReadonlyMap<string, string>): Promise<LoadedEntry> {
   const source = await readArtifact(bundlePath)
   const bench = benchWindow(store)
-  const nodeRequire = createRequire(import.meta.url)
-  const library = primitivesStub()
-  const require = (name: string): unknown =>
-    name === '@deepseek-ai/dsh-client-ui-primitives' ? library : nodeRequire(name)
-  // The bundle is not a module: it is a script that registers itself.
-  new Function('window', 'require', source)(bench.window, require)
+  // The bundle is not a module: it is a script that registers itself, and its top level does
+  // nothing but call the loader, whose factory is handed the `require` that resolves modules.
+  new Function('window', source)(bench.window)
   const loaded = bench.loaded()
   assert.notEqual(loaded, undefined, 'the bundle never called window.__ModuleLoader__.load')
   return loaded!
@@ -192,7 +189,8 @@ export async function applied(store?: ReadonlyMap<string, string>): Promise<Benc
       },
     },
   }
-  ;(exports['apply'] as (ctx: unknown) => void)(ctx)
+  const apply = exports['apply'] as (ctx: unknown) => void
+  apply(ctx)
   return { ctx, definitions, providers, registrations, locales }
 }
 
