@@ -21,7 +21,7 @@ import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { CommitFile, CommitSummary } from '../../api/wire.ts'
 import { gitFace } from '../data/face.ts'
 import { FileRow } from './FileRow.tsx'
-import { LIST_PREVIEW, MoreRow } from './MoreRow.tsx'
+import { LIST_PREVIEW, LIST_STEP, MoreRow } from './MoreRow.tsx'
 import { cx, timeLabel } from '../i18n/format.ts'
 import { logCache } from '../data/log-cache.ts'
 import type { GitKey } from '../i18n/locales.ts'
@@ -105,7 +105,10 @@ function CommitRow({ commit, sessionId, now, t, selected, onToggle, onSelectFile
   const [files, setFiles] = useState<Load<readonly CommitFile[]>>(
     () => cached(logCache(sessionId).commitFiles.get(commit.sha)),
   )
-  const [openFiles, setOpenFiles] = useState(false)
+  // How many of the commit's files are drawn. Each press of the more control
+  // reveals the next step rather than the whole list, and the last one puts it
+  // back to the preview.
+  const [shownFiles, setShownFiles] = useState(LIST_PREVIEW)
 
   // One read per opening: `selected` is this row's own switch, so a commit that
   // is not open never asks the host for anything.
@@ -139,6 +142,9 @@ function CommitRow({ commit, sessionId, now, t, selected, onToggle, onSelectFile
     `${commit.authorName} · ${age} · ${commit.shortSha}`,
     ...chips.length === 0 ? [] : [chips.map(chip => chip.name).join(', ')],
   ].join('\n')
+
+  const fileCount = files.phase === 'ready' ? files.value.length : 0
+  const shown = Math.min(shownFiles, fileCount)
 
   return (
     <>
@@ -174,7 +180,7 @@ function CommitRow({ commit, sessionId, now, t, selected, onToggle, onSelectFile
           )}
           {files.phase === 'ready' && files.value.length > 0 && (
             <>
-              {(openFiles ? files.value : files.value.slice(0, LIST_PREVIEW)).map(file => (
+              {files.value.slice(0, shown).map(file => (
                 <FileRow
                   key={`${file.path}:${file.origPath ?? ''}`}
                   path={file.path}
@@ -186,12 +192,12 @@ function CommitRow({ commit, sessionId, now, t, selected, onToggle, onSelectFile
                   onOpenFile={onOpenFile === undefined ? undefined : () => { onOpenFile(file.path) }}
                 />
               ))}
-              {files.value.length > LIST_PREVIEW && (
+              {fileCount > LIST_PREVIEW && (
                 <MoreRow
-                  label={t('list.moreFiles', { n: files.value.length - LIST_PREVIEW })}
-                  open={openFiles}
+                  label={t('list.moreFiles', { n: fileCount - shown })}
+                  open={shown >= fileCount}
                   t={t}
-                  onToggle={() => { setOpenFiles(value => !value) }}
+                  onToggle={() => { setShownFiles(current => (current >= fileCount ? LIST_PREVIEW : current + LIST_STEP)) }}
                   nested
                 />
               )}

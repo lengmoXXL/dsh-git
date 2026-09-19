@@ -11,13 +11,16 @@ import type { GitKey } from '../i18n/locales.ts'
 import css from '../styles/List.module.css'
 
 /** How many entries a list shows before it says there are more. */
-export const LIST_PREVIEW = 8
+export const LIST_PREVIEW = 16
+
+/** How many more entries one press of the more control reveals. */
+export const LIST_STEP = 8
 
 /** Props of the control. */
 export interface MoreRowProps {
-  /** What is behind it, already spelled: `8 个文件`, `更早的提交`. */
+  /** What is behind it, already spelled: `还有 3 个文件`, `更早的提交`. */
   readonly label: string
-  /** Whether the rows behind it are shown. */
+  /** Whether every row behind it is shown, so the control offers to put them away. */
   readonly open: boolean
   /** The page's translator. */
   readonly t: Translate<GitKey>

@@ -13,7 +13,7 @@ import { Fragment, useState, type ReactNode } from 'react'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ChangeEntry, ChangeStage } from '../../api/wire.ts'
 import { FileRow } from './FileRow.tsx'
-import { LIST_PREVIEW, MoreRow } from './MoreRow.tsx'
+import { LIST_PREVIEW, LIST_STEP, MoreRow } from './MoreRow.tsx'
 import { cx } from '../i18n/format.ts'
 import type { GitKey } from '../i18n/locales.ts'
 import { Section } from './Section.tsx'
@@ -50,14 +50,16 @@ export interface ChangeListProps {
  */
 export function ChangeList({ grouped, truncated, t, onSelect, onOpenFile }: ChangeListProps): ReactNode {
   const [open, setOpen] = useState(true)
-  const [opened, setOpened] = useState<ReadonlySet<ChangeStage>>(() => new Set())
+  // How many of each group's rows are drawn. One press reveals the next step.
+  const [revealed, setRevealed] = useState<ReadonlyMap<ChangeStage, number>>(() => new Map())
   const groups = nonEmptyGroups(grouped)
   const total = groups.reduce((sum, group) => sum + group.entries.length, 0)
-  const toggle = (stage: ChangeStage): void => {
-    setOpened((current) => {
-      const next = new Set(current)
-      if (next.has(stage)) next.delete(stage)
-      else next.add(stage)
+  const shownOf = (stage: ChangeStage, count: number): number => Math.min(revealed.get(stage) ?? LIST_PREVIEW, count)
+  const toggle = (stage: ChangeStage, count: number): void => {
+    setRevealed((current) => {
+      const next = new Map(current)
+      const shown = current.get(stage) ?? LIST_PREVIEW
+      next.set(stage, shown >= count ? LIST_PREVIEW : shown + LIST_STEP)
       return next
     })
   }
@@ -76,7 +78,7 @@ export function ChangeList({ grouped, truncated, t, onSelect, onOpenFile }: Chan
             {t(GROUP_KEY[stage])}
             <span className={css.groupCount}>{entries.length}</span>
           </h4>
-          {(opened.has(stage) ? entries : entries.slice(0, LIST_PREVIEW)).map(entry => (
+          {entries.slice(0, shownOf(stage, entries.length)).map(entry => (
             <FileRow
               key={`${entry.stage}:${entry.path}`}
               path={entry.path}
@@ -89,10 +91,10 @@ export function ChangeList({ grouped, truncated, t, onSelect, onOpenFile }: Chan
           ))}
           {entries.length > LIST_PREVIEW && (
             <MoreRow
-              label={t('list.moreFiles', { n: entries.length - LIST_PREVIEW })}
-              open={opened.has(stage)}
+              label={t('list.moreFiles', { n: entries.length - shownOf(stage, entries.length) })}
+              open={shownOf(stage, entries.length) >= entries.length}
               t={t}
-              onToggle={() => { toggle(stage) }}
+              onToggle={() => { toggle(stage, entries.length) }}
             />
           )}
         </Fragment>
