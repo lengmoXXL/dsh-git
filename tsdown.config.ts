@@ -206,7 +206,7 @@ const host = defineConfig({
   // `package.json` names `lib/index.js`, which is the convention a profile
   // install expects; the package is `type: module`, so `.js` is already ESM.
   outExtensions: () => ({ js: '.js' }),
-  external: [/^@deepseek-ai\//],
+  deps: { neverBundle: [/^@deepseek-ai\//] },
   outputOptions: {
     banner: '// dsh-git host half',
   },
@@ -226,13 +226,15 @@ const client = defineConfig({
   outExtensions: () => ({ js: '.js' }),
   // React and the client stack are the shell's, not ours: a second copy would
   // break hooks and duplicate the renderer.
-  external: [/^react($|\/)/, /^@deepseek-ai\//],
   // A dependency is not bundled by default, and the editor and its grammars must be: the
   // shell's module table has no entry for either, so a `require` left in the artifact is a
   // page that cannot load. The editor's own modules import each other by subpath, so the
   // whole prefix has to match: one entry for the exact id leaves `monaco-editor/editor/...`
   // outside the bundle.
-  deps: { alwaysBundle: [/^monaco-editor/] },
+  deps: {
+    neverBundle: [/^react($|\/)/, /^@deepseek-ai\//],
+    alwaysBundle: [/^monaco-editor/],
+  },
   plugins: [cssModulesInline(), buildStamp(), nodeWorkerBranch()],
   outputOptions: {
     banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify(ID)}, factory: (require) => {\nvar module = { exports: {} }; var exports = module.exports;`,

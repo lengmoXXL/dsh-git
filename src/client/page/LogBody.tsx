@@ -489,7 +489,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
                     t={t}
                     onSelectFile={openCommitFile}
                     onOpenFile={openFile}
-                    upstream={ready?.repo?.branch.upstream ?? undefined}
+                    upstream={repo.branch.upstream ?? undefined}
                     viewport={scroller}
                     onLoadOlder={loadOlder}
                   />
