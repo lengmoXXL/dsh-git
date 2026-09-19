@@ -20,9 +20,9 @@ import type {
   BranchStatus,
   ChangeEntry,
   ChangeKind,
+  RepoIdentity,
   StatusPayload,
 } from '../shared/wire.ts'
-import type { RepoIdentity } from '../shared/wire.ts'
 import { runGit } from './run.ts'
 
 /** One parsed `git status` read. */
@@ -150,6 +150,7 @@ export function parsePorcelainV2(output: string): ParsedStatus {
     if (kind === '1') {
       const parts = field.split(' ')
       if (parts.length < 9) continue
+      // The path is the rest of the fields put back together: it may contain a space.
       appendEntries(entries, parts.slice(8).join(' '), parts[1] as string, undefined)
       continue
     }

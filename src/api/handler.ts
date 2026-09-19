@@ -27,6 +27,7 @@ import { readCommit } from '../git/commit.ts'
 import { GitFailure } from '../git/failure.ts'
 import { readHistory } from '../git/history.ts'
 import { confineToRepo, discoverRepo, resolveWorkspaceRoot } from '../git/repo.ts'
+import type { RepoIdentity } from '../shared/wire.ts'
 import { readRevisionTexts } from '../git/revision.ts'
 import { readStatus } from '../git/status.ts'
 
@@ -137,7 +138,7 @@ function readRequired(query: URLSearchParams, name: string): string {
  * @throws GitFailure `session/unknown` when no identity was supplied, or
  * `git/not-a-repository` when the workspace is not a working tree.
  */
-async function requireRepo(deps: GitApiDeps, query: URLSearchParams, signal?: AbortSignal) {
+async function requireRepo(deps: GitApiDeps, query: URLSearchParams, signal?: AbortSignal): Promise<RepoIdentity> {
   const workspaceRoot = await resolveWorkspaceRoot(deps.ctx, query.get('sessionId'))
   const repo = await discoverRepo(deps.ctx, workspaceRoot, signal)
   if (repo === null) {
@@ -239,13 +240,11 @@ async function handleDiff(
   if (source === undefined) {
     throw new GitFailure('git/bad-request', `"source" must be one of ${SOURCES.join(', ')}`)
   }
-  const rev = source === 'commit' ? readRequired(query, 'rev') : query.get('rev') ?? undefined
   const texts = await readRevisionTexts(deps.ctx, {
     repoRoot: repo.root,
     path,
     ...origPath === undefined ? {} : { origPath },
-    source,
-    ...rev === undefined ? {} : { rev },
+    ...source === 'commit' ? { source, rev: readRequired(query, 'rev') } : { source },
     maxBytes: deps.config.maxBytes,
     ...signal === undefined ? {} : { signal },
   })

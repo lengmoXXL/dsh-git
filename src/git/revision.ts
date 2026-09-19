@@ -48,22 +48,31 @@ function unusable(reason: 'binary' | 'truncated'): SideText {
     : { text: '', present: true, truncated: true, binary: false }
 }
 
-/** One diff acquisition. */
-export interface RevisionRequest {
+/**
+ * One diff acquisition.
+ *
+ * A commit comparison names the commit it reads; the other two have no revision to name, and the
+ * type says so rather than leaving a revision that would be ignored.
+ */
+export type RevisionRequest = {
   /** Absolute path of the working-tree root; the cwd of every git call here. */
   readonly repoRoot: string
   /** Repository-relative path of the new side. */
   readonly path: string
   /** Repository-relative path of the old side, when the change is a rename. */
   readonly origPath?: string | undefined
-  /** Which comparison pair to read. */
-  readonly source: DiffSource
-  /** The commit to read, required when `source` is `commit`. */
-  readonly rev?: string | undefined
   readonly signal?: AbortSignal | undefined
   /** Per-side cap on the text a blob read may collect. */
   readonly maxBytes: number
-}
+} & (
+  /** Which comparison pair to read. */
+  | { readonly source: Exclude<DiffSource, 'commit'> }
+  | {
+      readonly source: 'commit'
+      /** The commit to read. */
+      readonly rev: string
+    }
+)
 
 /** Both sides of one comparison, ready to align. */
 export interface RevisionTexts {
@@ -161,7 +170,7 @@ export async function readRevisionTexts(
   ctx: Context,
   request: RevisionRequest,
 ): Promise<RevisionTexts> {
-  const { repoRoot, path, origPath, source, rev, signal, maxBytes } = request
+  const { repoRoot, path, origPath, signal, maxBytes } = request
   const oldPath = origPath ?? path
 
   let oldSide: SideText
@@ -169,7 +178,18 @@ export async function readRevisionTexts(
   let oldLabel: string
   let newLabel: string
 
-  if (source === 'worktree') {
+  if (request.source === 'commit') {
+    const revision = request.rev
+    oldSide = await showBlob(ctx, repoRoot, `${revision}^:${oldPath}`, signal, maxBytes)
+    newSide = await showBlob(ctx, repoRoot, `${revision}:${path}`, signal, maxBytes)
+    oldLabel = `${revision}^`
+    newLabel = revision
+  } else if (request.source === 'index') {
+    oldSide = await showBlob(ctx, repoRoot, `HEAD:${oldPath}`, signal, maxBytes)
+    newSide = await showBlob(ctx, repoRoot, `:${path}`, signal, maxBytes)
+    oldLabel = 'HEAD'
+    newLabel = 'index'
+  } else {
     oldSide = await showBlob(ctx, repoRoot, `:${oldPath}`, signal, maxBytes)
     // A conflicted path has no stage-0 entry; the "ours" stage is the closest
     // thing to an old side and keeps the diff meaningful.
@@ -179,17 +199,6 @@ export async function readRevisionTexts(
     newSide = await readWorktreeFile(ctx, repoRoot, path, signal, maxBytes)
     oldLabel = 'index'
     newLabel = 'working tree'
-  } else if (source === 'index') {
-    oldSide = await showBlob(ctx, repoRoot, `HEAD:${oldPath}`, signal, maxBytes)
-    newSide = await showBlob(ctx, repoRoot, `:${path}`, signal, maxBytes)
-    oldLabel = 'HEAD'
-    newLabel = 'index'
-  } else {
-    const revision = rev ?? 'HEAD'
-    oldSide = await showBlob(ctx, repoRoot, `${revision}^:${oldPath}`, signal, maxBytes)
-    newSide = await showBlob(ctx, repoRoot, `${revision}:${path}`, signal, maxBytes)
-    oldLabel = `${revision}^`
-    newLabel = revision
   }
 
   const binary = oldSide.binary || newSide.binary

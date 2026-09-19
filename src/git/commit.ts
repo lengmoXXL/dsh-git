@@ -10,8 +10,7 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { CommitFile, CommitPayload } from '../shared/wire.ts'
-import type { RepoIdentity } from '../shared/wire.ts'
+import type { CommitFile, CommitPayload, RepoIdentity } from '../shared/wire.ts'
 import { readCommitSummary } from './history.ts'
 import { kindOfLetter } from './status.ts'
 import { runGit } from './run.ts'
@@ -38,7 +37,7 @@ export function parseNameStatus(output: string): CommitFile[] {
     if (raw === undefined) continue
     const status = raw.trim()
     if (!STATUS_TOKEN.test(status)) continue
-    const letter = status[0] ?? '?'
+    const letter = status.charAt(0)
     if (letter === 'R' || letter === 'C') {
       const from = fields[i + 1]
       const to = fields[i + 2]
