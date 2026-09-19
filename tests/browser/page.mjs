@@ -283,7 +283,6 @@ const page = `<!doctype html>
     },
     settle: async () => {
       const editor = document.querySelector('.monaco-diff-editor')
-      if (editor === null) return 'no editor'
       const sizes = new Set()
       for (let frame = 0; frame < 40; frame += 1) {
         await new Promise(resolve => requestAnimationFrame(resolve))
@@ -299,21 +298,23 @@ const page = `<!doctype html>
   }
   window.__render({})
 
-  // A second page for the history list, mounted the same way: its own root, its own box.
-  const historyRoot = document.createElement('div')
-  historyRoot.id = 'historyHost'
-  historyRoot.style.cssText = 'width:420px;height:400px;background:#1e1e1e'
+  // A second page for the history list, mounted the same way: its own host, and one root for it.
+  const historyHost = document.createElement('div')
+  historyHost.id = 'historyHost'
+  historyHost.style.cssText = 'width:420px;height:400px;background:#1e1e1e'
   // Ahead of the diff board, so nothing the editor overlays can cover a row.
-  document.body.prepend(historyRoot)
+  document.body.prepend(historyHost)
+  let historyRoot
   window.__renderHistory = () => {
-    ReactDOM.createRoot(historyRoot).render(React.createElement(window.__exports.HistoryList, {
+    historyRoot = historyRoot ?? ReactDOM.createRoot(historyHost)
+    historyRoot.render(React.createElement(window.__exports.HistoryList, {
       commits: COMMITS,
       hasMore: false,
       sessionId: 'session-1',
       now: 1_700_000_600_000,
       t: (key) => key,
       onSelectFile: () => {},
-      viewport: { current: historyRoot },
+      viewport: { current: historyHost },
       onLoadOlder: () => {},
     }))
   }

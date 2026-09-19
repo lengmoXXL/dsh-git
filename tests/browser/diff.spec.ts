@@ -126,7 +126,6 @@ test('draws a diff in the editor, in either reading', async ({ page }) => {
   // Two columns, and the run the fixture left unchanged is stated rather than drawn.
   await expect(page.locator('[data-reading="split"]')).toBeVisible()
   await expect(page.getByText(/hidden lines/).first()).toBeVisible()
-  await page.screenshot({ path: 'tests/browser/.page/diff-two-columns.png' })
 
   // The same diff in one column: the editor says which reading it is in, which is what
   // the page's switch asks it for — and it is the editor that is already up that is told
@@ -171,7 +170,6 @@ test('marks the lines a file gained and lost', async ({ page }) => {
     expect(painted(colour), `${what} is painted`).toBe(true)
   }
   expect(marked.addedLine, 'an added line is not painted like a removed one').not.toBe(marked.removedLine)
-  await page.screenshot({ path: 'tests/browser/.page/diff-marks.png' })
 })
 
 test('numbers each side by the file it came from', async ({ page }) => {
