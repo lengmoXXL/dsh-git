@@ -149,4 +149,3 @@ export interface ErrorPayload {
   /** Operator-readable description, already localized by the host. */
   readonly message: string
 }
-

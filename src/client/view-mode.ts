@@ -1,14 +1,12 @@
 /**
  * How the page is arranged, and the one place that remembers it.
  *
- * Two kinds of choice live here, and both are the reader's rather than the
- * change's. They are kept in two stores rather than one because
- * `useSyncExternalStore` compares snapshots by identity: a snapshot that carried both
- * groups would be a new object whenever either changed, and would redraw every diff
- * when the list was dragged a pixel. How a diff is drawn — two aligned columns or one in reading order,
- * whole lines or wrapped ones — so every diff follows the same answer. And where
- * the list sits — which side, how wide, whether it is put away — so the page opens
- * the way it was left. None of it is the host's business, so the browser holds it.
+ * Two kinds of choice live here, and both are the reader's rather than the change's: how a diff
+ * is drawn, so that every diff follows the same answer, and where the list sits, so that the page
+ * opens the way it was left. They are two stores because `useSyncExternalStore` compares
+ * snapshots by identity: one store holding both would be a new snapshot whenever either changed,
+ * and dragging the list a pixel would redraw every diff. Neither choice is the host's business,
+ * so the browser holds them.
  *
  * @module dsh-git/client/view-mode
  */
@@ -28,56 +26,97 @@ export interface DiffViewSettings {
   readonly wrap: boolean
 }
 
-/** What a reader who has said nothing gets: the columns, wrapped to fit. */
+/** How the diff is drawn for a reader who has said nothing: the columns, wrapped to fit. */
 const DEFAULTS: DiffViewSettings = { mode: 'split', wrap: true }
 
 /** Where each choice is kept between page loads. */
 const MODE_KEY = 'dsh-git:diff-view-mode'
 const WRAP_KEY = 'dsh-git:diff-view-wrap'
 
-/** The settings last resolved, so a render reads a stable value. */
-let current: DiffViewSettings | undefined
-
-/** Who to tell when the settings change. */
-const listeners = new Set<() => void>()
-
-/**
- * The remembered settings, or the defaults.
- * @returns the settings to draw with.
- */
-export function diffViewSettings(): DiffViewSettings {
-  current ??= stored()
-  return current
+/** One remembered choice: what it is now, and how to change it. */
+interface Store<T> {
+  readonly get: () => T
+  readonly set: (next: T) => void
+  readonly subscribe: (listener: () => void) => () => void
 }
 
 /**
- * Read the settings the browser kept.
+ * Build one remembered choice.
  *
- * Storage can be denied outright (a hardened browser, a partitioned context) and
- * this runs server-side in the bundle's own tests, so the defaults stand in
- * rather than an error.
- * @returns the stored settings, defaulted field by field.
+ * Reading is attempted once, and a browser that refuses storage — or a server rendering the page,
+ * which has none — leaves the defaults standing. A write that fails still holds for the page it
+ * was made on; it simply will not be remembered.
+ *
+ * @param defaults - what a reader who has said nothing gets.
+ * @param read - read the stored value.
+ * @param same - whether two values are the same choice, so an unchanged one redraws nothing.
+ * @param write - store the value.
+ * @returns the store the page reads and changes.
  */
-function stored(): DiffViewSettings {
-  if (typeof window === 'undefined') return DEFAULTS
-  try {
-    return {
-      mode: window.localStorage.getItem(MODE_KEY) === 'inline' ? 'inline' : DEFAULTS.mode,
-      // Only an explicit "off" turns wrapping off, so a value this plugin never
-      // wrote cannot silently change how a diff reads.
-      wrap: window.localStorage.getItem(WRAP_KEY) !== 'clip',
+function createStore<T>(
+  defaults: T,
+  read: () => T,
+  same: (left: T, right: T) => boolean,
+  write: (value: T) => void,
+): Store<T> {
+  let resolved: T | undefined
+  const listeners = new Set<() => void>()
+  const get = (): T => {
+    if (resolved === undefined) {
+      try {
+        resolved = read()
+      } catch {
+        resolved = defaults
+      }
     }
-  } catch {
-    return DEFAULTS
+    return resolved
+  }
+  return {
+    get,
+    set: (next) => {
+      if (same(next, get())) return
+      resolved = next
+      try {
+        write(next)
+      } catch {
+        // The choice still holds for this page; it just will not be remembered.
+      }
+      for (const listener of listeners) listener()
+    },
+    subscribe: (listener) => {
+      listeners.add(listener)
+      return () => { listeners.delete(listener) }
+    },
   }
 }
+
+const diffStore = createStore<DiffViewSettings>(
+  DEFAULTS,
+  () => ({
+    mode: window.localStorage.getItem(MODE_KEY) === 'inline' ? 'inline' : DEFAULTS.mode,
+    // Only an explicit "off" turns wrapping off, so a value this plugin never wrote
+    // cannot silently change how a diff reads.
+    wrap: window.localStorage.getItem(WRAP_KEY) !== 'clip',
+  }),
+  (left, right) => left.mode === right.mode && left.wrap === right.wrap,
+  (value) => {
+    window.localStorage.setItem(MODE_KEY, value.mode)
+    window.localStorage.setItem(WRAP_KEY, value.wrap ? 'wrap' : 'clip')
+  },
+)
+
+/** The remembered way diffs are drawn, or the defaults. */
+export const diffViewSettings = diffStore.get
+
+/** Watch the way diffs are drawn, for `useSyncExternalStore`. */
+export const subscribeDiffViewSettings = diffStore.subscribe
 
 /**
  * Choose how the two sides are laid out.
  * @param mode - the layout to draw.
  */
 export function setDiffViewMode(mode: DiffViewMode): void {
-  apply({ ...diffViewSettings(), mode })
+  diffStore.set({ ...diffStore.get(), mode })
 }
 
 /**
@@ -85,34 +124,7 @@ export function setDiffViewMode(mode: DiffViewMode): void {
  * @param wrap - whether to wrap.
  */
 export function setDiffWrap(wrap: boolean): void {
-  apply({ ...diffViewSettings(), wrap })
-}
-
-/**
- * Remember a choice and tell every diff about it.
- * @param next - the settings to draw with.
- */
-function apply(next: DiffViewSettings): void {
-  const previous = diffViewSettings()
-  if (next.mode === previous.mode && next.wrap === previous.wrap) return
-  current = next
-  try {
-    window.localStorage.setItem(MODE_KEY, next.mode)
-    window.localStorage.setItem(WRAP_KEY, next.wrap ? 'wrap' : 'clip')
-  } catch {
-    // The choice still holds for this page; it just will not be remembered.
-  }
-  for (const listener of listeners) listener()
-}
-
-/**
- * Watch the settings, for `useSyncExternalStore`.
- * @param listener - called after every change.
- * @returns the unsubscribe.
- */
-export function subscribeDiffViewSettings(listener: () => void): () => void {
-  listeners.add(listener)
-  return () => { listeners.delete(listener) }
+  diffStore.set({ ...diffStore.get(), wrap })
 }
 
 /** Which side of the page the list is on. */
@@ -139,28 +151,9 @@ const SIDE_KEY = 'dsh-git:rail-side'
 const WIDTH_KEY = 'dsh-git:rail-width'
 const OPEN_KEY = 'dsh-git:rail-open'
 
-/** The settings last resolved, so a render reads a stable value. */
-let currentRail: RailSettings | undefined
-
-/** Who to tell when the list's place changes. */
-const railListeners = new Set<() => void>()
-
-/**
- * The remembered place of the list, or the defaults.
- * @returns the settings to lay the page out with.
- */
-export function railSettings(): RailSettings {
-  currentRail ??= storedRail()
-  return currentRail
-}
-
-/**
- * Read the list's place from the browser.
- * @returns the stored settings, defaulted field by field.
- */
-function storedRail(): RailSettings {
-  if (typeof window === 'undefined') return RAIL_DEFAULTS
-  try {
+const railStore = createStore<RailSettings>(
+  RAIL_DEFAULTS,
+  () => {
     const width = Number(window.localStorage.getItem(WIDTH_KEY))
     return {
       side: window.localStorage.getItem(SIDE_KEY) === 'right' ? 'right' : RAIL_DEFAULTS.side,
@@ -169,17 +162,27 @@ function storedRail(): RailSettings {
       // wrote cannot hide the list on someone.
       open: window.localStorage.getItem(OPEN_KEY) !== '0',
     }
-  } catch {
-    return RAIL_DEFAULTS
-  }
-}
+  },
+  (left, right) => left.side === right.side && left.width === right.width && left.open === right.open,
+  (value) => {
+    window.localStorage.setItem(SIDE_KEY, value.side)
+    window.localStorage.setItem(WIDTH_KEY, String(value.width))
+    window.localStorage.setItem(OPEN_KEY, value.open ? '1' : '0')
+  },
+)
+
+/** The remembered place of the list, or the defaults. */
+export const railSettings = railStore.get
+
+/** Watch the list's place, for `useSyncExternalStore`. */
+export const subscribeRailSettings = railStore.subscribe
 
 /**
  * Put the list on one side or the other.
  * @param side - the edge to sit against.
  */
 export function setRailSide(side: RailSide): void {
-  applyRail({ ...railSettings(), side })
+  railStore.set({ ...railStore.get(), side })
 }
 
 /**
@@ -187,7 +190,7 @@ export function setRailSide(side: RailSide): void {
  * @param width - the width to use; clamped by the caller's window.
  */
 export function setRailWidth(width: number): void {
-  applyRail({ ...railSettings(), width })
+  railStore.set({ ...railStore.get(), width })
 }
 
 /**
@@ -195,37 +198,5 @@ export function setRailWidth(width: number): void {
  * @param open - whether it is showing.
  */
 export function setRailOpen(open: boolean): void {
-  applyRail({ ...railSettings(), open })
-}
-
-/**
- * Remember a choice and tell the page about it.
- * @param next - the settings to lay out with.
- */
-function applyRail(next: RailSettings): void {
-  const previous = railSettings()
-  if (
-    next.side === previous.side
-    && next.width === previous.width
-    && next.open === previous.open
-  ) return
-  currentRail = next
-  try {
-    window.localStorage.setItem(SIDE_KEY, next.side)
-    window.localStorage.setItem(WIDTH_KEY, String(next.width))
-    window.localStorage.setItem(OPEN_KEY, next.open ? '1' : '0')
-  } catch {
-    // The choice still holds for this page; it just will not be remembered.
-  }
-  for (const listener of railListeners) listener()
-}
-
-/**
- * Watch the list's place, for `useSyncExternalStore`.
- * @param listener - called after every change.
- * @returns the unsubscribe.
- */
-export function subscribeRailSettings(listener: () => void): () => void {
-  railListeners.add(listener)
-  return () => { railListeners.delete(listener) }
+  railStore.set({ ...railStore.get(), open })
 }

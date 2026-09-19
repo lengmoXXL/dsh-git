@@ -160,6 +160,3 @@ test('reads a detached HEAD, skips blanks, and falls back to the raw ref name', 
   assert.deepEqual(parseRefs(['', '  ']), [])
   assert.deepEqual(parseRefs(['refs/stash']), [{ kind: 'branch', name: 'refs/stash' }])
 })
-
-
-

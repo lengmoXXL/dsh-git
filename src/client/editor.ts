@@ -4,9 +4,8 @@
  *
  * The package's entry is not imported — it also pulls an LSP client that is not published
  * with it and registers every language through imports a dynamic bundle has no channel for.
- * What is imported instead is what that entry imports for the editor itself: the API, the
- * feature aggregate, and the two features the aggregate leaves to the entry that a reader
- * moving through a diff uses. `features/register.all.js` is the package's own list of the
+ * What is imported instead is what that entry imports for the editor itself — the API and the
+ * feature aggregate. `features/register.all.js` is the package's own list of the
  * editor's features, complete down to the codicon styles the widgets are drawn with, so
  * nothing here is a hand-picked subset of it.
  *

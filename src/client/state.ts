@@ -301,4 +301,3 @@ export function nonEmptyGroups(
     .map(stage => ({ stage, entries: grouped[stage] }))
     .filter(group => group.entries.length > 0)
 }
-

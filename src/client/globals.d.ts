@@ -7,8 +7,6 @@
  * and then new content is drawn by old layout. Reading the stamp off the view
  * settles which build a page is running without guessing.
  *
- * A source file read outside the build (a unit test) sees no substitution, so
- * consumers must guard with `typeof`.
  */
 
 /** ISO timestamp of the build that produced the bundle. */
