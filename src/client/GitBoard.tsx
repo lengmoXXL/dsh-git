@@ -8,7 +8,7 @@
  * @module dsh-git/client/GitBoard
  */
 
-import { useEffect, useState, type ReactNode , useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { DiffPayload } from '../shared/wire.ts'
 import { BUILD_STAMP } from './build.ts'
@@ -70,8 +70,9 @@ function DiffPane({ pane, focused, t, onFocus }: {
   // With no title bar over the code, the tooltip is where "which file, at which
   // revisions, how much changed" can be read — and which build is drawing it, since a
   // page can be running an older bundle while the diff's content is current.
-  // How the reader reads diffs is a store, not this pane's state: the editor is told
-  // what to draw and the page's switches are what decide it.
+  //
+  // How the reader reads diffs is a store, not this pane's state: the editor is told what
+  // to draw, and the page's switches are what decide it.
   const settings = useSyncExternalStore(subscribeDiffViewSettings, diffViewSettings, diffViewSettings)
   const ready = load.phase === 'ready' ? load.value : undefined
   const changed = counts === undefined ? undefined : `+${String(counts.added)} −${String(counts.removed)}`

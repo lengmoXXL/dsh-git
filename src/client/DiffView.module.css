@@ -33,11 +33,3 @@
   color: var(--dsw-alias-state-warn-label);
   font: var(--dsw-font-xs-13);
 }
-
-/* The band's unfold control and the glyph margin's fold control are one control to a
-   reader: expanding a run and folding it back should not move the button. The editor
-   centres the first over the whole left margin and draws the second in the glyph margin, so
-   the band's slot takes that margin's width, which the component passes in. */
-.host :global(.diff-hidden-lines .center > div:first-child) {
-  width: var(--dsh-git-glyph-margin, auto) !important;
-}

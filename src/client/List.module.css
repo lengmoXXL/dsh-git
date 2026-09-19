@@ -164,8 +164,8 @@
   min-width: 8px;
 }
 
-/* The status letter, sized and colored the way a source-control list marks a
- * path: one letter, quiet enough to read past and colored enough to scan. */
+/* The status letter, sized and coloured the way a source-control list marks a
+ * path: one letter, quiet enough to read past and coloured enough to scan. */
 .rowLetter {
   flex: none;
   display: inline-flex;

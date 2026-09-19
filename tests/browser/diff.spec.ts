@@ -64,12 +64,6 @@ interface Icons {
   readonly content: string
 }
 
-/** The columns the band's unfold control and the glyph margin sit in. */
-interface Columns {
-  readonly unfold: number | null
-  readonly glyph: number | null
-}
-
 /** The rail through an open commit's files, and the space the group is given. */
 interface History {
   readonly paddingTop: number
@@ -96,8 +90,8 @@ interface Probes {
   readonly history: () => History | null
   /** Whether the editor's icon font is loaded, and the glyph the band draws with it. */
   readonly icons: () => Promise<Icons>
-  /** The columns the unfold control and the glyph margin sit in. */
-  readonly columns: () => Columns
+  /** Where each column draws the band's unfold control, from that column's left edge. */
+  readonly columns: () => readonly number[]
   /** Forty frames of the editor's box, and the pane's own width and overflow. */
   readonly settle: () => Promise<Settled>
   /** The colours the editor painted the fixture's own line with. */
@@ -191,15 +185,15 @@ test('numbers each side by the file it came from', async ({ page }) => {
     'const answer = 41@3',
     'const answer = 42@3',
   ])
-  // The editor gives the left column a glyph margin of its own and none to the right, unless
-  // it is asked for both: without that the right column begins its numbers a strip earlier.
+  // The editor gives one column a glyph margin of its own and the other none, which would start
+  // that column's numbers a strip further along; both are taken off, so neither has one.
   const gutters = await probe(page, 'gutters')
   expect(gutters, 'both columns are drawn').toHaveLength(2)
-  expect(gutters[0]?.glyph, 'both columns have a strip before their numbers').toBe(gutters[1]?.glyph)
+  expect(gutters.map(gutter => gutter.glyph), 'neither column carries a glyph margin').toEqual([0, 0])
   expect(gutters[0]?.offset, 'and both begin their numbers at the same place').toBe(gutters[1]?.offset)
 })
 
-test('draws the unfold control with the editor icon, in the glyph column', async ({ page }) => {
+test('draws the unfold control in both columns, in the editor icon', async ({ page }) => {
   const errors = watch(page)
   await page.goto('/index.html')
   await expect(page.locator('.monaco-diff-editor')).toBeVisible({ timeout: 20_000 })
@@ -208,14 +202,12 @@ test('draws the unfold control with the editor icon, in the glyph column', async
   // stylesheets: a page that cannot reach that file draws a box in the icon's place.
   expect(icons.font, "the editor's icon font is in the bundle").toBe(true)
   expect(icons.content, 'the band draws an icon').not.toBe('none')
-  // Expanding a run and folding it back are one control to a reader, and the editor draws
-  // them in different places unless the band's slot takes the glyph margin's width.
-  // The band is drawn once the editor has computed the diff, a frame or two after the box.
-  await expect.poll(async () => (await probe(page, 'columns')).unfold).not.toBeNull()
+  // The band is drawn once the editor has computed the diff, a frame or two after the box, and
+  // both columns should put its control in the same place: an editor left to itself gives one
+  // column a glyph margin and not the other, which moves that column's band control along.
+  await expect.poll(async () => (await probe(page, 'columns')).length).toBe(2)
   const columns = await probe(page, 'columns')
-  expect(columns.unfold, 'the band has an unfold control').not.toBeNull()
-  expect(columns.glyph, 'the editor has a glyph margin').not.toBeNull()
-  expect(columns.unfold, 'the unfold control sits in the glyph column').toBe(columns.glyph)
+  expect(columns[0], 'both columns hold the unfold control at the same offset').toBe(columns[1])
   expect(errors, 'the page logged errors').toEqual([])
 })
 

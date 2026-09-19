@@ -122,8 +122,6 @@
   border-left: 0.5px solid var(--dsw-alias-border-l2);
 }
 
-/* Six pixels of grip, straddling the border, so the pointer finds it without the
-   layout paying for it. */
 /* Twelve pixels of grip for a hairline border: at twice the pixels the six it used to
    be was three CSS pixels of radius, and a press a little to either side landed on the
    list or the board and did nothing. */

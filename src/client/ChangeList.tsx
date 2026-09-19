@@ -29,25 +29,6 @@ const GROUP_KEY: Record<ChangeStage, GitKey> = {
   untracked: 'group.untracked',
 }
 
-/** One changed path's row, opening that change in its own tab. */
-function ChangeRow({ entry, t, onSelect, onOpenFile }: {
-  readonly entry: ChangeEntry
-  readonly t: Translate<GitKey>
-  readonly onSelect: (entry: ChangeEntry, beside: boolean) => void
-  readonly onOpenFile?: ((path: string) => void) | undefined
-}): ReactNode {
-  return (
-    <FileRow
-      path={entry.path}
-      origPath={entry.origPath}
-      kind={entry.kind}
-      t={t}
-      onSelect={(beside) => { onSelect(entry, beside) }}
-      onOpenFile={onOpenFile === undefined ? undefined : () => { onOpenFile(entry.path) }}
-    />
-  )
-}
-
 /** Props of the working-tree list. */
 export interface ChangeListProps {
   /** The changed paths, already grouped. */
@@ -96,12 +77,14 @@ export function ChangeList({ grouped, truncated, t, onSelect, onOpenFile }: Chan
             <span className={css.groupCount}>{entries.length}</span>
           </h4>
           {(opened.has(stage) ? entries : entries.slice(0, LIST_PREVIEW)).map(entry => (
-            <ChangeRow
+            <FileRow
               key={`${entry.stage}:${entry.path}`}
-              entry={entry}
+              path={entry.path}
+              origPath={entry.origPath}
+              kind={entry.kind}
               t={t}
-              onSelect={onSelect}
-              onOpenFile={onOpenFile}
+              onSelect={(beside) => { onSelect(entry, beside) }}
+              onOpenFile={onOpenFile === undefined ? undefined : () => { onOpenFile(entry.path) }}
             />
           ))}
           {entries.length > LIST_PREVIEW && (

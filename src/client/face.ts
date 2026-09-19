@@ -67,7 +67,7 @@ export interface GitFace {
   /** Read the working tree's state. */
   status(sessionId: string, signal: AbortSignal): Promise<StatusPayload>
   /** Read one page of history. */
-  history(sessionId: string, signal: AbortSignal, skip?: number): Promise<HistoryPayload>
+  history(sessionId: string, signal: AbortSignal | null, skip?: number): Promise<HistoryPayload>
   /** Read one commit and its files. */
   commit(sessionId: string, rev: string, signal: AbortSignal): Promise<CommitPayload>
   /** Read one change's two sides. */
@@ -79,7 +79,7 @@ export interface GitFace {
  * @param fetchImpl - the fetch implementation to call.
  * @param path - the endpoint below {@link API_PREFIX}.
  * @param params - the query string to send.
- * @param signal - the request's lifetime.
+ * @param signal - the request's lifetime, or null for one that cannot be called off.
  * @returns the parsed body.
  * @throws GitRequestError when the host answered with a failure body.
  */
@@ -87,7 +87,7 @@ async function call<T>(
   fetchImpl: FetchLike,
   path: string,
   params: URLSearchParams,
-  signal: AbortSignal,
+  signal: AbortSignal | null,
 ): Promise<T> {
   const response = await fetchImpl(`${API_PREFIX}${path}?${params.toString()}`, {
     method: 'GET',

@@ -30,8 +30,7 @@ export interface RefChipsProps {
   readonly chips: readonly RefChip[]
 }
 
-/** How many chips a row draws before the rest collapse into a count. */
-const MAX = 2
+const MAX_CHIPS = 2
 
 /**
  * Draw a commit's refs.
@@ -39,8 +38,8 @@ const MAX = 2
  * @returns one chip per drawn ref, then a count for the ones left out.
  */
 export function RefChips({ chips }: RefChipsProps): ReactNode {
-  const shown = chips.slice(0, MAX)
-  const hidden = chips.slice(MAX)
+  const shown = chips.slice(0, MAX_CHIPS)
+  const hidden = chips.slice(MAX_CHIPS)
   return (
     <>
       {shown.map(chip => (

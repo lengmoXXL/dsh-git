@@ -22,7 +22,6 @@ export function SplitLayoutGlyph(): ReactNode {
 
 /**
  * Whether long lines wrap inside their half or run on, read by scrolling.
- * @returns the glyph for lines that turn.
  */
 export function WrapGlyph(): ReactNode {
   return (
@@ -33,11 +32,6 @@ export function WrapGlyph(): ReactNode {
     </svg>
   )
 }
-
-
-
-
-
 /** The same button, for lines that keep their length. */
 export function ClipGlyph(): ReactNode {
   return (

@@ -182,9 +182,8 @@ const page = `<!doctype html>
       }
     },
     /**
-     * Where each column begins its line numbers, and how wide the strip before them is. The
-     * editor draws a glyph margin for one side of a side-by-side diff and not the other unless
-     * it is asked, and the two gutters are only the same width when both have one.
+     * Where each column begins its line numbers, and how wide the strip before them is: a strip
+     * on one side only is what starts that side's numbers somewhere else.
      */
     gutters: () => [...document.querySelectorAll('.monaco-editor')]
       .filter(editor => editor.getBoundingClientRect().width > 20)
@@ -234,21 +233,19 @@ const page = `<!doctype html>
       return { font: document.fonts.check('16px codicon'), content: String(content) }
     },
     /**
-     * The columns one side's unfold control and its glyph margin sit in. Both are asked of
-     * the same editor, so the two answers belong to one column and can be compared.
+     * Where each column draws the band's unfold control, as an offset from that column's own
+     * left edge: the same control should land in the same place on both sides.
      */
     columns: () => {
-      const centre = (element) => {
-        if (element === null) return null
-        const box = element.getBoundingClientRect()
-        return box.width === 0 ? null : Math.round(box.x + box.width / 2)
-      }
+      const seen = []
       for (const editor of document.querySelectorAll('.monaco-editor')) {
-        const unfold = centre(editor.querySelector('.diff-hidden-lines .center > div:first-child a'))
+        const box = editor.getBoundingClientRect()
+        if (box.width <= 20) continue
+        const unfold = editor.querySelector('.diff-hidden-lines .center > div:first-child a')
         if (unfold === null) continue
-        return { unfold, glyph: centre(editor.querySelector('.glyph-margin')) }
+        seen.push(Math.round(unfold.getBoundingClientRect().x - box.x))
       }
-      return { unfold: null, glyph: null }
+      return seen
     },
     /**
      * Which number the gutter gives the changed line on each side, joined as text and

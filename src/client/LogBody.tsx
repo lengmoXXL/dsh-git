@@ -82,8 +82,6 @@ function trackingLabel(branch: BranchStatus, t: Translate<GitKey>): string | und
   if (branch.upstream !== null) parts.push(branch.upstream)
   return parts.length === 0 ? undefined : parts.join(' · ')
 }
-
-
 /** The page's composed props: the tab seat, the Session identity, and its dictionary. */
 export type LogBodyProps =
   & PropsRuntime<'sidebar.right.pane.tab'>
@@ -222,7 +220,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
    */
   const loadOlder = useCallback(() => {
     const inHand = (history.phase === 'ready' ? history.value.commits.length : 0) + older.length
-    void gitFace.history(sessionId, new AbortController().signal, inHand).then(
+    void gitFace.history(sessionId, null, inHand).then(
       (value) => {
         setMoreCommits(value.hasMore)
         setOlder((current) => {
@@ -345,10 +343,8 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
   // `b`, and the two switches with `w` and `i`.
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
-      // Asked by shape rather than by `instanceof`: an environment without that
-      // constructor would otherwise throw on every key pressed.
-      const target = event.target as { tagName?: string; isContentEditable?: boolean } | null
-      if (target?.isContentEditable === true || target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return
+      const target = event.target
+      if (target instanceof HTMLElement && (target.isContentEditable || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
       if (event.key === 'Escape' && focusedPane !== undefined) closeFocused()
       if (event.key === 'b') setRailOpen(!railSettings().open)
       if (event.key === 'w') setDiffWrap(!diffViewSettings().wrap)
@@ -357,7 +353,6 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
     document.addEventListener('keydown', onKey)
     return () => { document.removeEventListener('keydown', onKey) }
   }, [closeFocused, focusedPane])
-
 
   /** Move down the list with the arrows: a rail of twenty rows is twenty tabs. */
   const onRailKey = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
@@ -446,6 +441,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
           {settings.wrap ? <WrapGlyph /> : <ClipGlyph />}
         </button>
         <button
+          type="button"
           className={css.control}
           title={t('panel.refresh')}
           aria-label={t('panel.refresh')}

@@ -16,7 +16,7 @@
  * @module dsh-git/client/HistoryList
  */
 
-import { useCallback, useEffect, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useState, type ReactNode, type RefObject } from 'react'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type { CommitFile, CommitSummary } from '../shared/wire.ts'
 import { gitFace } from './face.ts'
@@ -81,12 +81,9 @@ function useFittingRows(viewport: RefObject<HTMLDivElement | null>): number {
       setRows((current) => (current === next ? current : next))
     }
     measure()
-    // The page is also rendered where there is no `ResizeObserver` — the docs'
-    // screenshot pass and the suite render it in jsdom — and the count then simply
-    // stays at its floor until the reader resizes nothing.
-    const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure)
-    observer?.observe(element)
-    return () => { observer?.disconnect() }
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => { observer.disconnect() }
   }, [viewport])
   return rows
 }
@@ -132,7 +129,6 @@ function CommitRow({ commit, sessionId, now, t, selected, onToggle, onSelectFile
     return () => { controller.abort() }
   }, [selected, sessionId, commit.sha])
 
-  const toggle = useCallback(() => { onToggle(commit.sha) }, [onToggle, commit.sha])
   const chips = parseRefs(commit.refs, upstream)
   const current = chips.some(chip => chip.kind === 'head')
   const age = timeLabel(commit.authoredAt, now, t)
@@ -151,7 +147,7 @@ function CommitRow({ commit, sessionId, now, t, selected, onToggle, onSelectFile
         className={cx(css.row, selected && css.rowOpen)}
         title={title}
         aria-expanded={selected}
-        onClick={toggle}
+        onClick={() => { onToggle(commit.sha) }}
       >
         {/* The node a graph would draw at the left of this row, minus the lanes:
             a filled dot, hollow for a merge, hollow and accented for the commit
@@ -241,13 +237,13 @@ export function HistoryList({
     if (remembered === undefined) return commits[0]?.sha ?? null
     return remembered
   })
-  const toggle = useCallback((sha: string) => {
+  const toggle = (sha: string): void => {
     setOpened((current) => {
       const next = current === sha ? null : sha
       logCache(sessionId).openCommit = next
       return next
     })
-  }, [sessionId])
+  }
   return (
     <Section
       title={t('history.title')}

@@ -44,6 +44,21 @@ export interface DiffViewProps {
 }
 
 /**
+ * Take the glyph margin off both columns of a side-by-side diff.
+ *
+ * The editor gives the left column one of its own whether or not it is asked, and leaves the
+ * right column without, which starts that column's numbers and code a strip further left than
+ * the other's. Both off is what makes the two gutters one width, and the left column's has to be
+ * taken off after the editor has derived its options. The control that folds a revealed region
+ * back is drawn in the strip, so it goes with it.
+ * @param editor - the diff editor to take the margins off.
+ */
+function withoutGlyphMargins(editor: monaco.editor.IStandaloneDiffEditor): void {
+  editor.getOriginalEditor().updateOptions({ glyphMargin: false })
+  editor.getModifiedEditor().updateOptions({ glyphMargin: false })
+}
+
+/**
  * How much of a change the editor found, from its own account of the lines.
  *
  * A change the editor reports as an insertion has no old-side lines and one that it reports
@@ -85,27 +100,12 @@ export function DiffView({ diff, split, wrap, t, onCounts }: DiffViewProps): Rea
     if (element === null) return
     let created: monaco.editor.IStandaloneDiffEditor | undefined
     let updated: monaco.IDisposable | undefined
-    let laid: monaco.IDisposable | undefined
-    // The editor centres the band's unfold control over the whole left margin and draws the
-    // fold control in the glyph margin, so the two do not share a column until the band's
-    // slot is told how wide that margin is. The margin's own width is read off the document,
-    // because it is no part of the editor's own layout figures until it has been drawn.
-    const measure = (): void => {
-      const margin = element.querySelector('.monaco-editor .glyph-margin')
-      if (margin === null) return
-      element.style.setProperty('--dsh-git-glyph-margin', `${String(margin.clientWidth)}px`)
-    }
     try {
       installSyntax()
       const built = monaco.editor.createDiffEditor(element, {
         readOnly: true,
         originalEditable: false,
         renderSideBySide: split,
-        // The editor gives the left column a glyph margin of its own and leaves the right one
-        // without, which starts its line numbers eighteen pixels further left. Both sides get
-        // one, so the two gutters are the same width — and the fold control has somewhere to be
-        // drawn on either side.
-        glyphMargin: true,
         // The reader's switch decides, not the width. Left to itself the editor answers a
         // request for two columns with one wherever the pane is narrower than its own
         // breakpoint — nine hundred pixels, which a sidebar is — so the switch would look
@@ -124,14 +124,12 @@ export function DiffView({ diff, split, wrap, t, onCounts }: DiffViewProps): Rea
         modified: monaco.editor.createModel(diff.newText, language),
       })
       updated = built.onDidUpdateDiff(() => { report.current?.(counted(built.getLineChanges())) })
-      requestAnimationFrame(measure)
-      laid = built.getModifiedEditor().onDidLayoutChange(measure)
+      withoutGlyphMargins(built)
       editor.current = built
     } catch (error: unknown) {
       setFailure(error instanceof Error ? error.message : String(error))
     }
     return () => {
-      laid?.dispose()
       updated?.dispose()
       const models = created?.getModel()
       created?.dispose()
@@ -145,7 +143,10 @@ export function DiffView({ diff, split, wrap, t, onCounts }: DiffViewProps): Rea
   // for a toggle threw away where the reader had scrolled, and a fresh editor measures its
   // box before the browser has laid it out, which is a jump.
   useEffect(() => {
-    editor.current?.updateOptions({ renderSideBySide: split, wordWrap: wrap ? 'on' : 'off' })
+    const current = editor.current
+    if (current === null) return
+    current.updateOptions({ renderSideBySide: split, wordWrap: wrap ? 'on' : 'off' })
+    withoutGlyphMargins(current)
   }, [split, wrap])
 
   // Two independent things the host can say about what it sent, and a reader shown one of
