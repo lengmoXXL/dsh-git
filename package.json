@@ -2,7 +2,7 @@
   "name": "dsh-git",
   "version": "0.2.0",
   "private": true,
-  "description": "A read-only git browser for the DeepSeek Harness Web GUI: a right-Sidebar tab with the session's commit history and working-tree changes, where every click opens its own side-by-side diff tab. The host half reads the repository through ctx.fs and ctx.subprocess, so a routed (remote) execution world works unchanged.",
+  "description": "A read-only git browser for the DeepSeek Harness Web GUI: a right-sidebar page with the session's working-tree changes and commit history, and the diff a click opens beside them. The host half reads the repository through ctx.fs and ctx.subprocess, so a routed (remote) execution world works unchanged.",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -58,7 +58,6 @@
     "@deepseek-ai/cordis": "^4.0.2",
     "@deepseek-ai/dsh-client-locale": "^0.1.5-rc.1",
     "@deepseek-ai/dsh-client-resources": "^0.1.5-rc.1",
-    "@deepseek-ai/dsh-client-ui-dockkit": "^0.1.5-rc.1",
     "@deepseek-ai/dsh-client-ui-primitives": "^0.1.5-rc.1",
     "@deepseek-ai/dsh-client-ui-renderer": "^0.1.5-rc.1",
     "@deepseek-ai/dsh-client-ui-session": "^0.1.5-rc.1",
@@ -97,11 +96,11 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "lightningcss": "^1.33.0",
+    "monaco-editor": "^0.56.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tsdown": "^0.23.0",
-    "typescript": "^5.6.3",
-    "monaco-editor": "^0.56.0"
+    "typescript": "^5.6.3"
   },
   "overrides": {
     "@deepseek-ai/dsh-client-locale": "0.1.5-rc.1",
