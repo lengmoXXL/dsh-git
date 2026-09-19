@@ -28,6 +28,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history and tags: the release note is the annotated tag's own message, and the
+          # comparison link comes from describing the tag before this one. A default checkout
+          # fetches a single commit, and neither is then there — the note silently falls back to
+          # the commit that bumped the version, which is how 0.2.1 was first published.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
