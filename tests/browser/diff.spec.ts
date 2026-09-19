@@ -219,7 +219,7 @@ test('joins an open commit to the one below it, and spaces it evenly', async ({ 
   expect(history.above, 'the open commit has a node').not.toBeNull()
   expect(history.below, 'the commit below it has one too').not.toBeNull()
   // A graph would draw this line; a list has to draw it, or the files look detached.
-  expect(history.width, 'the rail is a hairline').toBe(1)
+  expect(history.width, 'the rail is two pixels of the nodes colour').toBe(2)
   expect(history.centre, 'the rail runs through the nodes').toBe(history.above?.x)
   expect(history.top, 'it starts at the node above').toBe(history.above?.y)
   expect(history.bottom, 'and ends at the node below').toBe(history.below?.y)
