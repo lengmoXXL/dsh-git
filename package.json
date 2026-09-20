@@ -41,6 +41,7 @@
     "diff"
   ],
   "dsh": {
+    "manifestVersion": 1,
     "bundle": {
       "patch": "./cordis.patch.yml"
     },
@@ -56,6 +57,12 @@
         "@deepseek-ai/dsh-client-ui-sidebar-right"
       ],
       "platform": "web"
+    },
+    "compatibility": {
+      "dshReleases": {
+        "0.1.5-rc.1": "compatible",
+        "0.1.5-rc.2": "compatible"
+      }
     }
   },
   "peerDependencies": {
@@ -124,7 +131,8 @@
     "@deepseek-ai/dsh-subprocess-local": "0.1.5-rc.1"
   },
   "engines": {
-    "node": "^22.19 || >=24"
+    "node": "^22.19 || >=24",
+    "dsh": "^0.1.5-rc.1"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json --noEmit",

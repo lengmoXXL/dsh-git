@@ -19,6 +19,12 @@ dsh plugin --profile web add @lengmoxxl/dsh-git
 dsh --profile web
 ```
 
+## 依赖、权限与限制
+
+- `PATH` 上有 `git`，并且会话工作目录是一个 Git 工作区。
+- 通过 Harness 文件系统读取该仓库，通过 Harness 子进程运行 `git`：不访问网络，不读凭据，不碰其他路径。
+- 不写入任何东西——工作区和索引都不会被改动。命令以 DSH 进程自身的权限运行，仓库或 diff 很大时要花时间采集和绘制。
+
 ## 发布
 
 在干净的 `main` 上：

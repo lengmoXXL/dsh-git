@@ -21,6 +21,12 @@ dsh plugin --profile web add @lengmoxxl/dsh-git
 dsh --profile web
 ```
 
+## Requirements, permissions, and limits
+
+- A `git` executable on `PATH`, and a Git working tree as the session's working directory.
+- Reads that repository through the Harness filesystem and runs `git` through the Harness subprocess: no network, no credentials, no other path.
+- Writes nothing — not the tree, not the index. Commands run with the DSH process's own privileges, and a large repository or diff takes time to gather and draw.
+
 ## Release
 
 From a clean `main`:
