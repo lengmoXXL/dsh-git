@@ -23,20 +23,11 @@ dsh --profile web
 
 ## Release
 
-Releasing is manual. From a clean `main`:
+From a clean `main`:
 
 ```sh
-npm version patch --no-git-tag-version   # or minor / major
-git commit -am "Cut $(node -p "require('./package.json').version")"
+npm version patch -m "Cut %s"   # or minor / major
 npm publish
-```
-
-Then tag the release:
-
-```sh
-version="$(node -p "require('./package.json').version")"
-git tag -a "v${version}" -m "<the release note>"
-git push --follow-tags
 ```
 
 ## License

@@ -21,20 +21,11 @@ dsh --profile web
 
 ## 发布
 
-发布是手动的。在干净的 `main` 上：
+在干净的 `main` 上：
 
 ```sh
-npm version patch --no-git-tag-version   # 或 minor / major
-git commit -am "Cut $(node -p "require('./package.json').version")"
+npm version patch -m "Cut %s"   # 或 minor / major
 npm publish
-```
-
-然后打 tag：
-
-```sh
-version="$(node -p "require('./package.json').version")"
-git tag -a "v${version}" -m "<发布说明>"
-git push --follow-tags
 ```
 
 ## License
