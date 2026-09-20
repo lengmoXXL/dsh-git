@@ -1,7 +1,6 @@
 {
-  "name": "dsh-git",
+  "name": "@lengmoxxl/dsh-git",
   "version": "0.2.1",
-  "private": true,
   "description": "A read-only git browser for the DeepSeek Harness Web GUI: a right-sidebar page with the session's working-tree changes and commit history, and the diff a click opens beside them. The host half reads the repository through ctx.fs and ctx.subprocess, so a routed (remote) execution world works unchanged.",
   "type": "module",
   "main": "lib/index.js",
@@ -17,9 +16,14 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "lib",
+    "lib/**/*.js",
+    "lib/**/*.d.ts",
     "cordis.patch.yml"
   ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -129,6 +133,7 @@
     "watch": "tsdown --watch",
     "pretest": "npm run build",
     "test": "node --test --experimental-strip-types tests/unit/*.test.ts tests/e2e/*.test.ts",
-    "test:e2e": "npm run build && playwright test"
+    "test:e2e": "npm run build && playwright test",
+    "release": "npm run typecheck && npm test && npm publish"
   }
 }

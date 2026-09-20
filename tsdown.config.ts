@@ -35,7 +35,7 @@ import { defineConfig } from 'tsdown'
 import { transform } from 'lightningcss'
 
 /** The plugin id the loader keys this bundle by; it must match the package's name. */
-const ID = 'dsh-git'
+const ID = '@lengmoxxl/dsh-git'
 
 /**
  * Virtual-id wrapper keeping module CSS away from tsdown's own css pipeline.

@@ -6,4 +6,4 @@
 
 - insert:
     - id: dsh-git
-      name: dsh-git
+      name: '@lengmoxxl/dsh-git'
