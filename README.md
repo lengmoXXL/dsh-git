@@ -16,48 +16,31 @@ English | [中文](README.zh.md)
 
 Needs Node 22.19+ (or 24+) and the DSH CLI.
 
-From npm:
-
 ```sh
 dsh plugin --profile web add @lengmoxxl/dsh-git
 dsh --profile web
 ```
 
-Or from the built tarball on the newest GitHub release — installing one compiles nothing and has
-no build for pnpm to allow:
-
-```sh
-dsh plugin --profile web add https://github.com/lengmoXXL/dsh-git/releases/latest/download/dsh-git.tgz
-dsh --profile web
-```
-
 ## Release
 
-Releasing is manual; no workflow does it. From a clean `main`:
+Releasing is manual. From a clean `main`:
 
 ```sh
 npm version patch --no-git-tag-version   # or minor / major
 git commit -am "Cut $(node -p "require('./package.json').version")"
-npm run release                          # typecheck, tests, then npm publish
+npm run release
 ```
 
-`npm run release` publishes `@lengmoxxl/dsh-git` to the public npm registry. The package's
-`publishConfig` names that registry, so a mirror-configured machine still publishes to npm, and
-the checks run first — a red check publishes nothing.
+`npm run release` runs the typecheck and tests, then publishes `@lengmoxxl/dsh-git` to the
+public npm registry; a failed check publishes nothing.
 
-Then tag the release and attach its tarball:
+Then tag the release:
 
 ```sh
 version="$(node -p "require('./package.json').version")"
 git tag -a "v${version}" -m "<the release note>"
 git push --follow-tags
-npm pack
-cp "lengmoxxl-dsh-git-${version}.tgz" dsh-git.tgz
-gh release create "v${version}" "lengmoxxl-dsh-git-${version}.tgz" dsh-git.tgz \
-  --title "<subject>" --notes "<the release note>"
 ```
-
-`dsh-git.tgz` is the stable asset address the tarball install above uses.
 
 ## License
 

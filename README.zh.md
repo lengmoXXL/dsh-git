@@ -14,45 +14,30 @@
 
 需要 Node 22.19+（或 24+）与 DSH CLI。
 
-从 npm 安装：
-
 ```sh
 dsh plugin --profile web add @lengmoxxl/dsh-git
 dsh --profile web
 ```
 
-或者用最新 GitHub release 里打好的 tarball——安装时不编译，也没有需要 pnpm 放行的构建脚本：
-
-```sh
-dsh plugin --profile web add https://github.com/lengmoXXL/dsh-git/releases/latest/download/dsh-git.tgz
-dsh --profile web
-```
-
 ## 发布
 
-发布是手动的，没有 workflow 代劳。在干净的 `main` 上：
+发布是手动的。在干净的 `main` 上：
 
 ```sh
 npm version patch --no-git-tag-version   # 或 minor / major
 git commit -am "Cut $(node -p "require('./package.json').version")"
-npm run release                          # 类型检查、测试，然后 npm publish
+npm run release
 ```
 
-`npm run release` 会把 `@lengmoxxl/dsh-git` 发布到公共 npm registry：包的 `publishConfig` 指明了该 registry，所以默认走镜像的机器也会发到 npm；并且先跑检查，检查不过就不会发布。
+`npm run release` 先跑类型检查和测试，然后把 `@lengmoxxl/dsh-git` 发布到公共 npm registry；检查不过就不会发布。
 
-然后打 tag，并把 tarball 附到 release 上：
+然后打 tag：
 
 ```sh
 version="$(node -p "require('./package.json').version")"
 git tag -a "v${version}" -m "<发布说明>"
 git push --follow-tags
-npm pack
-cp "lengmoxxl-dsh-git-${version}.tgz" dsh-git.tgz
-gh release create "v${version}" "lengmoxxl-dsh-git-${version}.tgz" dsh-git.tgz \
-  --title "<标题>" --notes "<发布说明>"
 ```
-
-`dsh-git.tgz` 就是上面 tarball 安装用的固定地址。
 
 ## License
 
