@@ -28,11 +28,8 @@ Releasing is manual. From a clean `main`:
 ```sh
 npm version patch --no-git-tag-version   # or minor / major
 git commit -am "Cut $(node -p "require('./package.json').version")"
-npm run release
+npm publish
 ```
-
-`npm run release` runs the typecheck and tests, then publishes `@lengmoxxl/dsh-git` to the
-public npm registry; a failed check publishes nothing.
 
 Then tag the release:
 

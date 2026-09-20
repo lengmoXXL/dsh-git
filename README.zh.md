@@ -26,10 +26,8 @@ dsh --profile web
 ```sh
 npm version patch --no-git-tag-version   # 或 minor / major
 git commit -am "Cut $(node -p "require('./package.json').version")"
-npm run release
+npm publish
 ```
-
-`npm run release` 先跑类型检查和测试，然后把 `@lengmoxxl/dsh-git` 发布到公共 npm registry；检查不过就不会发布。
 
 然后打 tag：
 

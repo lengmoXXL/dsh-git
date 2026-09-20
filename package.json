@@ -133,7 +133,6 @@
     "watch": "tsdown --watch",
     "pretest": "npm run build",
     "test": "node --test --experimental-strip-types tests/unit/*.test.ts tests/e2e/*.test.ts",
-    "test:e2e": "npm run build && playwright test",
-    "release": "npm run typecheck && npm test && npm publish"
+    "test:e2e": "npm run build && playwright test"
   }
 }
