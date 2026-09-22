@@ -25,7 +25,7 @@ export const name = 'dsh-git'
  * Services this plugin needs before it activates: the filesystem and subprocess
  * seams it reads through, and the Session store it resolves the workspace from.
  */
-export const inject = ['fs', 'subprocess', 'sessions']
+export const inject = ['fs', 'subprocess', 'sessions', 'webServer']
 
 /** Deployment-varying caps, each with a default in {@link apply}. */
 export interface Config {
