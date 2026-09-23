@@ -11,8 +11,8 @@
 
 import type { ReactNode } from 'react'
 import {
-  IconChevronDownOutline14,
-  IconChevronRightOutline14,
+  IconChevronDownOutlineRegular,
+  IconChevronRightOutlineRegular,
   Tag,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
@@ -52,7 +52,7 @@ export function Section({ title, count, open, onToggle, t, children }: SectionPr
           onClick={onToggle}
         >
           <span className={css.sectionChevron} aria-hidden="true">
-            {open ? <IconChevronDownOutline14 /> : <IconChevronRightOutline14 />}
+            {open ? <IconChevronDownOutlineRegular /> : <IconChevronRightOutlineRegular />}
           </span>
           <span className={css.sectionTitle}>{title}</span>
           {count !== undefined && <Tag tone="neutral" className={css.sectionCount}>{count}</Tag>}

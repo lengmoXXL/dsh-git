@@ -19,8 +19,8 @@ import {
   type ReactNode,
 } from 'react'
 import {
-  IconBranchOutline16,
-  IconRefreshOutline16,
+  IconBranchOutlineRegular,
+  IconRefreshOutlineRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale, PropsRuntime, Translate } from '@deepseek-ai/dsh-client-ui-slots'
 import type {
@@ -400,7 +400,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
         </button>
         {repo !== null && (
           <span className={css.branch} title={branchTitle}>
-            <IconBranchOutline16 size={12} className={css.branchIcon} />
+            <IconBranchOutlineRegular size={12} className={css.branchIcon} />
             <span className={css.branchName}>{branchLabel(repo.branch, t)}</span>
           </span>
         )}
@@ -447,7 +447,7 @@ export function LogBody({ useTabInfo, sessionId, t, openResource }: LogBodyProps
           aria-label={t('panel.refresh')}
           onClick={refresh}
         >
-          <IconRefreshOutline16 />
+          <IconRefreshOutlineRegular />
         </button>
       </header>
       <div className={css.body} data-side={rail.side}>

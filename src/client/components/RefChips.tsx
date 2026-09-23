@@ -9,7 +9,7 @@
 
 import type { ReactNode } from 'react'
 import {
-  IconBranchOutline16,
+  IconBranchOutlineRegular,
   Tag,
   type TagTone,
 } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -45,7 +45,7 @@ export function RefChips({ chips }: RefChipsProps): ReactNode {
     <>
       {shown.map(chip => (
         <Tag key={chip.name} tone={REF_TONE[chip.kind]} className={css.ref}>
-          {chip.kind !== 'tag' && <IconBranchOutline16 size={12} className={css.refIcon} />}
+          {chip.kind !== 'tag' && <IconBranchOutlineRegular size={12} className={css.refIcon} />}
           {chip.name}
         </Tag>
       ))}

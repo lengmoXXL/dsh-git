@@ -30,7 +30,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type { SidebarRightTabDefinition } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
-import { IconBranchOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconBranchOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { LogBody } from './page/LogBody.tsx'
 import { en, NS, zh, type GitKey } from './i18n/locales.ts'
 
@@ -53,10 +53,11 @@ function logDefinition(t: Translate<GitKey>): SidebarRightTabDefinition {
     priority: 'builtin',
     title: () => t('log.title'),
     guide: [{
+      id: GIT_LOG_ID,
       order: 20,
       title: () => t('log.title'),
       description: () => t('log.guide'),
-      icon: IconBranchOutline16,
+      icon: IconBranchOutlineRegular,
     }],
   }
 }
